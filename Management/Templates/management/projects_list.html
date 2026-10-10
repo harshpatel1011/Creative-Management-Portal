@@ -1,0 +1,266 @@
+{% extends 'management/base.html' %}
+
+{% block title %}Student Projects - Creative Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-text">
+        <h1>Student Projects</h1>
+        <p>Admin review and status management for student submitted projects</p>
+    </div>
+    <div style="display: flex; gap: 1rem; align-items: center;">
+        <form method="GET" action="{% url 'admin_projects' %}" id="project-filter-form" style="display: flex; gap: 0.5rem;">
+            <!-- Custom Searchable Dropdown -->
+            <div class="searchable-select-container" style="min-width: 360px;">
+                <input type="text" id="student-search" class="searchable-select-input" placeholder="Search or filter by student..." autocomplete="off"
+                       value="{% for s in students %}{% if student_filter == s.id|stringformat:'s' %}{{ s.name }}{% endif %}{% endfor %}">
+                <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
+                <ul id="student-list" class="searchable-list custom-scrollbar">
+                    <li data-value="" class="all-option">
+                        <span>-- All Students (Show All) --</span>
+                    </li>
+                    {% for s in students %}
+                    <li data-value="{{ s.id }}">
+                        <strong>{{ s.name }}</strong>
+                        {% if s.course %}
+                        <small style="color: var(--text-muted);">{{ s.course }}</small>
+                        {% endif %}
+                        {% if s.class_time %}
+                        <small style="color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
+                            <i class="fa-solid fa-clock" style="font-size: 0.72rem;"></i> {{ s.class_time }}
+                        </small>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                <input type="hidden" name="student_id" id="hidden-student" value="{{ student_filter|default:'' }}">
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Secondary Action & Filter Bar -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+    <div style="font-size: 0.88rem; color: var(--text-muted);">
+        Showing <strong>{{ projects.count }}</strong> of <strong>{{ total_projects_count|default:projects.count }}</strong> project{{ projects.count|pluralize }}
+    </div>
+    {% if student_filter %}
+    <div>
+        <a href="{% url 'admin_projects' %}" class="dossier-btn-dark" style="height: 36px; display: inline-flex; align-items: center; padding: 0 0.85rem; font-size: 0.8rem;" title="Reset filter">
+            <i class="fa-solid fa-xmark"></i> Clear Filter
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- 2-Grid Project Cards Container -->
+<div class="projects-grid">
+    {% for p in projects %}
+    <div class="student-card project-card-item">
+        <!-- Card Header: Student Info & Status -->
+        <div class="card-top" style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 0;">
+            <div style="display: flex; align-items: center; gap: 0.85rem; flex: 1; min-width: 0;">
+                <div class="card-avatar" style="width: 44px; height: 44px; font-size: 1.15rem; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0;">
+                    {{ p.student.name|slice:":1"|upper }}
+                </div>
+                <div style="min-width: 0; flex: 1;">
+                    <a href="{% url 'admin_student_detail' p.student.id %}" style="color: var(--text-primary); font-weight: 700; font-size: 1rem; text-decoration: none; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ p.student.name }}">
+                        {{ p.student.name }}
+                    </a>
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.15rem;">
+                        <span style="font-size: 0.78rem; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                            {{ p.student.course }}
+                        </span>
+                        {% if p.student.class_time %}
+                        <span style="font-size: 0.75rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: 0.25rem;">
+                            &bull; <i class="fa-solid fa-clock" style="font-size: 0.7rem;"></i> {{ p.student.class_time }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div style="flex-shrink: 0; margin-left: 0.5rem;">
+                {% if p.status == 'Approved' %}
+                <span class="dossier-btn-dark success" style="padding: 0.25rem 0.6rem; font-size: 0.72rem; font-weight: 700;">
+                    <i class="fa-solid fa-circle-check"></i> Approved
+                </span>
+                {% elif p.status == 'Rejected' %}
+                <span class="dossier-btn-dark danger" style="padding: 0.25rem 0.6rem; font-size: 0.72rem; font-weight: 700;">
+                    <i class="fa-solid fa-circle-xmark"></i> Rejected
+                </span>
+                {% else %}
+                <span class="dossier-btn-dark" style="padding: 0.25rem 0.6rem; font-size: 0.72rem; font-weight: 600; background: #fef3c7; color: #92400e; border: 1px solid #fde68a;">
+                    <i class="fa-solid fa-clock"></i> Submitted
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Card Body: Project Info & Assets -->
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 0.75rem;">
+            <div>
+                <a href="{% url 'admin_project_detail' p.id %}" style="color: var(--text-primary); text-decoration: none; font-weight: 700; font-size: 1.15rem; line-height: 1.35; display: block; margin-bottom: 0.35rem;" class="project-title-link">
+                    {{ p.title }}
+                </a>
+                {% if p.description %}
+                <p style="font-size: 0.88rem; color: var(--text-secondary); line-height: 1.5; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                    {{ p.description }}
+                </p>
+                {% else %}
+                <p style="font-size: 0.85rem; color: var(--text-muted); font-style: italic; margin: 0;">
+                    No description provided.
+                </p>
+                {% endif %}
+            </div>
+
+            <!-- Submission Date -->
+            <div style="font-size: 0.78rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.4rem;">
+                <i class="fa-regular fa-calendar" style="color: var(--primary);"></i> Submitted on {{ p.submitted_at|date:"M d, Y" }}
+            </div>
+
+            <!-- Attachments & Links -->
+            <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; padding-top: 0.25rem;">
+                {% for f in p.all_files %}
+                {% if forloop.counter <= 2 %}
+                <a href="{% if f.file %}{{ f.file.url }}{% else %}{{ f.url }}{% endif %}" download class="dossier-btn-dark" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" title="{{ f.filename }}">
+                    <i class="fa-solid fa-download"></i> {{ f.file_extension|default:"File" }}
+                </a>
+                {% elif forloop.counter == 3 %}
+                <a href="{% url 'admin_project_detail' p.id %}" class="dossier-btn-dark" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" title="View all {{ p.all_files|length }} files in project details">
+                    <i class="fa-solid fa-folder-open"></i> +{{ p.all_files|length|add:"-2" }} more
+                </a>
+                {% endif %}
+                {% endfor %}
+                {% for l in p.all_links %}
+                <a href="{{ l.url }}" target="_blank" class="dossier-btn-dark" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" title="{{ l.url }}">
+                    <i class="{{ l.icon_class }}"></i> {{ l.display_label }}
+                </a>
+                {% endfor %}
+                {% if not p.all_files and not p.all_links %}
+                <span style="font-size: 0.78rem; color: var(--text-muted);"><i class="fa-solid fa-paperclip"></i> No attachments</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Card Footer: Quick Actions -->
+        <div style="border-top: 1px solid var(--border-color); padding-top: 0.85rem; margin-top: 0.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <a href="{% url 'admin_project_detail' p.id %}" class="dossier-btn-dark" style="height: 34px; padding: 0 0.85rem; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+                <i class="fa-solid fa-eye"></i> View Details
+            </a>
+
+            <form method="POST" action="{% url 'admin_project_status_update' p.id %}" style="display: inline-flex; gap: 0.4rem; align-items: center; margin: 0;">
+                {% csrf_token %}
+                <button type="submit" name="status" value="Approved" class="btn-approve {% if p.status == 'Approved' %}active{% endif %}" title="Approve Project" {% if p.status == 'Approved' %}disabled{% endif %} style="height: 34px; padding: 0 0.85rem; font-size: 0.78rem;">
+                    <i class="fa-solid fa-check"></i> {% if p.status == 'Approved' %}Approved{% else %}Approve{% endif %}
+                </button>
+                <button type="submit" name="status" value="Rejected" class="btn-reject {% if p.status == 'Rejected' %}active{% endif %}" title="Reject Project" {% if p.status == 'Rejected' %}disabled{% endif %} style="height: 34px; padding: 0 0.85rem; font-size: 0.78rem;">
+                    <i class="fa-solid fa-xmark"></i> {% if p.status == 'Rejected' %}Rejected{% else %}Reject{% endif %}
+                </button>
+            </form>
+        </div>
+    </div>
+    {% empty %}
+    <div class="student-card" style="grid-column: 1 / -1; padding: 3.5rem 2rem; text-align: center;">
+        <i class="fa-solid fa-diagram-project" style="font-size: 2.5rem; color: var(--text-muted); margin-bottom: 1rem; display: block;"></i>
+        <h3 style="font-size: 1.2rem; color: var(--text-primary); margin-bottom: 0.5rem;">No Projects Found</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">No student projects match your current filter criteria.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+.projects-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+}
+
+.project-card-item {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+.project-card-item:hover {
+    border-color: rgba(10, 37, 64, 0.3);
+    box-shadow: var(--shadow-md);
+}
+
+.project-title-link:hover {
+    color: var(--primary-hover) !important;
+    text-decoration: underline !important;
+}
+
+@media (max-width: 900px) {
+    .projects-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const searchInput = document.getElementById("student-search");
+    const studentList = document.getElementById("student-list");
+    const hiddenStudent = document.getElementById("hidden-student");
+    const filterForm = document.getElementById("project-filter-form");
+    const listItems = studentList.querySelectorAll("li");
+
+    // Open dropdown
+    function showList() {
+        studentList.style.display = "block";
+    }
+
+    searchInput.addEventListener("focus", showList);
+    searchInput.addEventListener("click", function(e) {
+        e.stopPropagation();
+        showList();
+    });
+
+    // Real-time filtering
+    searchInput.addEventListener("input", function() {
+        const filter = searchInput.value.toLowerCase().trim();
+        studentList.style.display = "block";
+        listItems.forEach(item => {
+            const text = item.textContent.toLowerCase();
+            if (item.classList.contains("all-option") || text.includes(filter)) {
+                item.style.display = "flex";
+            } else {
+                item.style.display = "none";
+            }
+        });
+    });
+
+    // Selecting an item
+    listItems.forEach(item => {
+        item.addEventListener("click", function(e) {
+            e.stopPropagation();
+            const val = item.getAttribute("data-value");
+            hiddenStudent.value = val;
+            if (val) {
+                const nameEl = item.querySelector("strong");
+                searchInput.value = nameEl ? nameEl.textContent.trim() : item.textContent.trim();
+            } else {
+                searchInput.value = "";
+            }
+            studentList.style.display = "none";
+            filterForm.submit();
+        });
+    });
+
+    // Close when clicking outside
+    document.addEventListener("click", function(e) {
+        if (!searchInput.contains(e.target) && !studentList.contains(e.target)) {
+            studentList.style.display = "none";
+        }
+    });
+});
+</script>
+{% endblock %}

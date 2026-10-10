@@ -1,0 +1,321 @@
+{% extends 'management/base.html' %}
+
+{% block title %}Edit Student - {{ student.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-text">
+        <h1>Edit Student</h1>
+        <p>Update student profile & credentials</p>
+    </div>
+</div>
+
+<div class="student-card" style="width: 100%; padding: 2.5rem;">
+    <h2 class="form-section-title">Modify Student Information</h2>
+
+    <form method="POST" action="{% url 'admin_student_edit' student.id %}">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next_url }}">
+        <div class="form-grid">
+            <div class="form-group" style="grid-column: span 2;">
+                <label class="form-label" for="name">Full Name *</label>
+                <input type="text" id="name" name="name" value="{{ student.name }}" class="form-input" required autofocus>
+            </div>
+
+            <div class="form-group" style="grid-column: span 2; position: relative;">
+                <label class="form-label">Course / Department (Select one or multiple) *</label>
+                <div id="course_chips_container" class="course-chips-container" style="display: none; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;"></div>
+                <div class="searchable-select-container" style="position: relative;">
+                    <input type="text" id="course_search_input" class="searchable-select-input" placeholder="Type to search and select courses..." autocomplete="off">
+                    <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
+                    <ul id="course_dropdown_list" class="searchable-list custom-scrollbar" style="max-height: 280px; display: none;">
+                        {% for category, courses in course_categories.items %}
+                        <li class="category-header" style="background: var(--bg-main); font-weight: 700; color: var(--primary); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 6px 14px; cursor: default; border-bottom: 1px solid var(--border-color); pointer-events: none;">
+                            <i class="fa-solid fa-folder-open" style="margin-right: 5px;"></i> {{ category }}
+                        </li>
+                        {% for c in courses %}
+                        <li data-value="{{ c }}" class="course-option-item">
+                            <input type="checkbox" name="courses" value="{{ c }}" id="course_chk_{{ forloop.parentloop.counter }}_{{ forloop.counter }}" class="course-checkbox" {% if c in student.courses_list %}checked{% endif %}>
+                            <div class="course-option-text">
+                                <strong class="course-title">{{ c }}</strong>
+                                <small class="course-category">{{ category }}</small>
+                            </div>
+                        </li>
+                        {% endfor %}
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div id="course_count_help" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">
+                    <i class="fa-solid fa-info-circle"></i> <span id="selected_count_text">No courses selected</span> (At least 1 required)
+                </div>
+            </div>
+
+            <div class="form-group" style="position: relative;">
+                <label class="form-label" for="class_time_search_input">Class Time *</label>
+                <div class="searchable-select-container" style="position: relative;">
+                    <input type="text" id="class_time_search_input" class="searchable-select-input" placeholder="Search and select class timing..." autocomplete="off" value="{{ student.class_time|default:'' }}" required>
+                    <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
+                    <ul id="class_time_dropdown_list" class="searchable-list custom-scrollbar" style="max-height: 240px; display: none;">
+                        {% for choice in class_time_choices %}
+                        <li data-value="{{ choice }}" class="time-option-item" style="padding: 10px 14px; cursor: pointer;">
+                            <strong style="font-size: 0.88rem; color: var(--text-primary);"><i class="fa-solid fa-clock" style="color: var(--primary); margin-right: 6px; font-size: 0.8rem;"></i>{{ choice }}</strong>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <input type="hidden" name="class_time" id="selected_class_time_hidden" value="{{ student.class_time|default:'' }}" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="phone">Phone Number</label>
+                <input type="text" id="phone" name="phone" value="{{ student.phone|default:'' }}" class="form-input">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="email">Email Address *</label>
+                <input type="email" id="email" name="email" value="{{ student.email }}" class="form-input" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">Change Password (Leave blank to keep current)</label>
+                <input type="password" id="password" name="password" class="form-input" placeholder="Enter new password to reset">
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+            {% if next_url == 'list' %}
+            <a href="{% url 'admin_student_list' %}" class="btn-secondary">Cancel</a>
+            {% else %}
+            <a href="{% url 'admin_student_detail' student.id %}" class="btn-secondary">Cancel</a>
+            {% endif %}
+            <button type="submit" class="btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i> Save Changes
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+.searchable-list li.course-option-item {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
+    padding: 10px 16px !important;
+    cursor: pointer !important;
+    text-align: left !important;
+}
+.searchable-list li.course-option-item .course-checkbox {
+    margin: 0 !important;
+    flex-shrink: 0 !important;
+    width: 17px !important;
+    height: 17px !important;
+    accent-color: var(--primary) !important;
+    cursor: pointer !important;
+}
+.searchable-list li.course-option-item .course-option-text {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    text-align: left !important;
+    flex: 1 !important;
+    gap: 2px !important;
+}
+.searchable-list li.course-option-item .course-title {
+    font-size: 0.88rem !important;
+    color: var(--text-primary) !important;
+    line-height: 1.2 !important;
+}
+.searchable-list li.course-option-item .course-category {
+    color: var(--text-muted) !important;
+    font-size: 0.75rem !important;
+    line-height: 1.2 !important;
+}
+.course-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(var(--primary-rgb, 15, 23, 42), 0.08);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 500;
+}
+.course-chip .chip-remove {
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    transition: all 0.15s ease;
+}
+.course-chip .chip-remove:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+.course-option-item.selected-option {
+    background: rgba(var(--primary-rgb, 15, 23, 42), 0.04);
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // === Multi-Select Course Handler ===
+    const courseSearchInput = document.getElementById("course_search_input");
+    const courseDropdownList = document.getElementById("course_dropdown_list");
+    const courseChipsContainer = document.getElementById("course_chips_container");
+    const courseOptionItems = courseDropdownList.querySelectorAll(".course-option-item");
+    const categoryHeaders = courseDropdownList.querySelectorAll(".category-header");
+    const selectedCountText = document.getElementById("selected_count_text");
+    const form = document.querySelector("form");
+
+    function updateCourseUI() {
+        courseChipsContainer.innerHTML = "";
+        let count = 0;
+        
+        courseOptionItems.forEach(item => {
+            const chk = item.querySelector(".course-checkbox");
+            const val = item.getAttribute("data-value");
+            if (chk && chk.checked) {
+                count++;
+                item.classList.add("selected-option");
+                
+                // Create Chip
+                const chip = document.createElement("span");
+                chip.className = "course-chip";
+                chip.innerHTML = `<span><i class="fa-solid fa-graduation-cap" style="color: var(--primary); font-size: 0.75rem; margin-right: 4px;"></i>${val}</span><i class="fa-solid fa-xmark chip-remove" title="Remove course"></i>`;
+                chip.querySelector(".chip-remove").addEventListener("click", function(e) {
+                    e.stopPropagation();
+                    chk.checked = false;
+                    updateCourseUI();
+                });
+                courseChipsContainer.appendChild(chip);
+            } else {
+                item.classList.remove("selected-option");
+            }
+        });
+
+        if (count === 0) {
+            courseChipsContainer.style.display = "none";
+            selectedCountText.textContent = "No courses selected";
+            selectedCountText.style.color = "var(--text-muted)";
+        } else {
+            courseChipsContainer.style.display = "flex";
+            selectedCountText.textContent = `${count} course${count > 1 ? 's' : ''} selected`;
+            selectedCountText.style.color = "var(--primary)";
+        }
+    }
+
+    courseSearchInput.addEventListener("focus", function() {
+        courseDropdownList.style.display = "block";
+    });
+    courseSearchInput.addEventListener("click", function(e) {
+        e.stopPropagation();
+        courseDropdownList.style.display = "block";
+    });
+
+    courseSearchInput.addEventListener("input", function() {
+        const query = courseSearchInput.value.toLowerCase().trim();
+        courseDropdownList.style.display = "block";
+
+        courseOptionItems.forEach(item => {
+            const text = item.textContent.toLowerCase();
+            if (!query || text.includes(query)) {
+                item.style.display = "flex";
+            } else {
+                item.style.display = "none";
+            }
+        });
+
+        categoryHeaders.forEach(header => {
+            header.style.display = query ? "none" : "block";
+        });
+    });
+
+    courseOptionItems.forEach(item => {
+        item.addEventListener("click", function(e) {
+            if (e.target.tagName.toLowerCase() !== "input") {
+                const chk = item.querySelector(".course-checkbox");
+                if (chk) {
+                    chk.checked = !chk.checked;
+                }
+            }
+            updateCourseUI();
+        });
+        const chk = item.querySelector(".course-checkbox");
+        if (chk) {
+            chk.addEventListener("change", updateCourseUI);
+        }
+    });
+
+    // Form submit validation
+    form.addEventListener("submit", function(e) {
+        const checkedCourses = courseDropdownList.querySelectorAll(".course-checkbox:checked");
+        if (checkedCourses.length === 0) {
+            e.preventDefault();
+            alert("Please select at least one course for the student.");
+            courseSearchInput.focus();
+            courseDropdownList.style.display = "block";
+            return false;
+        }
+    });
+
+    // === Single-Select Class Time Handler ===
+    const timeInput = document.getElementById("class_time_search_input");
+    const timeDropdown = document.getElementById("class_time_dropdown_list");
+    const timeHidden = document.getElementById("selected_class_time_hidden");
+    const timeItems = timeDropdown.querySelectorAll(".time-option-item");
+
+    timeInput.addEventListener("focus", function() { timeDropdown.style.display = "block"; });
+    timeInput.addEventListener("click", function(e) { e.stopPropagation(); timeDropdown.style.display = "block"; });
+
+    timeInput.addEventListener("input", function() {
+        const query = timeInput.value.toLowerCase().trim();
+        timeDropdown.style.display = "block";
+        timeItems.forEach(item => {
+            const text = item.textContent.toLowerCase();
+            if (!query || text.includes(query)) {
+                item.style.display = "block";
+            } else {
+                item.style.display = "none";
+            }
+        });
+        if (timeHidden.value && timeInput.value !== timeHidden.value) {
+            timeHidden.value = "";
+        }
+    });
+
+    timeItems.forEach(item => {
+        item.addEventListener("click", function(e) {
+            e.stopPropagation();
+            const val = item.getAttribute("data-value");
+            timeHidden.value = val;
+            timeInput.value = val;
+            timeDropdown.style.display = "none";
+        });
+    });
+
+    // Global click-outside closer
+    document.addEventListener("click", function(e) {
+        if (!courseSearchInput.contains(e.target) && !courseDropdownList.contains(e.target)) {
+            courseDropdownList.style.display = "none";
+        }
+        if (!timeInput.contains(e.target) && !timeDropdown.contains(e.target)) {
+            timeDropdown.style.display = "none";
+            if (!timeHidden.value) {
+                timeInput.value = "";
+            }
+        }
+    });
+
+    updateCourseUI();
+});
+</script>
+{% endblock %}

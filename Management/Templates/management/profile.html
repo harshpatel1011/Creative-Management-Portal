@@ -1,0 +1,61 @@
+{% extends 'management/base.html' %}
+
+{% block title %}Admin Profile - Creative Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-text">
+        <h1>Administrator Profile</h1>
+        <p>Account details and credentials overview</p>
+    </div>
+</div>
+
+<div class="student-card" style="max-width: 900px; margin: 0 auto; padding: 2.5rem;">
+    <div class="card-top" style="margin-bottom: 2rem; border-bottom: 1px solid var(--border-color, #e2e8f0); padding-bottom: 1.5rem;">
+        <div class="card-avatar" style="width: 72px; height: 72px; font-size: 2rem; background: var(--navy, #0f172a); color: white; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
+            <i class="fa-solid fa-user-shield"></i>
+        </div>
+        <div class="card-info" style="margin-left: 1.5rem;">
+            <h2 style="font-size: 1.75rem; margin-bottom: 0.25rem;">{{ admin_user.username }}</h2>
+            <p style="color: var(--navy, #0f172a); font-weight: 500;">
+                <span class="dossier-btn-dark success" style="display: inline-block; padding: 0.25rem 0.75rem; font-size: 0.85rem;">
+                    <i class="fa-solid fa-circle-check"></i> Active Administrator ({% if admin_user.is_superuser %}Superuser{% else %}Staff{% endif %})
+                </span>
+            </p>
+        </div>
+    </div>
+
+    <div class="meta-details" style="display: flex; flex-direction: column; gap: 1rem;">
+        <div class="meta-item">
+            <span class="meta-label"><i class="fa-solid fa-user"></i> Username</span>
+            <span class="meta-value">{{ admin_user.username }}</span>
+        </div>
+
+        <div class="meta-item">
+            <span class="meta-label"><i class="fa-solid fa-envelope"></i> Email Address</span>
+            <span class="meta-value">{{ admin_user.email|default:"Not specified" }}</span>
+        </div>
+
+        <div class="meta-item">
+            <span class="meta-label"><i class="fa-solid fa-calendar-check"></i> Date Joined</span>
+            <span class="meta-value">{{ admin_user.date_joined|date:"F d, Y - h:i A" }}</span>
+        </div>
+
+        <div class="meta-item">
+            <span class="meta-label"><i class="fa-solid fa-clock"></i> Last Login</span>
+            <span class="meta-value">{{ admin_user.last_login|default:"Current Active Session"|date:"F d, Y - h:i A" }}</span>
+        </div>
+
+        <div class="meta-item">
+            <span class="meta-label"><i class="fa-solid fa-shield-halved"></i> Access Level</span>
+            <span class="meta-value">{% if admin_user.is_superuser %}Superuser / Full Management Access{% else %}Staff Administrator / Management Access{% endif %}</span>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+        <a href="{% url 'admin_change_password' %}" class="btn-primary">
+            <i class="fa-solid fa-key"></i> Change Password
+        </a>
+    </div>
+</div>
+{% endblock %}

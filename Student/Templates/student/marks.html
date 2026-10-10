@@ -1,0 +1,104 @@
+{% extends 'student/base.html' %}
+
+{% block title %}My Marks & Grades - Student Portal{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-text">
+        <h1>Academic Grade Sheet</h1>
+        <p>Your performance report evaluated by Management</p>
+    </div>
+</div>
+
+<!-- Performance Cards -->
+<div class="meta-details" style="margin-bottom: 2.5rem; padding: 1.5rem;">
+    <div class="meta-item">
+        <span class="meta-label">Student Name</span>
+        <span class="meta-value">{{ student.name }}</span>
+    </div>
+    <div class="meta-item">
+        <span class="meta-label">Course</span>
+        <span class="meta-value">{{ student.course }}</span>
+    </div>
+    <div class="meta-item">
+        <span class="meta-label">Total Exams</span>
+        <span class="meta-value">{{ marks_records.count }}</span>
+    </div>
+    <div class="meta-item">
+        <span class="meta-label">Cumulative Score</span>
+        <span class="meta-value">{{ total_obtained }} / {{ total_possible }}</span>
+    </div>
+    <div class="meta-item">
+        <span class="meta-label">Aggregate Percentage</span>
+        <span class="meta-value">{{ percentage }}%</span>
+    </div>
+    <div class="meta-item">
+        <span class="meta-label">Overall Performance Grade</span>
+        <span class="meta-value" style="font-size: 1.25rem;">{{ overall_grade }}</span>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Exam Title</th>
+                <th>Subject</th>
+                <th>Exam Date</th>
+                <th>Marks Obtained</th>
+                <th>Total Marks</th>
+                <th>Percentage</th>
+                <th>Grade</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in marks_records %}
+            <tr>
+                <td><strong>{{ m.exam.title }}</strong></td>
+                <td>{{ m.exam.subject }}</td>
+                <td>
+                    {{ m.exam.exam_date|date:"M d, Y" }}
+                    {% if m.exam.exam_time %}
+                    <br><small style="color: var(--text-muted);"><i class="fa-solid fa-clock" style="font-size: 0.75rem;"></i> {{ m.exam.exam_time }}</small>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if m.is_absent %}
+                    <strong style="color: #dc2626;"><i class="fa-solid fa-user-xmark"></i> Absent</strong>
+                    {% else %}
+                    {{ m.marks_obtained|default:"Pending" }}
+                    {% endif %}
+                </td>
+                <td>{{ m.exam.total_marks }}</td>
+                <td>
+                    {% if not m.is_absent and m.marks_obtained is not None and m.exam.total_marks > 0 %}
+                    {{ m.marks_obtained|floatformat:2 }}%
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td>
+                    {% if m.is_absent or m.grade == 'Absent' %}
+                    <span class="dossier-btn-dark danger" style="display: inline-block; padding: 0.2rem 0.6rem; font-weight: 700; font-size: 0.9rem;">
+                        Absent
+                    </span>
+                    {% elif m.grade %}
+                    <span class="dossier-btn-dark {% if m.grade == 'F' %}danger{% else %}success{% endif %}" style="display: inline-block; padding: 0.2rem 0.6rem; font-weight: 700; font-size: 0.9rem;">
+                        {{ m.grade }}
+                    </span>
+                    {% else %}
+                    <span style="color: #b45309; font-weight: 500;">Pending Evaluation</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+                    No exam records available yet. Your administrator will publish exams and marks.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

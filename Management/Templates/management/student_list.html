@@ -1,0 +1,223 @@
+{% extends 'management/base.html' %}
+
+{% block title %}Students Directory - Creative Management{% endblock %}
+
+{% block content %}
+<!-- Top Header / Navigation (Unchanged) -->
+<div class="page-header">
+    <div class="header-text">
+        <h1>Students Directory</h1>
+        <p>All enrolled student accounts registered by management</p>
+    </div>
+    <div style="display: flex; gap: 1rem; align-items: center;">
+        <form method="GET" action="{% url 'admin_student_list' %}" class="search-form">
+            <input type="text" name="q" value="{{ query|default:'' }}" class="search-input" placeholder="Search by name, email, course...">
+            {% if course_filter %}<input type="hidden" name="course" value="{{ course_filter }}">{% endif %}
+            {% if class_time_filter %}<input type="hidden" name="class_time" value="{{ class_time_filter }}">{% endif %}
+            <button type="submit" class="btn-search"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </form>
+        <a href="{% url 'admin_student_register' %}" class="btn-primary">
+            <i class="fa-solid fa-user-plus"></i> Register Student
+        </a>
+    </div>
+</div>
+
+<!-- Secondary Filter Bar (Seamless / No Box) -->
+<div style="margin-bottom: 2rem;">
+    <form method="GET" action="{% url 'admin_student_list' %}" id="student-filter-form" style="display: flex; gap: 1.5rem; align-items: flex-end; flex-wrap: wrap; justify-content: space-between;">
+        {% if query %}
+        <input type="hidden" name="q" value="{{ query }}">
+        {% endif %}
+        
+        <div style="display: flex; gap: 1.25rem; align-items: flex-end; flex-wrap: wrap; flex: 1;">
+            <!-- Filter by Course (Searchable) -->
+            <div style="flex: 1; min-width: 250px; max-width: 360px; position: relative;">
+                <label style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.4rem; display: block;">
+                    <i class="fa-solid fa-graduation-cap" style="color: var(--primary);"></i> Filter by Course
+                </label>
+                <div class="searchable-select-container" style="position: relative;">
+                    <input type="text" id="course-filter-input" class="searchable-select-input" placeholder="All Courses (Select or Search)..." autocomplete="off" value="{{ course_filter }}" style="height: 40px; font-size: 0.88rem; background: var(--bg-card); border: 1px solid var(--border-color);">
+                    <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
+                    <ul id="course-filter-list" class="searchable-list custom-scrollbar" style="max-height: 280px;">
+                        <li data-value="" class="all-option" style="padding: 9px 14px; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border-color);">
+                            <span>-- All Courses (Show All) --</span>
+                        </li>
+                        {% for category, courses in course_categories.items %}
+                        <li class="category-header" style="background: var(--bg-main); font-weight: 700; color: var(--primary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 6px 14px; cursor: default; border-bottom: 1px solid var(--border-color); pointer-events: none;">
+                            <i class="fa-solid fa-folder-open" style="margin-right: 5px;"></i> {{ category }}
+                        </li>
+                        {% for c in courses %}
+                        <li data-value="{{ c }}" class="course-filter-item" style="padding-left: 20px; font-size: 0.85rem;">
+                            <strong>{{ c }}</strong>
+                            <small style="color: var(--text-muted); font-size: 0.72rem;">{{ category }}</small>
+                        </li>
+                        {% endfor %}
+                        {% endfor %}
+                    </ul>
+                    <input type="hidden" name="course" id="hidden-course-filter" value="{{ course_filter }}">
+                </div>
+            </div>
+
+            <!-- Filter by Class Time (Searchable) -->
+            <div style="flex: 1; min-width: 220px; max-width: 300px; position: relative;">
+                <label style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.4rem; display: block;">
+                    <i class="fa-solid fa-clock" style="color: var(--primary);"></i> Filter by Class Time
+                </label>
+                <div class="searchable-select-container" style="position: relative;">
+                    <input type="text" id="time-filter-input" class="searchable-select-input" placeholder="All Class Timings..." autocomplete="off" value="{{ class_time_filter }}" style="height: 40px; font-size: 0.88rem; background: var(--bg-card); border: 1px solid var(--border-color);">
+                    <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
+                    <ul id="time-filter-list" class="searchable-list custom-scrollbar" style="max-height: 240px;">
+                        <li data-value="" class="all-option" style="padding: 9px 14px; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border-color);">
+                            <span>-- All Class Timings (Show All) --</span>
+                        </li>
+                        {% for choice in class_time_choices %}
+                        <li data-value="{{ choice }}" class="time-filter-item" style="padding: 9px 14px; font-size: 0.85rem;">
+                            <strong><i class="fa-solid fa-clock" style="color: var(--primary); margin-right: 6px; font-size: 0.75rem;"></i>{{ choice }}</strong>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <input type="hidden" name="class_time" id="hidden-time-filter" value="{{ class_time_filter }}">
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
+            {% if course_filter or class_time_filter or query %}
+            <a href="{% url 'admin_student_list' %}" class="dossier-btn-dark" style="height: 40px; display: inline-flex; align-items: center; padding: 0 1rem; font-size: 0.85rem;" title="Reset all filters">
+                <i class="fa-solid fa-xmark"></i> Clear Filters
+            </a>
+            {% endif %}
+            <div style="font-size: 0.85rem; color: var(--text-muted); white-space: nowrap;">
+                Showing <strong>{{ students.count }}</strong> of <strong>{{ total_students_count }}</strong> students
+            </div>
+        </div>
+    </form>
+</div>
+
+{% if students %}
+<div class="table-responsive">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Student</th>
+                <th>Course</th>
+                <th>Phone</th>
+                <th style="text-align: right;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in students %}
+            <tr onclick="window.location='{% url 'admin_student_detail' s.id %}'" style="cursor: pointer;">
+                <td>
+                    <strong style="color: var(--text-primary); font-size: 0.95rem;">{{ s.name }}</strong>
+                </td>
+                <td>
+                    <span style="font-weight: 500;">{{ s.course }}</span>
+                    {% if s.class_time %}
+                    <br><small style="color: var(--text-muted);"><i class="fa-solid fa-clock" style="font-size: 0.75rem;"></i> {{ s.class_time }}</small>
+                    {% endif %}
+                </td>
+                <td>{{ s.phone|default:"-" }}</td>
+                <td style="text-align: right;" onclick="event.stopPropagation();">
+                    <div style="display: inline-flex; align-items: center; gap: 0.75rem; justify-content: flex-end;">
+                        <a href="{% url 'admin_student_edit' s.id %}?next=list" class="btn-icon" title="Edit Student">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </a>
+                        <a href="{% url 'admin_student_delete' s.id %}" class="btn-icon btn-delete" onclick="return confirm('Are you sure you want to delete {{ s.name }}? All associated records will also be deleted.');" title="Delete Student">
+                            <i class="fa-solid fa-trash"></i>
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="meta-details" style="padding: 3rem; text-align: center;">
+    <h3 style="margin-bottom: 0.5rem;">No Students Found</h3>
+    <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+        {% if query or course_filter or class_time_filter %}
+            No students matched your active filter selections.
+        {% else %}
+            No students have been registered yet.
+        {% endif %}
+    </p>
+    {% if query or course_filter or class_time_filter %}
+    <a href="{% url 'admin_student_list' %}" class="btn-secondary" style="display: inline-flex;"><i class="fa-solid fa-xmark"></i> Clear Filters</a>
+    {% else %}
+    <a href="{% url 'admin_student_register' %}" class="btn-primary" style="display: inline-flex;"><i class="fa-solid fa-user-plus"></i> Register First Student</a>
+    {% endif %}
+</div>
+{% endif %}
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    function setupFilterDropdown(inputId, listId, hiddenId, itemSelector, isCourse = false) {
+        const input = document.getElementById(inputId);
+        const list = document.getElementById(listId);
+        const hidden = document.getElementById(hiddenId);
+        const form = document.getElementById("student-filter-form");
+        const items = list.querySelectorAll(itemSelector);
+        const categoryHeaders = isCourse ? list.querySelectorAll(".category-header") : [];
+
+        function show() {
+            list.style.display = "block";
+        }
+        function hide() {
+            list.style.display = "none";
+        }
+
+        input.addEventListener("focus", show);
+        input.addEventListener("click", function(e) {
+            e.stopPropagation();
+            show();
+        });
+
+        input.addEventListener("input", function() {
+            const q = input.value.toLowerCase().trim();
+            show();
+
+            items.forEach(item => {
+                if (item.classList.contains("all-option")) {
+                    item.style.display = "flex";
+                    return;
+                }
+                const text = item.textContent.toLowerCase();
+                if (!q || text.includes(q)) {
+                    item.style.display = "flex";
+                } else {
+                    item.style.display = "none";
+                }
+            });
+
+            if (isCourse && categoryHeaders.length > 0) {
+                categoryHeaders.forEach(header => {
+                    header.style.display = q ? "none" : "block";
+                });
+            }
+        });
+
+        items.forEach(item => {
+            item.addEventListener("click", function(e) {
+                e.stopPropagation();
+                const val = item.getAttribute("data-value");
+                hidden.value = val;
+                input.value = val;
+                hide();
+                form.submit();
+            });
+        });
+
+        document.addEventListener("click", function(e) {
+            if (!input.contains(e.target) && !list.contains(e.target)) {
+                hide();
+            }
+        });
+    }
+
+    setupFilterDropdown("course-filter-input", "course-filter-list", "hidden-course-filter", ".course-filter-item, .all-option", true);
+    setupFilterDropdown("time-filter-input", "time-filter-list", "hidden-time-filter", ".time-filter-item, .all-option", false);
+});
+</script>
+{% endblock %}

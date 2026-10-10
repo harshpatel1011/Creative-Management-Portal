@@ -1,0 +1,267 @@
+{% extends 'management/base.html' %}
+
+{% block title %}Dashboard - Creative Management{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
+    <div class="header-text" style="flex: 1; min-width: 260px;">
+        <h1>Dashboard</h1>
+        <p>Management Overview & Real-Time Academic Activity</p>
+    </div>
+    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: nowrap; flex-shrink: 0;">
+        <a href="{% url 'admin_student_register' %}" class="btn-primary" style="white-space: nowrap;">
+            <i class="fa-solid fa-user-plus"></i> Register Student
+        </a>
+        <a href="{% url 'admin_exam_create' %}" class="btn-secondary" style="white-space: nowrap;">
+            <i class="fa-solid fa-plus"></i> Create Exam
+        </a>
+    </div>
+</div>
+
+<!-- Modern KPI Stat Cards Grid -->
+<div class="stats-overview-grid">
+    <div class="kpi-card" onclick="window.location.href='{% url 'admin_student_list' %}';" style="cursor: pointer;">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon"><i class="fa-solid fa-user-graduate"></i></div>
+                <span class="dossier-btn-dark success" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 700;">
+                    Active Directory
+                </span>
+            </div>
+            <div class="kpi-value">{{ total_students }}</div>
+            <div class="kpi-label">Enrolled Students</div>
+        </div>
+        <div class="kpi-footer">
+            <span style="color: var(--text-muted);">Registered accounts</span>
+        </div>
+    </div>
+
+    <div class="kpi-card" onclick="window.location.href='{% url 'admin_projects' %}';" style="cursor: pointer;">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon"><i class="fa-solid fa-diagram-project"></i></div>
+                {% if pending_projects_count > 0 %}
+                <span class="dossier-btn-dark" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600; background: #fef3c7; color: #92400e; border: 1px solid #fde68a;">
+                    <i class="fa-solid fa-clock"></i> {{ pending_projects_count }} Pending
+                </span>
+                {% else %}
+                <span class="dossier-btn-dark success" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 700;">
+                    All Reviewed
+                </span>
+                {% endif %}
+            </div>
+            <div class="kpi-value">{{ total_projects }}</div>
+            <div class="kpi-label">Student Projects</div>
+        </div>
+        <div class="kpi-footer">
+            <span style="color: var(--text-muted);">{{ approved_projects_count }} Approved</span>
+        </div>
+    </div>
+
+    <div class="kpi-card" onclick="window.location.href='{% url 'admin_exam_list' %}';" style="cursor: pointer;">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon"><i class="fa-solid fa-file-signature"></i></div>
+                <span class="dossier-btn-dark" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600;">
+                    Assessments
+                </span>
+            </div>
+            <div class="kpi-value">{{ total_exams }}</div>
+            <div class="kpi-label">Created Exams</div>
+        </div>
+        <div class="kpi-footer">
+            <span style="color: var(--text-muted);">Marks & grading</span>
+        </div>
+    </div>
+
+    <div class="kpi-card" onclick="window.location.href='{% url 'admin_list' %}';" style="cursor: pointer;">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                <span class="dossier-btn-dark" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600;">
+                    Superusers
+                </span>
+            </div>
+            <div class="kpi-value">{{ total_admins }}</div>
+            <div class="kpi-label">Management Admins</div>
+        </div>
+        <div class="kpi-footer">
+            <span style="color: var(--text-muted);">System administrators</span>
+        </div>
+    </div>
+</div>
+
+<!-- 2-Column Dashboard Split Activity Grid -->
+<div class="dashboard-split-grid">
+    <!-- Left Column: Recent Student Projects -->
+    <div class="dashboard-panel">
+        <div class="dashboard-panel-header">
+            <div>
+                <h3 class="dashboard-panel-title">Recent Project Submissions</h3>
+                <small style="color: var(--text-muted);">Latest project submissions awaiting or evaluated</small>
+            </div>
+            <a href="{% url 'admin_projects' %}" class="btn-secondary" style="height: 32px; padding: 0 0.75rem; font-size: 0.75rem;">
+                View All <i class="fa-solid fa-arrow-right" style="margin-left: 4px;"></i>
+            </a>
+        </div>
+        <div class="dashboard-panel-body">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Project Title</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in recent_projects %}
+                        <tr onclick="window.location.href='{% url 'admin_project_detail' p.id %}';" style="cursor: pointer;">
+                            <td>
+                                <strong>{{ p.student.name }}</strong>
+                                <br><small style="color: var(--text-muted);">{{ p.student.course }}</small>
+                            </td>
+                            <td>
+                                <a href="{% url 'admin_project_detail' p.id %}" style="color: inherit; font-weight: 600; text-decoration: none;">
+                                    {{ p.title|truncatewords:4 }}
+                                </a>
+                            </td>
+                            <td>
+                                {% if p.status == 'Approved' %}
+                                <span class="dossier-btn-dark success" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 700;">
+                                    <i class="fa-solid fa-circle-check"></i> Approved
+                                </span>
+                                {% elif p.status == 'Rejected' %}
+                                <span class="dossier-btn-dark danger" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 700;">
+                                    <i class="fa-solid fa-circle-xmark"></i> Rejected
+                                </span>
+                                {% else %}
+                                <span class="dossier-btn-dark" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600; background: #fef3c7; color: #92400e; border: 1px solid #fde68a;">
+                                    <i class="fa-solid fa-clock"></i> Submitted
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td><small style="color: var(--text-muted);">{{ p.submitted_at|date:"M d, Y" }}</small></td>
+                            <td style="text-align: right;" onclick="event.stopPropagation();">
+                                <a href="{% url 'admin_project_detail' p.id %}" class="dossier-btn-dark" style="padding: 0.3rem 0.65rem; font-size: 0.75rem;">
+                                    Review
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">
+                                No student projects submitted yet.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Recently Enrolled Students -->
+    <div class="dashboard-panel">
+        <div class="dashboard-panel-header">
+            <div>
+                <h3 class="dashboard-panel-title">Recently Enrolled Students</h3>
+                <small style="color: var(--text-muted);">Latest registered student accounts</small>
+            </div>
+            <a href="{% url 'admin_student_list' %}" class="btn-secondary" style="height: 32px; padding: 0 0.75rem; font-size: 0.75rem;">
+                View All <i class="fa-solid fa-arrow-right" style="margin-left: 4px;"></i>
+            </a>
+        </div>
+        <div class="dashboard-panel-body">
+            {% for s in recent_students %}
+            <div class="student-list-item" onclick="window.location.href='{% url 'admin_student_detail' s.id %}';">
+                <div style="display: flex; align-items: center; gap: 0.85rem;">
+                    <div class="card-avatar" style="width: 40px; height: 40px; font-size: 1rem; border-radius: 50%;">
+                        {{ s.name|slice:":1"|upper }}
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">{{ s.name }}</div>
+                        <small style="color: var(--text-muted); display: block;">{{ s.course }}</small>
+                        {% if s.class_time %}
+                        <small style="color: var(--text-secondary); font-size: 0.75rem; display: flex; align-items: center; gap: 0.35rem; margin-top: 2px;">
+                            <i class="fa-solid fa-clock" style="font-size: 0.7rem; color: var(--primary);"></i> {{ s.class_time }}
+                        </small>
+                        {% endif %}
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <small style="color: var(--text-muted); font-size: 0.8rem;">{{ s.created_at|date:"M d" }}</small>
+                    <i class="fa-solid fa-chevron-right" style="color: var(--border-color); font-size: 0.8rem;"></i>
+                </div>
+            </div>
+            {% empty %}
+            <div style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
+                No students enrolled yet.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Bottom Full-Width Section: Recent Scheduled Exams -->
+<div class="dashboard-panel" style="margin-bottom: 2.5rem;">
+    <div class="dashboard-panel-header">
+        <div>
+            <h3 class="dashboard-panel-title">Scheduled & Evaluated Exams</h3>
+            <p style="margin: 0; font-size: 0.825rem; color: var(--text-muted);">Latest exam cards and evaluation status</p>
+        </div>
+        <a href="{% url 'admin_exam_list' %}" class="btn-secondary" style="height: 32px; padding: 0 0.75rem; font-size: 0.75rem;">
+            View All Exams <i class="fa-solid fa-arrow-right" style="margin-left: 4px;"></i>
+        </a>
+    </div>
+    <div class="dashboard-panel-body">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Exam Details</th>
+                        <th>Exam Date</th>
+                        <th>Total Marks</th>
+                        <th>Enrolled Students</th>
+                        <th style="text-align: right;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exam in recent_exams %}
+                    <tr onclick="window.location.href='{% url 'admin_exam_detail' exam.id %}';" style="cursor: pointer;">
+                        <td>
+                            <strong style="color: var(--text-primary);">{{ exam.title }}</strong>
+                            <br><small style="color: var(--text-muted);"><i class="fa-solid fa-book-open"></i> {{ exam.subject }}</small>
+                        </td>
+                        <td>
+                            {{ exam.exam_date|date:"M d, Y" }}
+                            {% if exam.exam_time %}
+                            <br><small style="color: var(--text-muted);"><i class="fa-solid fa-clock" style="font-size: 0.75rem;"></i> {{ exam.exam_time }}</small>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ exam.total_marks }}</strong></td>
+                        <td>
+                            <span style="font-weight: 600;">{{ exam.students.count }}</span>
+                            <small style="color: var(--text-muted);">student{{ exam.students.count|pluralize }}</small>
+                        </td>
+                        <td style="text-align: right;" onclick="event.stopPropagation();">
+                            <a href="{% url 'admin_exam_detail' exam.id %}" class="dossier-btn-dark" style="padding: 0.35rem 0.75rem; font-size: 0.75rem;">
+                                <i class="fa-solid fa-clipboard-check"></i> Evaluate Marks
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">
+                            No exams created yet. Click <strong>Create Exam</strong> to schedule one.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

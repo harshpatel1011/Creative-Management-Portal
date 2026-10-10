@@ -1,0 +1,385 @@
+import os
+from django.db import models
+
+class Student(models.Model):
+    CLASS_TIME_CHOICES = [
+        ('08:00 am to 10:00 am', '08:00 am to 10:00 am'),
+        ('10:00 am to 12:00 pm', '10:00 am to 12:00 pm'),
+        ('12:00 pm to 02:00 pm', '12:00 pm to 02:00 pm'),
+        ('02:00 pm to 04:00 pm', '02:00 pm to 04:00 pm'),
+        ('04:00 pm to 06:00 pm', '04:00 pm to 06:00 pm'),
+        ('06:00 pm to 08:00 pm', '06:00 pm to 08:00 pm'),
+    ]
+
+    COURSE_CATEGORIES = {
+        'Development Courses': [
+            'Master In Flutter Development',
+            'Master In Android Development',
+            'Master In Game Development',
+            'Master In Full Stack Development',
+            'Master In Web Development',
+            'Master In React Native',
+            'Master In Data Science',
+            'Master In ASP.net development',
+            'Master In Data Analytics',
+            'Master in Software Testing',
+        ],
+        'Design Courses': [
+            'Master In Web Design',
+            'Master in UI/UX Design',
+            'Master In 2D/3D Animation',
+            'Master In 2D Animation',
+            'Master In 3D Animation',
+            'Advance Graphics Design + AI',
+            'Video Editing + AI',
+            '2D/3D Game Design',
+            'Maya Pro | 3Ds Max Pro',
+            'Blender 3D Design',
+        ],
+        'Programming IT': [
+            'C Programming',
+            'Node JS',
+            'C++ Programming',
+            'Java Programming',
+            'IOS',
+            'Advance PHP',
+            'Laravel',
+            'Wordpress',
+            'CodeIgniter',
+        ],
+        'Trendy Courses': [
+            'Advance Finance Management',
+            'Angular JS',
+            'React JS',
+            'Ethical Hacking',
+            'Unity 3D',
+            'Python',
+            'React Native',
+            'Desktop App Development',
+            'Java Spring Boot',
+        ],
+        'Civil-Mech. Engineering': [
+            'AutoCAD Civil',
+            '3Ds Max',
+            'Google SketchUp',
+            'Lumion',
+            'Revit Architecture',
+            'Interior & Exterior Design',
+            'AutoCAD Mechanical',
+            'SolidWorks',
+            'Creo Parametrics 2.0',
+        ],
+        'Business Development': [
+            'Master in Business Management',
+            'Digital Marketing + AI',
+            'Corporate English',
+            'Social Media Marketing',
+            'Business Marketing',
+            'Business Administration',
+        ],
+        'Short Term Courses': [
+            'Adobe Illustrator',
+            'Master in E-Commerce',
+            'Digital Print',
+            'Hotfix Design',
+            'Accounting WITH Tally Prime',
+            'CCC- Basic Computer Course',
+            'Photoshop',
+            'CorelDraw',
+        ],
+        'Diploma Courses': [
+            'Diploma In Web Design',
+            'Diploma In Web Development',
+        ],
+    }
+
+    name = models.CharField(max_length=100)
+    email = models.EmailField(max_length=100, unique=True)
+    password = models.CharField(max_length=255)
+    course = models.CharField(max_length=255, blank=True, default='')
+    class_time = models.CharField(max_length=50, choices=CLASS_TIME_CHOICES, blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def courses_list(self):
+        enrolled = list(self.enrolled_courses.values_list('course_name', flat=True))
+        if enrolled:
+            return enrolled
+        if self.course:
+            return [c.strip() for c in self.course.split(',') if c.strip()]
+        return []
+
+    def __str__(self):
+        return f"{self.name} ({self.email})"
+
+
+class StudentCourse(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='enrolled_courses')
+    course_name = models.CharField(max_length=150)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('student', 'course_name')
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.student.name} - {self.course_name}"
+
+
+class Project(models.Model):
+    STATUS_CHOICES = [
+        ('Submitted', 'Submitted'),
+        ('Approved', 'Approved'),
+        ('Rejected', 'Rejected'),
+    ]
+
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='projects')
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, default='')
+    project_link = models.URLField(blank=True, null=True)
+    project_file = models.FileField(upload_to='project_files/', blank=True, null=True)
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='Submitted')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def filename(self):
+        if self.project_file:
+            return os.path.basename(self.project_file.name)
+        return ""
+
+    @property
+    def file_extension(self):
+        if self.project_file:
+            _, ext = os.path.splitext(self.project_file.name)
+            return ext.lstrip('.').upper()
+        return ""
+
+    @property
+    def file_size_formatted(self):
+        if self.project_file and hasattr(self.project_file, 'size'):
+            try:
+                size_bytes = self.project_file.size
+                if size_bytes < 1024:
+                    return f"{size_bytes} B"
+                elif size_bytes < 1024 * 1024:
+                    return f"{round(size_bytes / 1024, 1)} KB"
+                else:
+                    return f"{round(size_bytes / (1024 * 1024), 2)} MB"
+            except Exception:
+                return ""
+        return ""
+
+    @property
+    def all_files(self):
+        files_qs = list(self.files.all())
+        if files_qs:
+            return files_qs
+        if self.project_file:
+            class DummyFile:
+                def __init__(self, file_field):
+                    self.file = file_field
+                @property
+                def url(self):
+                    return self.file.url if hasattr(self.file, 'url') else ''
+                @property
+                def filename(self):
+                    return os.path.basename(self.file.name) if self.file else ''
+                @property
+                def file_extension(self):
+                    if self.file:
+                        _, ext = os.path.splitext(self.file.name)
+                        return ext.lstrip('.').upper()
+                    return ''
+                @property
+                def file_size_formatted(self):
+                    if self.file and hasattr(self.file, 'size'):
+                        try:
+                            size_bytes = self.file.size
+                            if size_bytes < 1024:
+                                return f"{size_bytes} B"
+                            elif size_bytes < 1024 * 1024:
+                                return f"{round(size_bytes / 1024, 1)} KB"
+                            else:
+                                return f"{round(size_bytes / (1024 * 1024), 2)} MB"
+                        except Exception:
+                            return ""
+                    return ""
+            return [DummyFile(self.project_file)]
+        return []
+
+    @property
+    def all_links(self):
+        links_qs = list(self.links.all())
+        if links_qs:
+            return links_qs
+        if self.project_link:
+            class DummyLink:
+                def __init__(self, url):
+                    self.url = url
+                    self.label = 'GitHub Repo' if 'github.com' in url.lower() else 'Project Link'
+                @property
+                def display_label(self):
+                    return self.label
+                @property
+                def icon_class(self):
+                    combined = f"{self.label} {self.url}".lower()
+                    if 'github' in combined:
+                        return 'fa-brands fa-github'
+                    if 'gitlab' in combined:
+                        return 'fa-brands fa-gitlab'
+                    if 'figma' in combined:
+                        return 'fa-brands fa-figma'
+                    if 'drive' in combined:
+                        return 'fa-brands fa-google-drive'
+                    if 'live' in combined or 'demo' in combined:
+                        return 'fa-solid fa-globe'
+                    return 'fa-solid fa-link'
+            return [DummyLink(self.project_link)]
+        return []
+
+    def __str__(self):
+        return f"{self.title} ({self.student.name})"
+
+
+class ProjectFile(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='files')
+    file = models.FileField(upload_to='project_files/')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def filename(self):
+        if self.file:
+            return os.path.basename(self.file.name)
+        return ""
+
+    @property
+    def file_extension(self):
+        if self.file:
+            _, ext = os.path.splitext(self.file.name)
+            return ext.lstrip('.').upper()
+        return ""
+
+    @property
+    def file_size_formatted(self):
+        if self.file and hasattr(self.file, 'size'):
+            try:
+                size_bytes = self.file.size
+                if size_bytes < 1024:
+                    return f"{size_bytes} B"
+                elif size_bytes < 1024 * 1024:
+                    return f"{round(size_bytes / 1024, 1)} KB"
+                else:
+                    return f"{round(size_bytes / (1024 * 1024), 2)} MB"
+            except Exception:
+                return ""
+        return ""
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.project.title} - {self.filename}"
+
+
+class ProjectLink(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='links')
+    url = models.URLField(max_length=500)
+    label = models.CharField(max_length=100, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def display_label(self):
+        if self.label and self.label.strip():
+            return self.label.strip()
+        url_lower = self.url.lower()
+        if 'github.com' in url_lower:
+            return 'GitHub'
+        elif 'gitlab.com' in url_lower:
+            return 'GitLab'
+        elif 'figma.com' in url_lower:
+            return 'Figma'
+        elif 'drive.google.com' in url_lower:
+            return 'Drive'
+        elif 'youtube.com' in url_lower or 'youtu.be' in url_lower:
+            return 'Video'
+        return 'Link'
+
+    @property
+    def icon_class(self):
+        combined = f"{self.label} {self.url}".lower()
+        if 'github' in combined:
+            return 'fa-brands fa-github'
+        if 'gitlab' in combined:
+            return 'fa-brands fa-gitlab'
+        if 'figma' in combined:
+            return 'fa-brands fa-figma'
+        if 'drive' in combined:
+            return 'fa-brands fa-google-drive'
+        if 'youtube' in combined or 'video' in combined:
+            return 'fa-brands fa-youtube'
+        if 'live' in combined or 'demo' in combined or 'website' in combined or 'app' in combined:
+            return 'fa-solid fa-globe'
+        return 'fa-solid fa-link'
+
+    def __str__(self):
+        return f"{self.display_label}: {self.url}"
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.label}: {self.url}" if self.label else self.url
+
+
+class Exam(models.Model):
+    title = models.CharField(max_length=200)
+    subject = models.CharField(max_length=100)
+    exam_date = models.DateField()
+    exam_time = models.CharField(max_length=50, blank=True, null=True)
+    total_marks = models.DecimalField(max_digits=5, decimal_places=2, default=100.00)
+    students = models.ManyToManyField(Student, related_name='exams', blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        time_str = f" at {self.exam_time}" if self.exam_time else ""
+        return f"{self.title} - {self.subject} ({self.exam_date}{time_str})"
+
+
+class ExamMarks(models.Model):
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='marks_records')
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='exam_marks')
+    marks_obtained = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    is_absent = models.BooleanField(default=False)
+    grade = models.CharField(max_length=10, blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('exam', 'student')
+
+    def save(self, *args, **kwargs):
+        if self.is_absent:
+            self.marks_obtained = None
+            self.grade = 'Absent'
+        elif self.marks_obtained is not None and self.exam.total_marks and self.exam.total_marks > 0:
+            percentage = (float(self.marks_obtained) / float(self.exam.total_marks)) * 100
+            if percentage >= 90:
+                self.grade = 'A+'
+            elif percentage >= 80:
+                self.grade = 'A'
+            elif percentage >= 70:
+                self.grade = 'B+'
+            elif percentage >= 60:
+                self.grade = 'B'
+            elif percentage >= 50:
+                self.grade = 'C'
+            elif percentage >= 33:
+                self.grade = 'D'
+            else:
+                self.grade = 'F'
+        elif self.marks_obtained is None:
+            self.grade = None
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.student.name} - {self.exam.title}: {self.marks_obtained}/{self.exam.total_marks}"

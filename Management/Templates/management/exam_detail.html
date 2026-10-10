@@ -1,0 +1,264 @@
+{% extends 'management/base.html' %}
+
+{% block title %}{{ exam.title }} - Exam Marks & Evaluation{% endblock %}
+
+{% block content %}
+<!-- Top Header / Navigation -->
+<div class="page-header" style="margin-bottom: 2rem;">
+    <div class="header-text">
+        <h1>Exam Evaluation</h1>
+        <p>{{ exam.title }} &bull; {{ exam.subject }}</p>
+    </div>
+    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+        <a href="{% url 'admin_exam_edit' exam.id %}" class="btn-primary">
+            <i class="fa-solid fa-pen-to-square"></i> Edit Exam
+        </a>
+        <a href="{% url 'admin_exam_delete' exam.id %}" class="btn-danger" onclick="return confirm('Delete exam {{ exam.title }} and all its marks?');">
+            <i class="fa-solid fa-trash"></i> Delete
+        </a>
+    </div>
+</div>
+
+<!-- Exam Hero Overview Card -->
+<div class="student-card" style="margin-bottom: 2rem; padding: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
+        <div>
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+                <h2 style="font-size: 1.75rem; margin: 0; color: var(--text-primary);">{{ exam.title }}</h2>
+                <span class="dossier-btn-dark" style="padding: 0.25rem 0.75rem; font-size: 0.8rem; background: var(--bg-card-hover); color: var(--primary); font-weight: 600;">
+                    <i class="fa-solid fa-book-open"></i> {{ exam.subject }}
+                </span>
+            </div>
+            <div style="display: flex; gap: 1.25rem; align-items: center; flex-wrap: wrap; color: var(--text-secondary); font-size: 0.9rem;">
+                <span><i class="fa-solid fa-calendar-days" style="color: var(--primary);"></i> <strong>{{ exam.exam_date|date:"F d, Y" }}</strong></span>
+                {% if exam.exam_time %}
+                <span>&bull;</span>
+                <span><i class="fa-solid fa-clock" style="color: var(--primary);"></i> <strong>{{ exam.exam_time }}</strong></span>
+                {% endif %}
+                <span>&bull;</span>
+                <span><i class="fa-solid fa-calculator"></i> Total Marks: <strong>{{ exam.total_marks }}</strong></span>
+                <span>&bull;</span>
+                <span><i class="fa-solid fa-users"></i> Enrolled: <strong>{{ total_students }}</strong></span>
+                <span>&bull;</span>
+                <span><i class="fa-solid fa-chart-line"></i> Class Avg: <strong>{{ avg_marks }} / {{ exam.total_marks }}</strong></span>
+                {% if absent_count > 0 %}
+                <span>&bull;</span>
+                <span style="color: #dc2626;"><i class="fa-solid fa-user-xmark"></i> Absent: <strong>{{ absent_count }}</strong></span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div>
+            {% if total_students == 0 %}
+            <span class="dossier-btn-dark" style="padding: 0.4rem 1rem; font-size: 0.85rem;">No Students Enrolled</span>
+            {% elif pending_count == 0 %}
+            <span class="dossier-btn-dark success" style="padding: 0.4rem 1rem; font-size: 0.85rem; font-weight: 700;">
+                <i class="fa-solid fa-circle-check"></i> Evaluation Complete ({{ graded_count }} Graded{% if absent_count %}, {{ absent_count }} Absent{% endif %})
+            </span>
+            {% else %}
+            <span class="dossier-btn-dark" style="padding: 0.4rem 1rem; font-size: 0.85rem; font-weight: 600; background: #fef3c7; color: #92400e; border: 1px solid #fde68a;">
+                <i class="fa-solid fa-clock"></i> {{ pending_count }} Pending Evaluation
+            </span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Enroll Student Card (if students available) -->
+{% if available_students %}
+<div class="student-card" style="padding: 1.25rem 2rem; margin-bottom: 2rem; border-left: 4px solid var(--primary);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h4 style="margin: 0 0 0.25rem 0; font-size: 1rem; color: var(--text-primary);"><i class="fa-solid fa-user-plus" style="color: var(--primary);"></i> Enroll Student in this Exam</h4>
+            <p style="margin: 0; font-size: 0.825rem; color: var(--text-muted);">Quickly add another registered student to this assessment roster</p>
+        </div>
+        <form method="POST" action="{% url 'admin_exam_add_student' exam.id %}" style="display: flex; gap: 0.5rem; align-items: center;">
+            {% csrf_token %}
+            <div class="searchable-select-container" style="min-width: 320px; position: relative;">
+                <input type="text" id="enroll-student-search" class="searchable-select-input" placeholder="Search student to enroll..." autocomplete="off">
+                <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
+                <ul id="enroll-student-list" class="searchable-list custom-scrollbar" style="max-height: 240px;">
+                    {% for s in available_students %}
+                    <li data-value="{{ s.id }}">
+                        <strong>{{ s.name }}</strong>
+                        {% if s.course %}
+                        <small style="color: var(--text-muted);">{{ s.course }}</small>
+                        {% endif %}
+                        {% if s.class_time %}
+                        <small style="color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
+                            <i class="fa-solid fa-clock" style="font-size: 0.72rem;"></i> {{ s.class_time }}
+                        </small>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                <input type="hidden" name="student_id" id="hidden-enroll-student" required>
+            </div>
+            <button type="submit" class="btn-primary" style="height: 40px; padding: 0 1.25rem;">
+                <i class="fa-solid fa-plus"></i> Enroll
+            </button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Enrolled Students & Marks Entry Table -->
+<div class="student-card" style="padding: 0; overflow: hidden; margin-bottom: 2rem;">
+    <div style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h3 style="font-size: 1.25rem; color: var(--text-primary); margin-bottom: 0.25rem;">Marks Entry & Assessment Roster</h3>
+            <p style="font-size: 0.825rem; color: var(--text-secondary); margin: 0;">Enter marks obtained out of <strong>{{ exam.total_marks }}</strong> or mark students as absent</p>
+        </div>
+        <span style="font-size: 0.85rem; color: var(--text-muted);">
+            <strong>{{ graded_count }}</strong> graded{% if absent_count %}, <strong style="color: #dc2626;">{{ absent_count }}</strong> absent{% endif %} ({{ total_students }} total)
+        </span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width: 50px;">#</th>
+                    <th>Student Name</th>
+                    <th>Course & Batch Time</th>
+                    <th style="min-width: 230px;">Marks Entry (Max: {{ exam.total_marks }})</th>
+                    <th>Grade</th>
+                    <th>Status</th>
+                    <th style="text-align: right;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in marks_records %}
+                <tr>
+                    <td style="color: var(--text-muted);">{{ forloop.counter }}</td>
+                    <td>
+                        <a href="{% url 'admin_student_detail' record.student.id %}" style="color: var(--primary); font-weight: 600; text-decoration: underline;">
+                            {{ record.student.name }}
+                        </a>
+                    </td>
+                    <td>
+                        <small style="color: var(--text-muted); display: block;">{{ record.student.course }}</small>
+                        {% if record.student.class_time %}
+                        <small style="color: var(--text-secondary); font-size: 0.75rem; display: flex; align-items: center; gap: 0.35rem; margin-top: 2px;">
+                            <i class="fa-solid fa-clock" style="font-size: 0.7rem; color: var(--primary);"></i> {{ record.student.class_time }}
+                        </small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="POST" action="{% url 'admin_exam_marks_save' exam.id %}" style="display: flex; align-items: center; gap: 0.4rem; margin: 0; flex-wrap: nowrap;">
+                            {% csrf_token %}
+                            <input type="hidden" name="student_id" value="{{ record.student.id }}">
+                            {% if record.is_absent %}
+                            <input type="text" value="Absent" class="form-input" disabled style="width: 85px; height: 34px; padding: 0.35rem 0.5rem; text-align: center; font-weight: 700; color: #dc2626; background: #fee2e2; border: 1px solid #fca5a5;">
+                            <button type="submit" name="action" value="clear_absent" class="dossier-btn-dark" style="height: 34px; padding: 0 0.8rem; font-size: 0.78rem; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.35rem;" title="Mark student as present and enter marks">
+                                <i class="fa-solid fa-rotate-left"></i> Mark Present
+                            </button>
+                            {% else %}
+                            <input type="number" step="0.01" min="0" max="{{ exam.total_marks }}" name="marks_obtained" value="{{ record.marks_obtained|default:'' }}" class="form-input" placeholder="0.00" style="width: 85px; height: 34px; padding: 0.35rem 0.5rem; text-align: right; font-weight: 600;">
+                            <button type="submit" name="action" value="save" class="btn-primary" style="height: 34px; padding: 0 0.75rem; font-size: 0.78rem; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.3rem;" title="Save Marks">
+                                <i class="fa-solid fa-floppy-disk"></i> Save
+                            </button>
+                            <button type="submit" name="action" value="mark_absent" class="btn-danger" style="height: 34px; padding: 0 0.65rem; font-size: 0.78rem; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.3rem; background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5;" title="Mark Student as Absent">
+                                <i class="fa-solid fa-user-xmark"></i> Absent
+                            </button>
+                            {% endif %}
+                        </form>
+                    </td>
+                    <td>
+                        {% if record.is_absent %}
+                        <span style="color: var(--text-muted); font-weight: 600;">-</span>
+                        {% elif record.grade %}
+                        <span class="dossier-btn-dark {% if record.grade == 'F' %}danger{% else %}success{% endif %}" style="display: inline-block; padding: 0.2rem 0.6rem; font-weight: 700; font-size: 0.85rem;">
+                            {{ record.grade }}
+                        </span>
+                        {% else %}
+                        <span style="color: var(--text-muted);">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if record.is_absent %}
+                        <span class="dossier-btn-dark danger" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.35rem; white-space: nowrap;">
+                            <i class="fa-solid fa-user-xmark"></i> Absent
+                        </span>
+                        {% elif record.marks_obtained is not None %}
+                        <span class="dossier-btn-dark success" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.35rem; white-space: nowrap;">
+                            <i class="fa-solid fa-circle-check"></i> Graded
+                        </span>
+                        {% else %}
+                        <span class="dossier-btn-dark" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; font-weight: 600; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; display: inline-flex; align-items: center; gap: 0.35rem; white-space: nowrap;">
+                            <i class="fa-solid fa-clock"></i> Pending
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right;">
+                        <a href="{% url 'admin_exam_remove_student' exam.id record.student.id %}" class="btn-icon btn-delete" onclick="return confirm('Remove {{ record.student.name }} from this exam?');" title="Remove Student from Exam">
+                            <i class="fa-solid fa-user-minus"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+                        No students enrolled in this exam yet. Use the enrollment form above or <a href="{% url 'admin_exam_edit' exam.id %}" style="color: var(--primary); text-decoration: underline;">Edit Exam</a> to select students.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const searchInput = document.getElementById("enroll-student-search");
+    const list = document.getElementById("enroll-student-list");
+    const hiddenInput = document.getElementById("hidden-enroll-student");
+
+    if (searchInput && list && hiddenInput) {
+        const listItems = list.querySelectorAll("li");
+
+        function showList() {
+            list.style.display = "block";
+        }
+
+        searchInput.addEventListener("focus", showList);
+        searchInput.addEventListener("click", function(e) {
+            e.stopPropagation();
+            showList();
+        });
+
+        searchInput.addEventListener("input", function() {
+            const filter = searchInput.value.toLowerCase().trim();
+            list.style.display = "block";
+            let visibleCount = 0;
+            listItems.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                if (text.includes(filter)) {
+                    item.style.display = "flex";
+                    visibleCount++;
+                } else {
+                    item.style.display = "none";
+                }
+            });
+        });
+
+        listItems.forEach(item => {
+            item.addEventListener("click", function(e) {
+                e.stopPropagation();
+                const val = item.getAttribute("data-value");
+                hiddenInput.value = val;
+                const nameEl = item.querySelector("strong");
+                searchInput.value = nameEl ? nameEl.textContent.trim() : item.textContent.trim();
+                list.style.display = "none";
+            });
+        });
+
+        document.addEventListener("click", function(e) {
+            if (!searchInput.contains(e.target) && !list.contains(e.target)) {
+                list.style.display = "none";
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

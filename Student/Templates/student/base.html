@@ -1,0 +1,98 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Student Portal - Creative{% endblock %}</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Style CSS -->
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+</head>
+<body>
+    <div class="app-container">
+        {% block sidebar %}
+        <!-- Student Sidebar -->
+        <div class="dossier-sidebar">
+            <div style="margin-bottom: 2rem; padding: 0.5rem 0.25rem 0;">
+                <a href="{% url 'student_dashboard' %}">
+                    <img src="{% static 'creative-logo-white.svg' %}" alt="Creative Logo">
+                </a>
+            </div>
+            <div class="dossier-actions">
+                <!-- Portal Category -->
+                <div style="font-size: 0.75rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem; padding-left: 1rem;">Student Portal</div>
+                <a href="{% url 'student_dashboard' %}" class="dossier-btn" style="{% if request.resolver_match.url_name == 'student_dashboard' %}background-color: var(--bg-main); color: var(--primary);{% endif %}"><i class="fa-solid fa-house-user"></i> Dashboard</a>
+                <a href="{% url 'student_projects' %}" class="dossier-btn" style="{% if 'project' in request.resolver_match.url_name %}background-color: var(--bg-main); color: var(--primary);{% endif %}"><i class="fa-solid fa-diagram-project"></i> Projects</a>
+                <a href="{% url 'student_marks' %}" class="dossier-btn" style="{% if 'marks' in request.resolver_match.url_name %}background-color: var(--bg-main); color: var(--primary);{% endif %}"><i class="fa-solid fa-award"></i> Marks & Grades</a>
+
+                <a href="{% url 'student_profile' %}" class="dossier-btn" style="margin-top: auto; {% if request.resolver_match.url_name == 'student_profile' %}background-color: var(--bg-main); color: var(--primary);{% endif %}"><i class="fa-solid fa-user-graduate"></i> My Profile</a>
+                <a href="{% url 'student_logout' %}" class="dossier-btn danger"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+            </div>
+        </div>
+        {% endblock %}
+
+        <!-- Floating Toast Notifications (Zero Layout Shift) -->
+        <div id="toast-container" class="toast-container" aria-live="polite">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="toast-card toast-{{ message.tags|default:'info' }}" role="alert">
+                        <div class="toast-icon">
+                            {% if message.tags == 'error' %}
+                                <i class="fa-solid fa-circle-exclamation"></i>
+                            {% elif message.tags == 'success' %}
+                                <i class="fa-solid fa-circle-check"></i>
+                            {% elif message.tags == 'warning' %}
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                            {% else %}
+                                <i class="fa-solid fa-circle-info"></i>
+                            {% endif %}
+                        </div>
+                        <div class="toast-content">
+                            <strong class="toast-title">
+                                {% if message.tags == 'error' %}Error{% elif message.tags == 'success' %}Success{% elif message.tags == 'warning' %}Warning{% else %}Notice{% endif %}
+                            </strong>
+                            <p class="toast-message">{{ message }}</p>
+                        </div>
+                        <button type="button" class="toast-close" onclick="dismissToast(this.closest('.toast-card'))" aria-label="Close">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                        <div class="toast-progress"></div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <div class="content-wrapper">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <script>
+    function dismissToast(toastEl) {
+        if (!toastEl || toastEl.classList.contains('toast-hiding')) return;
+        toastEl.classList.add('toast-hiding');
+        setTimeout(() => {
+            toastEl.remove();
+        }, 300);
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const toasts = document.querySelectorAll(".toast-card");
+        toasts.forEach(toast => {
+            setTimeout(() => {
+                dismissToast(toast);
+            }, 4500);
+        });
+    });
+    </script>
+</body>
+</html>

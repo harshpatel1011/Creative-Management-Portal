@@ -1,0 +1,51 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creative - Management Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; margin-bottom: 1.5rem; gap: 0.75rem;">
+                <img src="{% static 'creative-logo-blue.svg' %}" alt="Creative Logo" style="max-width: 200px; width: 100%; height: auto;">
+                <div class="header-text">
+                    <h2 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: var(--text-primary); text-transform: uppercase; letter-spacing: 1.5px;">Management Portal</h2>
+                </div>
+            </div>
+
+            {% if messages %}
+                <div style="margin-bottom: 1rem;">
+                    {% for message in messages %}
+                        <div style="padding: 0.75rem; border-radius: var(--border-radius-sm); margin-bottom: 0.5rem; background: {% if message.tags == 'error' %}#fee2e2{% else %}#d1e7dd{% endif %}; color: {% if message.tags == 'error' %}var(--danger){% else %}#0f5132{% endif %}; border: 1px solid {% if message.tags == 'error' %}#fca5a5{% else %}#badbcc{% endif %};">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <form method="POST">
+                {% csrf_token %}
+                <div class="form-grid" style="grid-template-columns: 1fr;">
+                    <div class="form-group">
+                        <label class="form-label" for="email">Email Address</label>
+                        <input class="form-input" type="email" id="email" name="email" placeholder="admin@creative.com" required autofocus>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="password">Password</label>
+                        <input class="form-input" type="password" id="password" name="password" placeholder="••••••••" required>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-primary">Log In</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,146 @@
+{% extends 'management/base.html' %}
+
+{% block title %}{{ project.title }} - Project Details{% endblock %}
+
+{% block content %}
+<!-- Top Header / Navigation -->
+<div class="page-header" style="margin-bottom: 2rem;">
+    <div class="header-text">
+        <h1>Project Details</h1>
+        <p>Comprehensive student project submission and evaluation dossier</p>
+    </div>
+    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+        <a href="{% url 'admin_projects' %}" class="back-btn">
+            <i class="fa-solid fa-arrow-left"></i> Back to Projects
+        </a>
+    </div>
+</div>
+
+<!-- Project Hero Card -->
+<div class="student-card" style="margin-bottom: 2rem; padding: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.5rem;">
+        <div style="flex: 1; min-width: 280px;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem; flex-wrap: wrap;">
+                <h2 style="font-size: 1.85rem; color: var(--text-primary); margin: 0;">{{ project.title }}</h2>
+                {% if project.status == 'Approved' %}
+                <span class="dossier-btn-dark success" style="padding: 0.35rem 0.85rem; font-size: 0.8rem; font-weight: 600;">
+                    <i class="fa-solid fa-circle-check"></i> Approved
+                </span>
+                {% elif project.status == 'Rejected' %}
+                <span class="dossier-btn-dark danger" style="padding: 0.35rem 0.85rem; font-size: 0.8rem; font-weight: 600;">
+                    <i class="fa-solid fa-circle-xmark"></i> Rejected
+                </span>
+                {% else %}
+                <span class="dossier-btn-dark" style="padding: 0.35rem 0.85rem; font-size: 0.8rem; font-weight: 600; background: var(--bg-card-hover); color: var(--text-secondary);">
+                    <i class="fa-solid fa-clock"></i> Submitted (Under Review)
+                </span>
+                {% endif %}
+            </div>
+
+            <div style="display: flex; gap: 1.25rem; align-items: center; flex-wrap: wrap; color: var(--text-secondary); font-size: 0.9rem;">
+                <a href="{% url 'admin_student_detail' project.student.id %}" style="color: var(--primary); font-weight: 600; text-decoration: underline;">
+                    <i class="fa-solid fa-user-graduate"></i> {{ project.student.name }}
+                </a>
+                <span>&bull;</span>
+                <span><i class="fa-solid fa-book-open"></i> {{ project.student.course }}</span>
+                <span>&bull;</span>
+                <span><i class="fa-solid fa-envelope"></i> {{ project.student.email }}</span>
+                <span>&bull;</span>
+                <span><i class="fa-solid fa-calendar-check"></i> Submitted on {{ project.submitted_at|date:"M d, Y, h:i A" }}</span>
+            </div>
+        </div>
+
+        <!-- Decision Buttons -->
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <form method="POST" action="{% url 'admin_project_status_update' project.id %}" style="display: inline-flex; gap: 0.5rem; align-items: center;">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="detail">
+                <button type="submit" name="status" value="Approved" class="btn-approve {% if project.status == 'Approved' %}active{% endif %}" title="Approve Project" {% if project.status == 'Approved' %}disabled{% endif %}>
+                    <i class="fa-solid fa-check"></i> {% if project.status == 'Approved' %}Approved{% else %}Approve{% endif %}
+                </button>
+                <button type="submit" name="status" value="Rejected" class="btn-reject {% if project.status == 'Rejected' %}active{% endif %}" title="Reject Project" {% if project.status == 'Rejected' %}disabled{% endif %}>
+                    <i class="fa-solid fa-xmark"></i> {% if project.status == 'Rejected' %}Rejected{% else %}Reject{% endif %}
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Project File Attachments Section -->
+{% if project.all_files %}
+<div class="student-card" style="padding: 2rem; margin-bottom: 2rem;">
+    <div style="margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+        <h3 style="font-size: 1.15rem; color: var(--text-primary); margin-bottom: 0.25rem;">Attached Project Files & Documents ({{ project.all_files|length }})</h3>
+        <p style="font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Student submitted file assets (Source code, archives, documents, datasets, etc.)</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+        {% for f in project.all_files %}
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; background: var(--bg-main); padding: 1rem 1.25rem; border: 1px solid var(--border-color); border-radius: 4px;">
+            <div style="display: flex; align-items: center; gap: 1rem; overflow: hidden; min-width: 0;">
+                <div style="width: 42px; height: 42px; background: var(--primary); color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem; flex-shrink: 0; border-radius: 4px;">
+                    {% if f.file_extension %}{{ f.file_extension }}{% else %}FILE{% endif %}
+                </div>
+                <div style="min-width: 0;">
+                    <strong style="color: var(--text-primary); font-size: 0.92rem; display: block; word-break: break-all;">
+                        {{ f.filename }}
+                    </strong>
+                    <small style="color: var(--text-muted); font-size: 0.78rem;">
+                        {% if f.file_size_formatted %}Size: {{ f.file_size_formatted }} • {% endif %}Uploaded Attachment
+                    </small>
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0;">
+                <a href="{% if f.file %}{{ f.file.url }}{% else %}{{ f.url }}{% endif %}" download class="btn-primary" style="height: 34px; padding: 0 0.85rem; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+                    <i class="fa-solid fa-download"></i> Download
+                </a>
+                <a href="{% if f.file %}{{ f.file.url }}{% else %}{{ f.url }}{% endif %}" target="_blank" class="dossier-btn-dark" style="height: 34px; padding: 0 0.75rem; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Open
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if project.all_links %}
+<!-- Project Links Section -->
+<div class="student-card" style="padding: 2rem; margin-bottom: 2rem;">
+    <div style="margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+        <h3 style="font-size: 1.15rem; color: var(--text-primary); margin-bottom: 0.25rem;">Project Links & Repositories</h3>
+        <p style="font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Live URLs, source code repositories, and project assets</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+        {% for l in project.all_links %}
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; background: var(--bg-main); padding: 0.85rem 1.25rem; border: 1px solid var(--border-color); border-radius: 4px;">
+            <div style="display: flex; align-items: center; gap: 0.85rem; overflow: hidden; text-overflow: ellipsis; max-width: 75%;">
+                <span class="dossier-btn-dark" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem; flex-shrink: 0;">
+                    <i class="{{ l.icon_class }}"></i> {{ l.display_label }}
+                </span>
+                <a href="{{ l.url }}" target="_blank" style="color: var(--primary); font-weight: 500; font-size: 0.9rem; word-break: break-all;">
+                    {{ l.url }}
+                </a>
+            </div>
+            <a href="{{ l.url }}" target="_blank" class="btn-primary" style="height: 34px; padding: 0 0.85rem; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 0.4rem;">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i> Open
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if project.description %}
+<!-- Project Description Section -->
+<div class="student-card" style="padding: 2rem; margin-bottom: 2rem;">
+    <div style="margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+        <h3 style="font-size: 1.15rem; color: var(--text-primary); margin-bottom: 0.25rem;">Project Description & Overview</h3>
+        <p style="font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Detailed description submitted by the student</p>
+    </div>
+
+    <div style="line-height: 1.75; color: var(--text-primary); font-size: 0.95rem; background: var(--bg-main); padding: 1.25rem 1.5rem; border: 1px solid var(--border-color); border-radius: 4px;">{{ project.description|linebreaksbr }}</div>
+</div>
+{% endif %}
+{% endblock %}

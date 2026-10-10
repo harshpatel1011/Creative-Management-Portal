@@ -1,0 +1,295 @@
+{% extends 'student/base.html' %}
+
+{% block title %}Submit New Project - Student Portal{% endblock %}
+
+{% block content %}
+<!-- Top Header / Navigation -->
+<div class="page-header" style="margin-bottom: 2rem;">
+    <div class="header-text">
+        <h1>Submit New Project</h1>
+        <p>Submit and manage your project portfolio</p>
+    </div>
+    <a href="{% url 'student_projects' %}" class="back-btn">
+        <i class="fa-solid fa-arrow-left"></i> Back to Projects
+    </a>
+</div>
+
+<!-- Submit Project Form Card -->
+<div class="student-card" style="padding: 2.5rem;">
+    <div style="margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+        <h2 style="font-size: 1.25rem; color: var(--text-primary); margin-bottom: 0.25rem;"><i class="fa-solid fa-file-code" style="color: var(--primary);"></i> Project Submission Details</h2>
+        <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">Provide project title and at least one proof of work (<strong>File Attachment</strong> or <strong>Project Link</strong>)</p>
+    </div>
+
+    <!-- Alert Requirement Banner -->
+    <div style="display: flex; align-items: center; gap: 0.75rem; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 0.75rem 1rem; margin-bottom: 1.5rem; font-size: 0.85rem;">
+        <i class="fa-solid fa-circle-info" style="font-size: 1rem; color: #16a34a; flex-shrink: 0;"></i>
+        <span><strong>Requirement:</strong> You must attach at least <strong>one</strong> of either a <strong>Project File</strong> or a <strong>Live/Repository Link</strong> to submit your project.</span>
+    </div>
+
+    <form method="POST" action="{% url 'student_project_add' %}" enctype="multipart/form-data" onsubmit="return validateSubmissionForm();">
+        {% csrf_token %}
+        <div class="form-grid">
+            <div class="form-group" style="grid-column: span 2;">
+                <label class="form-label" for="title">Project Title *</label>
+                <input type="text" id="title" name="title" value="{{ title|default:'' }}" class="form-input" placeholder="e.g. AI-Powered Recommendation Engine" required autofocus>
+            </div>
+
+            <!-- Project File Upload Section (Multiple Files Support) -->
+            <div class="form-group" style="grid-column: span 2;">
+                <label class="form-label" for="project_files">
+                    <i class="fa-solid fa-paperclip" style="color: var(--primary); margin-right: 4px;"></i> Project Files Upload (Multiple Files & All Types Supported)
+                </label>
+                
+                <input type="file" id="project_files" name="project_files" class="form-input" style="display: none;" multiple onchange="handleFilesSelect(this);">
+
+                <div style="border: 2px dashed var(--border-color); background: var(--bg-main); padding: 1.75rem; text-align: center; position: relative; transition: border-color 0.2s; cursor: pointer; border-radius: 4px;" id="drop-zone" onclick="openFilePicker(event);">
+                    <div id="file-empty-state">
+                        <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2.2rem; color: var(--primary); margin-bottom: 0.75rem; display: block;"></i>
+                        <div style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem; margin-bottom: 0.25rem;">
+                            Click or drag to upload one or more project files
+                        </div>
+                        <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">
+                            Upload source code, archives, documents, notebooks, presentations, or assets (e.g. .ZIP, .PDF, .DOCX, .RAR, .PY, .IPYNB, .PNG, etc.)
+                        </p>
+                    </div>
+                    <div id="files-list-container" style="display: none; flex-direction: column; gap: 0.6rem; text-align: left; margin-bottom: 0.75rem;" onclick="event.stopPropagation();">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                    <div id="file-add-more-strip" style="display: none; padding: 0.75rem; border: 1px dashed var(--border-color); background: var(--bg-card); border-radius: 4px; color: var(--primary); font-weight: 600; font-size: 0.85rem; align-items: center; justify-content: center; gap: 0.5rem;" onclick="openFilePicker(event);">
+                        <i class="fa-solid fa-plus-circle"></i> Click to select additional file(s) or drag & drop here
+                    </div>
+                    <div id="file-actions-bottom" style="display: none; justify-content: space-between; align-items: center; margin-top: 0.85rem; font-size: 0.82rem; color: var(--text-muted);" onclick="event.stopPropagation();">
+                        <span id="files-count-text" style="font-weight: 500;"></span>
+                        <button type="button" onclick="clearAllFiles(event)" class="dossier-btn-dark danger" style="padding: 0.3rem 0.75rem; font-size: 0.78rem;">
+                            <i class="fa-solid fa-trash"></i> Clear All Files
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project Multiple Links Section -->
+            <div class="form-group" style="grid-column: span 2;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <label class="form-label" style="margin: 0;">
+                        <i class="fa-solid fa-link" style="color: var(--primary); margin-right: 4px;"></i> Project Links & URLs (e.g. GitHub Repo, Live Demo, Figma)
+                    </label>
+                    <button type="button" class="dossier-btn-dark" onclick="addLinkRow()" style="padding: 0.25rem 0.65rem; font-size: 0.78rem;">
+                        <i class="fa-solid fa-plus"></i> Add Another Link
+                    </button>
+                </div>
+                
+                <div id="links-container" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <!-- Populated by JavaScript -->
+                </div>
+                <small style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.25rem; display: block;">
+                    Add multiple links (e.g. GitHub Repository, Vercel/Netlify Live Demo, Google Drive, or Figma Design).
+                </small>
+            </div>
+
+            <div class="form-group" style="grid-column: span 2;">
+                <label class="form-label" for="description">Project Description (Optional)</label>
+                <textarea id="description" name="description" rows="5" class="form-input" placeholder="Describe project scope, technology stack, key features, and implementation details (optional)...">{{ description|default:'' }}</textarea>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+            <a href="{% url 'student_projects' %}" class="btn-secondary">Cancel</a>
+            <button type="submit" class="btn-primary">
+                <i class="fa-solid fa-paper-plane"></i> Submit Project
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+// === Dynamic Multiple Links Builder ===
+function createLinkRow(label = '', url = '') {
+    const row = document.createElement('div');
+    row.className = 'link-row';
+    row.style.cssText = 'display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;';
+    row.innerHTML = `
+        <input type="text" name="link_labels" class="form-input" value="${label}" placeholder="Label (e.g. GitHub Repo, Live Demo)" style="flex: 1; min-width: 160px; max-width: 220px;">
+        <input type="url" name="link_urls" class="form-input" value="${url}" placeholder="https://github.com/... or https://myproject.com" style="flex: 2; min-width: 200px;">
+        <button type="button" class="btn-icon btn-delete remove-link-btn" onclick="removeLinkRow(this)" title="Remove link" style="flex-shrink: 0; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center;">
+            <i class="fa-solid fa-trash"></i>
+        </button>
+    `;
+    return row;
+}
+
+function addLinkRow(label = '', url = '') {
+    const container = document.getElementById('links-container');
+    container.appendChild(createLinkRow(label, url));
+}
+
+function removeLinkRow(btn) {
+    const container = document.getElementById('links-container');
+    const rows = container.querySelectorAll('.link-row');
+    if (rows.length > 1) {
+        btn.closest('.link-row').remove();
+    } else {
+        const row = rows[0];
+        row.querySelectorAll('input').forEach(input => input.value = '');
+    }
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    {% if cleaned_links %}
+        {% for item in cleaned_links %}
+            addLinkRow("{{ item.label|escapejs }}", "{{ item.url|escapejs }}");
+        {% endfor %}
+    {% else %}
+        addLinkRow("", "");
+    {% endif %}
+});
+
+// === Multiple Files Management via DataTransfer ===
+let currentFilesDT = new DataTransfer();
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
+function openFilePicker(e) {
+    if (e) e.stopPropagation();
+    const input = document.getElementById('project_files');
+    input.value = '';
+    input.click();
+}
+
+function renderFilesList() {
+    const listContainer = document.getElementById('files-list-container');
+    const emptyState = document.getElementById('file-empty-state');
+    const addMoreStrip = document.getElementById('file-add-more-strip');
+    const actionsBottom = document.getElementById('file-actions-bottom');
+    const countText = document.getElementById('files-count-text');
+
+    listContainer.innerHTML = '';
+
+    if (currentFilesDT.files.length === 0) {
+        emptyState.style.display = 'block';
+        listContainer.style.display = 'none';
+        if (addMoreStrip) addMoreStrip.style.display = 'none';
+        if (actionsBottom) actionsBottom.style.display = 'none';
+        document.getElementById('project_files').files = currentFilesDT.files;
+        return;
+    }
+
+    emptyState.style.display = 'none';
+    listContainer.style.display = 'flex';
+    if (addMoreStrip) addMoreStrip.style.display = 'flex';
+    if (actionsBottom) actionsBottom.style.display = 'flex';
+    countText.textContent = `${currentFilesDT.files.length} file(s) selected`;
+
+    Array.from(currentFilesDT.files).forEach((file, index) => {
+        const item = document.createElement('div');
+        item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); border: 1px solid var(--border-color); padding: 0.65rem 1rem; border-radius: 4px; gap: 0.75rem;';
+        
+        let ext = file.name.split('.').pop().toUpperCase();
+        let fileUrl = URL.createObjectURL(file);
+        item.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 0.75rem; overflow: hidden; min-width: 0;">
+                <span class="dossier-btn-dark" style="padding: 0.2rem 0.45rem; font-size: 0.7rem; font-weight: 700; flex-shrink: 0;">${ext || 'FILE'}</span>
+                <div style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    <div style="font-weight: 600; color: var(--text-primary); font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${file.name}">${file.name}</div>
+                    <small style="color: var(--text-muted); font-size: 0.75rem;">${formatFileSize(file.size)}</small>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0;">
+                <a href="${fileUrl}" target="_blank" class="btn-icon" style="flex-shrink: 0; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem; color: var(--primary); background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 4px; text-decoration: none;" title="Open / Preview in new tab" onclick="event.stopPropagation();">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                </a>
+                <button type="button" onclick="removeSingleFile(${index}, event)" class="btn-icon btn-delete" style="flex-shrink: 0; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 4px;" title="Remove this file">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        `;
+        listContainer.appendChild(item);
+    });
+
+    // Sync input files
+    document.getElementById('project_files').files = currentFilesDT.files;
+}
+
+function handleFilesSelect(input) {
+    if (input.files && input.files.length > 0) {
+        Array.from(input.files).forEach(f => {
+            let alreadyExists = Array.from(currentFilesDT.files).some(existing => existing.name === f.name && existing.size === f.size);
+            if (!alreadyExists) {
+                currentFilesDT.items.add(f);
+            }
+        });
+        renderFilesList();
+    }
+}
+
+function removeSingleFile(index, e) {
+    if (e) e.stopPropagation();
+    const newDT = new DataTransfer();
+    Array.from(currentFilesDT.files).forEach((file, i) => {
+        if (i !== index) {
+            newDT.items.add(file);
+        }
+    });
+    currentFilesDT = newDT;
+    renderFilesList();
+}
+
+function clearAllFiles(e) {
+    if (e) e.stopPropagation();
+    currentFilesDT = new DataTransfer();
+    renderFilesList();
+}
+
+// Drag and drop handling
+const dropZone = document.getElementById('drop-zone');
+['dragenter', 'dragover'].forEach(eventName => {
+    dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.style.borderColor = 'var(--primary)';
+        dropZone.style.background = 'var(--bg-card-hover)';
+    }, false);
+});
+['dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.style.borderColor = 'var(--border-color)';
+        dropZone.style.background = 'var(--bg-main)';
+    }, false);
+});
+dropZone.addEventListener('drop', (e) => {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    if (files && files.length > 0) {
+        Array.from(files).forEach(f => {
+            let alreadyExists = Array.from(currentFilesDT.files).some(existing => existing.name === f.name && existing.size === f.size);
+            if (!alreadyExists) {
+                currentFilesDT.items.add(f);
+            }
+        });
+        renderFilesList();
+    }
+});
+
+function validateSubmissionForm() {
+    const hasFile = currentFilesDT.files.length > 0;
+    
+    const urlInputs = document.querySelectorAll('input[name="link_urls"]');
+    let hasLink = false;
+    urlInputs.forEach(inp => {
+        if (inp.value.trim().length > 0) hasLink = true;
+    });
+
+    if (!hasFile && !hasLink) {
+        alert('Please provide at least one: Upload Project File(s) or enter at least one Project Link/URL.');
+        return false;
+    }
+    return true;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,139 @@
+{% extends 'management/base.html' %}
+
+{% block title %}{% if is_edit %}Edit Exam - {{ exam.title }}{% else %}Create Exam{% endif %} - Creative Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-text">
+        <h1>{% if is_edit %}Edit Exam{% else %}Create New Exam{% endif %}</h1>
+        <p>Set exam details and select enrolled students</p>
+    </div>
+    <a href="{% url 'admin_exam_list' %}" class="back-btn">
+        <i class="fa-solid fa-arrow-left"></i> Back to Exams
+    </a>
+</div>
+
+<div class="student-card" style="width: 100%; padding: 2.5rem;">
+    <h2 class="form-section-title">Exam Information</h2>
+
+    <form method="POST" action="">
+        {% csrf_token %}
+        <div class="form-grid">
+            <div class="form-group" style="grid-column: span 2;">
+                <label class="form-label" for="title">Exam Title *</label>
+                <input type="text" id="title" name="title" value="{{ exam.title|default:'' }}" class="form-input" placeholder="e.g. Midterm Python Assessment" required autofocus>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="subject">Subject / Module *</label>
+                <input type="text" id="subject" name="subject" value="{{ exam.subject|default:'' }}" class="form-input" placeholder="e.g. Python Programming" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="total_marks">Total Marks *</label>
+                <input type="number" step="0.01" id="total_marks" name="total_marks" value="{{ exam.total_marks|default:'100' }}" class="form-input" placeholder="100" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="exam_date">Exam Date *</label>
+                <input type="date" id="exam_date" name="exam_date" value="{{ exam.exam_date|date:'Y-m-d'|default:'' }}" class="form-input" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="exam_time">Exam Time</label>
+                <input type="time" id="exam_time" name="exam_time" value="{{ exam.exam_time|default:'' }}" class="form-input">
+            </div>
+        </div>
+
+        <div style="margin-top: 2rem; margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.75rem;">
+                <h3 style="font-size: 1.1rem; margin: 0; text-transform: uppercase; letter-spacing: 1px;"><i class="fa-solid fa-user-check"></i> Select Students for this Exam</h3>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button type="button" class="dossier-btn-dark" onclick="toggleSelectAll(true)" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">Select All</button>
+                    <button type="button" class="dossier-btn-dark" onclick="toggleSelectAll(false)" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">Deselect All</button>
+                </div>
+            </div>
+
+            {% if students %}
+            <!-- Search Filter Bar for Students -->
+            <div style="position: relative; margin-bottom: 0.75rem;">
+                <input type="text" id="student-search-input" class="form-input" placeholder="Search students by name, course, or class time..." autocomplete="off" style="height: 38px; padding-left: 2.2rem; font-size: 0.85rem;">
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem; pointer-events: none;"></i>
+            </div>
+
+            <div id="students-grid" class="custom-scrollbar" style="max-height: 280px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 1rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem; background: var(--bg-main);">
+                {% for s in students %}
+                <label class="student-select-item" style="display: flex; align-items: center; gap: 0.65rem; background: var(--bg-card); padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); cursor: pointer; transition: all var(--transition-fast);">
+                    <input type="checkbox" name="student_ids" value="{{ s.id }}" class="student-checkbox" {% if is_edit and s.id in enrolled_student_ids %}checked{% endif %}>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ s.name }}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            {{ s.course }}{% if s.class_time %} • <i class="fa-solid fa-clock" style="font-size: 0.68rem;"></i> {{ s.class_time }}{% endif %}
+                        </div>
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+            <div id="no-students-found" style="display: none; padding: 1.5rem; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: var(--border-radius-sm); margin-top: 0.5rem;">
+                <i class="fa-solid fa-user-slash" style="font-size: 1.25rem; margin-bottom: 0.5rem; display: block;"></i>
+                No matching students found.
+            </div>
+            {% else %}
+            <div style="padding: 1.5rem; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color);">
+                No students enrolled yet. Register students first to assign them to exams.
+            </div>
+            {% endif %}
+        </div>
+
+        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <a href="{% url 'admin_exam_list' %}" class="btn-secondary">Cancel</a>
+            <button type="submit" class="btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i> {% if is_edit %}Save Changes{% else %}Create Exam & Proceed to Marks{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+function toggleSelectAll(select) {
+    const items = document.querySelectorAll('.student-select-item');
+    items.forEach(item => {
+        if (item.style.display !== 'none') {
+            const cb = item.querySelector('.student-checkbox');
+            if (cb) cb.checked = select;
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    const searchInput = document.getElementById("student-search-input");
+    const items = document.querySelectorAll(".student-select-item");
+    const noResults = document.getElementById("no-students-found");
+    const grid = document.getElementById("students-grid");
+
+    if (searchInput) {
+        searchInput.addEventListener("input", function() {
+            const query = searchInput.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            items.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                if (text.includes(query)) {
+                    item.style.display = "flex";
+                    visibleCount++;
+                } else {
+                    item.style.display = "none";
+                }
+            });
+
+            if (noResults) {
+                noResults.style.display = visibleCount === 0 ? "block" : "none";
+            }
+            if (grid) {
+                grid.style.display = visibleCount === 0 ? "none" : "grid";
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

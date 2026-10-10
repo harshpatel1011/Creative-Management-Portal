@@ -1,0 +1,30 @@
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('', views.admin_dashboard_view, name='admin_dashboard'),
+    path('login/', views.admin_login_view, name='admin_login'),
+    path('logout/', views.admin_logout_view, name='admin_logout'),
+    path('students/', views.student_list_view, name='admin_student_list'),
+    path('students/register/', views.student_register_view, name='admin_student_register'),
+    path('students/<int:student_id>/', views.student_detail_view, name='admin_student_detail'),
+    path('students/<int:student_id>/edit/', views.student_edit_view, name='admin_student_edit'),
+    path('students/<int:student_id>/delete/', views.student_delete_view, name='admin_student_delete'),
+    path('projects/', views.admin_projects_view, name='admin_projects'),
+    path('projects/<int:project_id>/', views.admin_project_detail_view, name='admin_project_detail'),
+    path('projects/<int:project_id>/status/', views.project_status_update_view, name='admin_project_status_update'),
+    path('exams/', views.exam_list_view, name='admin_exam_list'),
+    path('exams/create/', views.exam_create_view, name='admin_exam_create'),
+    path('exams/<int:exam_id>/', views.exam_detail_view, name='admin_exam_detail'),
+    path('exams/<int:exam_id>/marks/save/', views.exam_marks_save_view, name='admin_exam_marks_save'),
+    path('exams/<int:exam_id>/add-student/', views.exam_add_student_view, name='admin_exam_add_student'),
+    path('exams/<int:exam_id>/remove-student/<int:student_id>/', views.exam_remove_student_view, name='admin_exam_remove_student'),
+    path('exams/<int:exam_id>/edit/', views.exam_edit_view, name='admin_exam_edit'),
+    path('exams/<int:exam_id>/delete/', views.exam_delete_view, name='admin_exam_delete'),
+    path('admins/', views.admin_list_view, name='admin_list'),
+    path('admins/create/', views.admin_create_view, name='admin_create'),
+    path('admins/<int:admin_id>/edit/', views.admin_edit_view, name='admin_edit'),
+    path('admins/<int:admin_id>/delete/', views.admin_delete_view, name='admin_delete'),
+    path('profile/', views.admin_profile_view, name='admin_profile'),
+    path('change-password/', views.admin_change_password_view, name='admin_change_password'),
+]
