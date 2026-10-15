@@ -1,36 +1,46 @@
 {% extends 'management/base.html' %}
+{% load static %}
 
 {% block title %}System Administrators - Creative Management{% endblock %}
 
+{% block breadcrumbs %}
+<a href="{% url 'admin_list' %}">Administrators</a>
+<span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-current">Management Personnel</span>
+{% endblock %}
+
 {% block content %}
 <!-- Page Header -->
-<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 2rem;">
-    <div class="header-text" style="flex: 1; min-width: 260px;">
+<div class="page-header">
+    <div class="header-text">
         <h1>System Administrators</h1>
-        <p>Manage administrative personnel, credentials, and access privileges</p>
+        <p>Manage administrative personnel accounts, security credentials, and system privileges</p>
     </div>
-    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: nowrap; flex-shrink: 0;">
+    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
         {% if user.is_superuser %}
-        <button type="button" class="btn-primary" onclick="openCreateAdminModal();" style="white-space: nowrap;">
-            <i class="fa-solid fa-user-plus"></i> Register Admin
+        <button type="button" class="btn-primary" onclick="openCreateAdminModal();">
+            <i class="fa-solid fa-user-plus"></i>
+            <span>Register Admin</span>
         </button>
         {% endif %}
     </div>
 </div>
 
 <!-- KPI Overview Grid -->
-<div class="stats-overview-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 2rem;">
+<div class="stats-overview-grid" style="margin-bottom: 2rem;">
     <div class="kpi-card">
         <div>
             <div class="kpi-header">
-                <div class="kpi-icon"><i class="fa-solid fa-users-gear"></i></div>
-                <span class="dossier-btn-dark" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600;">Directory</span>
+                <div class="kpi-icon" style="background: rgba(79, 70, 229, 0.1); color: var(--primary);">
+                    <i class="fa-solid fa-users-gear"></i>
+                </div>
+                <span class="dossier-btn-dark">Directory</span>
             </div>
             <div class="kpi-value">{{ total_admins }}</div>
             <div class="kpi-label">Total Administrators</div>
         </div>
         <div class="kpi-footer">
-            <span style="color: var(--text-muted);">Configured admin accounts</span>
+            <span>Configured admin personnel</span>
         </div>
     </div>
 
@@ -38,28 +48,32 @@
     <div class="kpi-card">
         <div>
             <div class="kpi-header">
-                <div class="kpi-icon" style="background: #dbeafe; color: #1e40af;"><i class="fa-solid fa-shield-halved"></i></div>
-                <span class="dossier-btn-dark success" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 700;">Full Access</span>
+                <div class="kpi-icon" style="background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan);">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <span class="dossier-btn-dark success">Root Access</span>
             </div>
-            <div class="kpi-value" style="color: #1e40af;">{{ superusers_count }}</div>
-            <div class="kpi-label">Superusers</div>
+            <div class="kpi-value">{{ superusers_count }}</div>
+            <div class="kpi-label">Super Administrators</div>
         </div>
         <div class="kpi-footer">
-            <span style="color: var(--text-muted);">Root management rights</span>
+            <span>Full privileges enabled</span>
         </div>
     </div>
     {% else %}
     <div class="kpi-card">
         <div>
             <div class="kpi-header">
-                <div class="kpi-icon" style="background: #e0e7ff; color: #4338ca;"><i class="fa-solid fa-user-tie"></i></div>
-                <span class="dossier-btn-dark" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 700;">Staff Level</span>
+                <div class="kpi-icon" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-violet);">
+                    <i class="fa-solid fa-user-tie"></i>
+                </div>
+                <span class="dossier-btn-dark primary">Staff Level</span>
             </div>
-            <div class="kpi-value" style="color: #4338ca;">{{ staff_count }}</div>
+            <div class="kpi-value">{{ staff_count }}</div>
             <div class="kpi-label">Staff Administrators</div>
         </div>
         <div class="kpi-footer">
-            <span style="color: var(--text-muted);">Active staff accounts</span>
+            <span>Active manager accounts</span>
         </div>
     </div>
     {% endif %}
@@ -67,97 +81,103 @@
     <div class="kpi-card">
         <div>
             <div class="kpi-header">
-                <div class="kpi-icon" style="background: #dcfce7; color: #15803d;"><i class="fa-solid fa-circle-check"></i></div>
-                <span class="dossier-btn-dark success" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 700;">Current Session</span>
+                <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <span class="dossier-btn-dark success">Current Session</span>
             </div>
-            <div class="kpi-value" style="font-size: 1.35rem; color: #15803d; line-height: 2.2rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+            <div class="kpi-value" style="font-size: 1.45rem; line-height: 1.8rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
                 {{ user.username }}
             </div>
-            <div class="kpi-label">Logged In ({% if user.is_superuser %}Superuser{% else %}Staff Admin{% endif %})</div>
+            <div class="kpi-label">{% if user.is_superuser %}Superuser{% else %}Staff Admin{% endif %}</div>
         </div>
         <div class="kpi-footer">
-            <span style="color: var(--text-muted);">{{ user.email|default:"Active account" }}</span>
+            <span>{{ user.email|default:"Active account" }}</span>
         </div>
     </div>
 </div>
 
-<!-- Search Bar -->
+<!-- Search Bar & Stats Header -->
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
     <form method="GET" action="{% url 'admin_list' %}" class="search-form">
-        <input type="text" name="q" value="{{ query|default:'' }}" class="search-input" placeholder="Search by username, email, name..." style="min-width: 320px;">
-        <button type="submit" class="btn-search"><i class="fa-solid fa-magnifying-glass"></i></button>
+        <input type="text" name="q" value="{{ query|default:'' }}" class="search-input" placeholder="Search by username, email, name..." style="min-width: 320px;" aria-label="Search administrators">
+        <button type="submit" class="btn-search" aria-label="Submit search"><i class="fa-solid fa-magnifying-glass"></i></button>
         {% if query %}
-        <a href="{% url 'admin_list' %}" class="dossier-btn-dark" style="margin-left: 0.5rem; height: 40px; display: inline-flex; align-items: center;" title="Clear Search">
+        <a href="{% url 'admin_list' %}" class="btn-secondary" style="margin-left: 0.5rem; height: 40px; display: inline-flex; align-items: center;" title="Clear Search">
             <i class="fa-solid fa-xmark"></i> Clear
         </a>
         {% endif %}
     </form>
-    <div style="font-size: 0.85rem; color: var(--text-muted);">
+    <span class="dossier-btn-dark">
         Showing <strong>{{ admins.count }}</strong> administrator{{ admins.count|pluralize }}
-    </div>
+    </span>
 </div>
 
 <!-- Administrators Card Grid -->
-<div class="student-grid" style="margin-bottom: 2.5rem; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));">
+<div class="projects-grid" style="margin-bottom: 2.5rem;">
     {% for admin_item in admins %}
-    <div class="student-card" style="display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+    <div class="student-card project-card-item">
         <div>
             <!-- Top Profile Area -->
-            <div class="card-top" style="margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
-                <div class="card-avatar" style="width: 52px; height: 52px; font-size: 1.35rem; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center;">
-                    {% if admin_item.first_name %}
-                        {{ admin_item.first_name|slice:":1"|upper }}
-                    {% else %}
-                        {{ admin_item.username|slice:":1"|upper }}
-                    {% endif %}
-                </div>
-                <div class="card-info" style="flex: 1; overflow: hidden;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.2rem;">
-                        <h3 style="font-size: 1.15rem; margin: 0; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
-                            {{ admin_item.username }}
-                        </h3>
-                        {% if admin_item.id == user.id %}
-                        <span class="dossier-btn-dark success" style="padding: 0.15rem 0.45rem; font-size: 0.7rem; font-weight: 700;">
-                            YOU
-                        </span>
+            <div class="card-top" style="justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.85rem; flex: 1; min-width: 0;">
+                    <div class="card-avatar" style="width: 48px; height: 48px; font-size: 1.15rem; background: var(--primary-gradient);">
+                        {% if admin_item.first_name %}
+                            {{ admin_item.first_name|slice:":1"|upper }}
+                        {% else %}
+                            {{ admin_item.username|slice:":1"|upper }}
                         {% endif %}
                     </div>
-                    <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">
-                        {% if admin_item.first_name or admin_item.last_name %}
-                            {{ admin_item.first_name }} {{ admin_item.last_name }} &bull;
-                        {% endif %}
-                        {% if admin_item.is_superuser %}Superuser{% else %}Staff Administrator{% endif %}
-                    </p>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;">
+                            <h3 style="font-size: 1.05rem; margin: 0; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                                {{ admin_item.username }}
+                            </h3>
+                            {% if admin_item.id == user.id %}
+                            <span class="dossier-btn-dark success" style="padding: 0.15rem 0.45rem; font-size: 0.68rem; font-weight: 700;">
+                                YOU
+                            </span>
+                            {% endif %}
+                        </div>
+                        <p style="margin: 0; font-size: 0.78rem; color: var(--text-muted);">
+                            {% if admin_item.first_name or admin_item.last_name %}
+                                {{ admin_item.first_name }} {{ admin_item.last_name }} &bull;
+                            {% endif %}
+                            {% if admin_item.is_superuser %}Super Administrator{% else %}Staff Manager{% endif %}
+                        </p>
+                    </div>
+                </div>
+                
+                <div>
+                    {% if admin_item.is_superuser %}
+                    <span class="dossier-btn-dark primary" style="font-size: 0.72rem; padding: 0.2rem 0.55rem;">
+                        <i class="fa-solid fa-shield-halved"></i> Superuser
+                    </span>
+                    {% else %}
+                    <span class="dossier-btn-dark" style="font-size: 0.72rem; padding: 0.2rem 0.55rem;">
+                        <i class="fa-solid fa-user-tie"></i> Staff
+                    </span>
+                    {% endif %}
                 </div>
             </div>
 
             <!-- Card Details -->
-            <div class="card-body" style="display: flex; flex-direction: column; gap: 0.65rem; margin-bottom: 1.25rem;">
-                <div class="card-detail" style="display: flex; align-items: center; gap: 0.65rem; font-size: 0.85rem; color: var(--text-secondary);">
-                    <i class="fa-solid fa-envelope" style="width: 18px; color: var(--primary);"></i>
+            <div style="display: flex; flex-direction: column; gap: 0.65rem; margin-bottom: 1rem; font-size: 0.85rem;">
+                <div style="display: flex; align-items: center; gap: 0.65rem; color: var(--text-secondary);">
+                    <i class="fa-solid fa-envelope" style="width: 16px; color: var(--primary);"></i>
                     <span style="word-break: break-all;">{{ admin_item.email|default:"No email registered" }}</span>
                 </div>
-                <div class="card-detail" style="display: flex; align-items: center; gap: 0.65rem; font-size: 0.85rem; color: var(--text-secondary);">
-                    <i class="fa-solid fa-shield-halved" style="width: 18px; color: var(--primary);"></i>
-                    <span>
-                        {% if admin_item.is_superuser %}
-                            <strong style="color: #1e40af;">Superuser (Full Privileges)</strong>
-                        {% else %}
-                            <strong style="color: var(--text-secondary);">Staff Administrator</strong>
-                        {% endif %}
-                    </span>
-                </div>
-                <div class="card-detail" style="display: flex; align-items: center; gap: 0.65rem; font-size: 0.85rem; color: var(--text-secondary);">
-                    <i class="fa-solid fa-calendar-check" style="width: 18px; color: var(--primary);"></i>
+                <div style="display: flex; align-items: center; gap: 0.65rem; color: var(--text-secondary);">
+                    <i class="fa-solid fa-calendar-check" style="width: 16px; color: var(--primary);"></i>
                     <span>Joined: {{ admin_item.date_joined|date:"M d, Y" }}</span>
                 </div>
-                <div class="card-detail" style="display: flex; align-items: center; gap: 0.65rem; font-size: 0.85rem; color: var(--text-secondary);">
-                    <i class="fa-solid fa-clock" style="width: 18px; color: var(--primary);"></i>
+                <div style="display: flex; align-items: center; gap: 0.65rem; color: var(--text-secondary);">
+                    <i class="fa-solid fa-clock" style="width: 16px; color: var(--primary);"></i>
                     <span>
                         {% if admin_item.id == user.id %}
-                            <span style="color: #15803d; font-weight: 600;"><i class="fa-solid fa-circle" style="font-size: 0.55rem;"></i> Active Session</span>
+                            <span style="color: var(--success-text); font-weight: 600;"><i class="fa-solid fa-circle" style="font-size: 0.55rem;"></i> Active Session</span>
                         {% elif admin_item.last_login %}
-                            Last Login: {{ admin_item.last_login|date:"M d, Y h:i A" }}
+                            Last Login: {{ admin_item.last_login|date:"M d, Y - h:i A" }}
                         {% else %}
                             Last Login: <span style="color: var(--text-muted); font-style: italic;">Never</span>
                         {% endif %}
@@ -168,22 +188,20 @@
 
         <!-- Action / Status Footer -->
         {% if user.is_superuser %}
-        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--border-color); gap: 0.5rem; flex-wrap: wrap;">
-            <div>
-                <button type="button" class="btn-secondary" style="height: 34px; padding: 0 0.85rem; font-size: 0.78rem;"
-                        onclick="openEditAdminModal('{{ admin_item.id }}', '{{ admin_item.username|escapejs }}', '{{ admin_item.email|escapejs }}', '{{ admin_item.first_name|escapejs }}', '{{ admin_item.last_name|escapejs }}', {% if admin_item.is_superuser %}true{% else %}false{% endif %});">
-                    <i class="fa-solid fa-user-pen"></i> Edit Details
-                </button>
-            </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.85rem; border-top: 1px solid var(--border-color); gap: 0.5rem; flex-wrap: wrap;">
+            <button type="button" class="btn-secondary" style="height: 32px; padding: 0 0.85rem; font-size: 0.78rem;"
+                    onclick="openEditAdminModal('{{ admin_item.id }}', '{{ admin_item.username|escapejs }}', '{{ admin_item.email|escapejs }}', '{{ admin_item.first_name|escapejs }}', '{{ admin_item.last_name|escapejs }}', {% if admin_item.is_superuser %}true{% else %}false{% endif %});">
+                <i class="fa-solid fa-user-pen"></i> Edit Profile
+            </button>
             <div>
                 {% if admin_item.id == user.id %}
                 <span class="dossier-btn-dark" style="padding: 0.35rem 0.75rem; font-size: 0.75rem; opacity: 0.6; cursor: not-allowed;" title="You cannot delete your own logged-in account">
                     <i class="fa-solid fa-lock"></i> Protected
                 </span>
                 {% else %}
-                <a href="{% url 'admin_delete' admin_item.id %}" class="dossier-btn-dark danger" style="padding: 0.35rem 0.75rem; font-size: 0.75rem;"
-                   onclick="return confirm('Are you sure you want to permanently delete administrator account {{ admin_item.username }}?');">
-                    <i class="fa-solid fa-trash"></i> Delete
+                <a href="{% url 'admin_delete' admin_item.id %}" class="btn-icon btn-delete" style="width: 32px; height: 32px;"
+                   onclick="return confirm('Are you sure you want to permanently delete administrator account {{ admin_item.username }}?');" title="Delete Administrator">
+                    <i class="fa-solid fa-trash"></i>
                 </a>
                 {% endif %}
             </div>
@@ -200,10 +218,10 @@
         {% endif %}
     </div>
     {% empty %}
-    <div style="grid-column: 1 / -1; background: var(--bg-card); border: 1px solid var(--border-color); padding: 3.5rem; text-align: center; color: var(--text-muted);">
-        <i class="fa-solid fa-users-slash" style="font-size: 2.5rem; color: var(--border-color); margin-bottom: 0.75rem;"></i>
+    <div class="student-card" style="grid-column: 1 / -1; padding: 4rem 2rem; text-align: center;">
+        <i class="fa-solid fa-users-slash" style="font-size: 2.5rem; color: var(--border-color); margin-bottom: 0.75rem; display: block;"></i>
         <h3 style="color: var(--text-primary); margin-bottom: 0.25rem;">No Administrators Found</h3>
-        <p style="margin-bottom: 1.5rem; font-size: 0.85rem;">No admin records matched your search filter "{{ query }}".</p>
+        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.88rem;">No admin records matched your search query "{{ query }}".</p>
         <a href="{% url 'admin_list' %}" class="btn-secondary">Clear Search Filter</a>
     </div>
     {% endfor %}
@@ -211,60 +229,62 @@
 
 {% if user.is_superuser %}
 <!-- ================= MODAL: REGISTER NEW ADMIN ================= -->
-<div id="createAdminModal" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(10, 25, 47, 0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 1rem;">
-    <div class="student-card" style="width: 100%; max-width: 580px; padding: 2rem; background: var(--bg-card); max-height: 90vh; overflow-y: auto;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+<div id="createAdminModal" class="modal-backdrop-custom">
+    <div class="modal-dialog-custom">
+        <div class="modal-header-custom">
             <div>
-                <h2 style="font-size: 1.25rem; color: var(--text-primary); margin: 0;"><i class="fa-solid fa-user-shield" style="color: var(--primary);"></i> Register New Administrator</h2>
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0;">Create a new administrator account with system credentials</p>
+                <h2 class="modal-title-custom"><i class="fa-solid fa-user-shield" style="color: var(--primary); margin-right: 6px;"></i> Register Administrator</h2>
+                <small style="font-size: 0.78rem; color: var(--text-muted);">Create new administrative credentials with role permissions</small>
             </div>
-            <button type="button" onclick="closeCreateAdminModal();" style="background: none; border: none; font-size: 1.25rem; color: var(--text-muted); cursor: pointer;">
-                <i class="fa-solid fa-xmark"></i>
+            <button type="button" class="toast-close" onclick="closeCreateAdminModal();" aria-label="Close dialog">
+                <i class="fa-solid fa-xmark" style="font-size: 1.1rem;"></i>
             </button>
         </div>
 
         <form method="POST" action="{% url 'admin_create' %}">
             {% csrf_token %}
-            <div class="form-grid">
-                <div class="form-group" style="grid-column: span 2;">
-                    <label class="form-label" for="new_username">Username *</label>
-                    <input type="text" id="new_username" name="username" class="form-input" placeholder="e.g. jsmith_admin" required autofocus>
-                </div>
+            <div class="modal-body-custom">
+                <div class="form-grid">
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label class="form-label" for="new_username">Username *</label>
+                        <input type="text" id="new_username" name="username" class="form-input" placeholder="e.g. jsmith_admin" required autofocus>
+                    </div>
 
-                <div class="form-group" style="grid-column: span 2;">
-                    <label class="form-label" for="new_email">Email Address *</label>
-                    <input type="email" id="new_email" name="email" class="form-input" placeholder="admin@creative.com" required>
-                </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label class="form-label" for="new_email">Email Address *</label>
+                        <input type="email" id="new_email" name="email" class="form-input" placeholder="admin@creative.com" required>
+                    </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="new_first_name">First Name</label>
-                    <input type="text" id="new_first_name" name="first_name" class="form-input" placeholder="John">
-                </div>
+                    <div class="form-group">
+                        <label class="form-label" for="new_first_name">First Name</label>
+                        <input type="text" id="new_first_name" name="first_name" class="form-input" placeholder="John">
+                    </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="new_last_name">Last Name</label>
-                    <input type="text" id="new_last_name" name="last_name" class="form-input" placeholder="Smith">
-                </div>
+                    <div class="form-group">
+                        <label class="form-label" for="new_last_name">Last Name</label>
+                        <input type="text" id="new_last_name" name="last_name" class="form-input" placeholder="Smith">
+                    </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="new_password">Password *</label>
-                    <input type="password" id="new_password" name="password" class="form-input" placeholder="••••••••" required>
-                </div>
+                    <div class="form-group">
+                        <label class="form-label" for="new_password">Password *</label>
+                        <input type="password" id="new_password" name="password" class="form-input" placeholder="••••••••" required>
+                    </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="new_confirm_password">Confirm Password *</label>
-                    <input type="password" id="new_confirm_password" name="confirm_password" class="form-input" placeholder="••••••••" required>
-                </div>
+                    <div class="form-group">
+                        <label class="form-label" for="new_confirm_password">Confirm Password *</label>
+                        <input type="password" id="new_confirm_password" name="confirm_password" class="form-input" placeholder="••••••••" required>
+                    </div>
 
-                <div class="form-group" style="grid-column: span 2;">
-                    <label style="display: flex; align-items: center; gap: 0.65rem; font-size: 0.85rem; color: var(--text-primary); cursor: pointer; user-select: none;">
-                        <input type="checkbox" name="is_superuser" value="1" checked style="width: 16px; height: 16px;">
-                        <span>Grant <strong>Superuser Privileges</strong> (Full management and administrative permissions)</span>
-                    </label>
+                    <div class="form-group" style="grid-column: span 2; margin-top: 0.5rem;">
+                        <label style="display: flex; align-items: center; gap: 0.65rem; font-size: 0.85rem; color: var(--text-primary); cursor: pointer; user-select: none;">
+                            <input type="checkbox" name="is_superuser" value="1" checked style="width: 16px; height: 16px; accent-color: var(--primary);">
+                            <span>Grant <strong>Superuser Privileges</strong> (Full management and administrative permissions)</span>
+                        </label>
+                    </div>
                 </div>
             </div>
 
-            <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <div class="modal-footer-custom">
                 <button type="button" class="btn-secondary" onclick="closeCreateAdminModal();">Cancel</button>
                 <button type="submit" class="btn-primary">
                     <i class="fa-solid fa-user-plus"></i> Create Administrator
@@ -275,55 +295,57 @@
 </div>
 
 <!-- ================= MODAL: EDIT ADMIN ================= -->
-<div id="editAdminModal" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(10, 25, 47, 0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 1rem;">
-    <div class="student-card" style="width: 100%; max-width: 580px; padding: 2rem; background: var(--bg-card); max-height: 90vh; overflow-y: auto;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+<div id="editAdminModal" class="modal-backdrop-custom">
+    <div class="modal-dialog-custom">
+        <div class="modal-header-custom">
             <div>
-                <h2 style="font-size: 1.25rem; color: var(--text-primary); margin: 0;"><i class="fa-solid fa-user-pen" style="color: var(--primary);"></i> Edit Administrator</h2>
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0;">Update account details, role permissions, or reset password</p>
+                <h2 class="modal-title-custom"><i class="fa-solid fa-user-pen" style="color: var(--primary); margin-right: 6px;"></i> Edit Administrator</h2>
+                <small style="font-size: 0.78rem; color: var(--text-muted);">Update personal details, administrative role, or password</small>
             </div>
-            <button type="button" onclick="closeEditAdminModal();" style="background: none; border: none; font-size: 1.25rem; color: var(--text-muted); cursor: pointer;">
-                <i class="fa-solid fa-xmark"></i>
+            <button type="button" class="toast-close" onclick="closeEditAdminModal();" aria-label="Close dialog">
+                <i class="fa-solid fa-xmark" style="font-size: 1.1rem;"></i>
             </button>
         </div>
 
         <form id="editAdminForm" method="POST" action="">
             {% csrf_token %}
-            <div class="form-grid">
-                <div class="form-group" style="grid-column: span 2;">
-                    <label class="form-label" for="edit_username">Username *</label>
-                    <input type="text" id="edit_username" name="username" class="form-input" required>
-                </div>
+            <div class="modal-body-custom">
+                <div class="form-grid">
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label class="form-label" for="edit_username">Username *</label>
+                        <input type="text" id="edit_username" name="username" class="form-input" required>
+                    </div>
 
-                <div class="form-group" style="grid-column: span 2;">
-                    <label class="form-label" for="edit_email">Email Address *</label>
-                    <input type="email" id="edit_email" name="email" class="form-input" required>
-                </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label class="form-label" for="edit_email">Email Address *</label>
+                        <input type="email" id="edit_email" name="email" class="form-input" required>
+                    </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="edit_first_name">First Name</label>
-                    <input type="text" id="edit_first_name" name="first_name" class="form-input">
-                </div>
+                    <div class="form-group">
+                        <label class="form-label" for="edit_first_name">First Name</label>
+                        <input type="text" id="edit_first_name" name="first_name" class="form-input">
+                    </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="edit_last_name">Last Name</label>
-                    <input type="text" id="edit_last_name" name="last_name" class="form-input">
-                </div>
+                    <div class="form-group">
+                        <label class="form-label" for="edit_last_name">Last Name</label>
+                        <input type="text" id="edit_last_name" name="last_name" class="form-input">
+                    </div>
 
-                <div class="form-group" style="grid-column: span 2;">
-                    <label class="form-label" for="edit_new_password">New Password (Leave blank to keep current password)</label>
-                    <input type="password" id="edit_new_password" name="new_password" class="form-input" placeholder="Enter new password to reset">
-                </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label class="form-label" for="edit_new_password">New Password (Leave blank to keep existing password)</label>
+                        <input type="password" id="edit_new_password" name="new_password" class="form-input" placeholder="Enter new password to reset">
+                    </div>
 
-                <div class="form-group" style="grid-column: span 2;">
-                    <label style="display: flex; align-items: center; gap: 0.65rem; font-size: 0.85rem; color: var(--text-primary); cursor: pointer; user-select: none;">
-                        <input type="checkbox" id="edit_is_superuser" name="is_superuser" value="1" style="width: 16px; height: 16px;">
-                        <span>Superuser Privileges (Full system access)</span>
-                    </label>
+                    <div class="form-group" style="grid-column: span 2; margin-top: 0.5rem;">
+                        <label style="display: flex; align-items: center; gap: 0.65rem; font-size: 0.85rem; color: var(--text-primary); cursor: pointer; user-select: none;">
+                            <input type="checkbox" id="edit_is_superuser" name="is_superuser" value="1" style="width: 16px; height: 16px; accent-color: var(--primary);">
+                            <span>Superuser Privileges (Root administration rights)</span>
+                        </label>
+                    </div>
                 </div>
             </div>
 
-            <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <div class="modal-footer-custom">
                 <button type="button" class="btn-secondary" onclick="closeEditAdminModal();">Cancel</button>
                 <button type="submit" class="btn-primary">
                     <i class="fa-solid fa-floppy-disk"></i> Save Admin Changes
@@ -336,12 +358,12 @@
 <script>
 function openCreateAdminModal() {
     const modal = document.getElementById('createAdminModal');
-    if (modal) modal.style.display = 'flex';
+    if (modal) modal.classList.add('show');
 }
 
 function closeCreateAdminModal() {
     const modal = document.getElementById('createAdminModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) modal.classList.remove('show');
 }
 
 function openEditAdminModal(id, username, email, firstName, lastName, isSuperuser) {
@@ -363,15 +385,15 @@ function openEditAdminModal(id, username, email, firstName, lastName, isSuperuse
     if (pEl) pEl.value = '';
     if (sEl) sEl.checked = !!isSuperuser;
 
-    if (modal) modal.style.display = 'flex';
+    if (modal) modal.classList.add('show');
 }
 
 function closeEditAdminModal() {
     const modal = document.getElementById('editAdminModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) modal.classList.remove('show');
 }
 
-// Close modals on clicking backdrop
+// Close modals when clicking on backdrop
 window.addEventListener('click', function(e) {
     const createModal = document.getElementById('createAdminModal');
     const editModal = document.getElementById('editAdminModal');

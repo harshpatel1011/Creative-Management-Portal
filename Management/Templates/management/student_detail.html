@@ -1,43 +1,56 @@
 {% extends 'management/base.html' %}
+{% load static %}
 
-{% block title %}{{ student.name }} - Student Details{% endblock %}
+{% block title %}{{ student.name }} - Student Dossier{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'admin_student_list' %}">Students</a>
+<span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-current">{{ student.name }}</span>
+{% endblock %}
 
 {% block content %}
-<!-- Top Header / Navigation -->
-<div class="page-header" style="margin-bottom: 2rem;">
+<!-- Top Header & Actions -->
+<div class="page-header">
     <div class="header-text">
-        <h1>Student Details</h1>
-        <p>Comprehensive Academic Profile & Project Records</p>
+        <h1>Student Dossier</h1>
+        <p>Comprehensive academic record, projects portfolio, and evaluation history</p>
     </div>
     <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+        <a href="{% url 'admin_student_list' %}" class="back-btn">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>Students Roster</span>
+        </a>
         <a href="{% url 'admin_student_edit' student.id %}?next=detail" class="btn-primary">
-            <i class="fa-solid fa-pen-to-square"></i> Edit Student
+            <i class="fa-solid fa-pen-to-square"></i>
+            <span>Edit Profile</span>
         </a>
         <a href="{% url 'admin_student_delete' student.id %}" class="btn-danger" onclick="return confirm('Are you sure you want to delete {{ student.name }}? All associated marks and projects will also be deleted.');">
-            <i class="fa-solid fa-trash"></i> Delete
+            <i class="fa-solid fa-trash"></i>
+            <span>Delete</span>
         </a>
     </div>
 </div>
 
-<!-- Student Hero Card -->
-<div class="student-card" style="margin-bottom: 2rem; padding: 2.25rem;">
+<!-- Student Profile Hero Card -->
+<div class="student-card" style="margin-bottom: 2rem; padding: 2rem 2.25rem;">
     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.5rem;">
         <div style="display: flex; align-items: center; gap: 1.5rem; flex: 1; min-width: 280px;">
-            <div class="card-avatar" style="width: 72px; height: 72px; font-size: 2rem; background: var(--primary); color: #ffffff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: 'Playfair Display', serif; font-weight: 700;">
+            <div class="card-avatar" style="width: 72px; height: 72px; font-size: 2rem;">
                 {{ student.name|slice:":1"|upper }}
             </div>
             <div style="flex: 1;">
-                <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
-                    <h2 style="font-size: 1.75rem; color: var(--text-primary); margin: 0; line-height: 1.2;">{{ student.name }}</h2>
-                    <span class="dossier-btn-dark success" style="padding: 0.2rem 0.65rem; font-size: 0.75rem; font-weight: 700;">
+                <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.4rem;">
+                    <h2 style="font-size: 1.65rem; color: var(--text-primary); margin: 0;">{{ student.name }}</h2>
+                    <span class="dossier-btn-dark success">
                         <i class="fa-solid fa-circle-check"></i> Active Student
                     </span>
                 </div>
-                <div style="display: flex; gap: 0.75rem 1.25rem; align-items: center; flex-wrap: wrap; color: var(--text-secondary); font-size: 0.88rem;">
-                    <span style="display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap;">
-                        <i class="fa-solid fa-graduation-cap" style="color: var(--primary); margin-right: 2px;"></i>
+                <div style="display: flex; gap: 0.85rem 1.25rem; align-items: center; flex-wrap: wrap; color: var(--text-secondary); font-size: 0.88rem;">
+                    <span style="display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        <i class="fa-solid fa-graduation-cap" style="color: var(--primary);"></i>
                         {% for c in student.courses_list %}
-                            <span class="dossier-btn-dark" style="font-size: 0.75rem; padding: 0.15rem 0.5rem; font-weight: 600;">{{ c }}</span>
+                            <span class="dossier-btn-dark" style="font-size: 0.75rem; padding: 0.15rem 0.55rem;">{{ c }}</span>
                         {% empty %}
                             <strong>{{ student.course }}</strong>
                         {% endfor %}
@@ -53,25 +66,77 @@
                     <span><i class="fa-solid fa-phone" style="color: var(--primary); margin-right: 4px;"></i> {{ student.phone }}</span>
                     {% endif %}
                     <span>&bull;</span>
-                    <span><i class="fa-solid fa-calendar-days" style="color: var(--primary); margin-right: 4px;"></i> Enrolled: {{ student.created_at|date:"M d, Y" }}</span>
+                    <span><i class="fa-solid fa-calendar-days" style="color: var(--primary); margin-right: 4px;"></i> Registered {{ student.created_at|date:"M d, Y" }}</span>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Student Projects Section -->
-<div class="student-card" style="padding: 2rem; margin-bottom: 2rem;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+<!-- Academic Performance KPI Stats (Calculated from Real Data) -->
+<div class="stats-overview-grid" style="margin-bottom: 2rem;">
+    <div class="kpi-card">
         <div>
-            <h3 style="font-size: 1.25rem; color: var(--text-primary); margin-bottom: 0.25rem;">Projects Portfolio ({{ projects.count }})</h3>
-            <p style="font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Student project submissions and current review statuses</p>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(79, 70, 229, 0.1); color: var(--primary);">
+                    <i class="fa-solid fa-chart-pie"></i>
+                </div>
+                <span class="dossier-btn-dark success">Overall Average</span>
+            </div>
+            <div class="kpi-value">{{ percentage }}%</div>
+            <div class="kpi-label">Cumulative Performance</div>
         </div>
-        <a href="{% url 'admin_projects' %}?student_id={{ student.id }}" class="dossier-btn-dark" style="font-size: 0.8rem; padding: 0.4rem 0.85rem;">
-            <i class="fa-solid fa-diagram-project"></i> Filter in Projects
+        <div class="kpi-footer">
+            <span>{{ total_obtained }} of {{ total_possible }} total marks</span>
+        </div>
+    </div>
+
+    <div class="kpi-card">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan);">
+                    <i class="fa-solid fa-diagram-project"></i>
+                </div>
+                <span class="dossier-btn-dark primary">Portfolio</span>
+            </div>
+            <div class="kpi-value">{{ projects.count }}</div>
+            <div class="kpi-label">Submitted Projects</div>
+        </div>
+        <div class="kpi-footer">
+            <span>Student technical submissions</span>
+        </div>
+    </div>
+
+    <div class="kpi-card">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-violet);">
+                    <i class="fa-solid fa-file-signature"></i>
+                </div>
+                <span class="dossier-btn-dark">Assessments</span>
+            </div>
+            <div class="kpi-value">{{ marks_records.count }}</div>
+            <div class="kpi-label">Enrolled Exams</div>
+        </div>
+        <div class="kpi-footer">
+            <span>Evaluated examinations</span>
+        </div>
+    </div>
+</div>
+
+<!-- Projects Portfolio Section -->
+<div class="student-card" style="padding: 1.75rem 2rem; margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.75rem;">
+        <div>
+            <h3 style="font-size: 1.2rem; color: var(--text-primary); margin-bottom: 0.2rem;">Projects Portfolio ({{ projects.count }})</h3>
+            <small style="color: var(--text-muted); font-size: 0.8rem;">Project submissions, attachments, and approval decisions</small>
+        </div>
+        <a href="{% url 'admin_projects' %}?student_id={{ student.id }}" class="btn-secondary" style="height: 32px; padding: 0 0.85rem; font-size: 0.78rem;">
+            <i class="fa-solid fa-filter" style="margin-right: 4px;"></i> Filter in Projects Board
         </a>
     </div>
 
+    {% if projects %}
     <div class="table-responsive">
         <table class="data-table">
             <thead>
@@ -87,42 +152,38 @@
                 {% for p in projects %}
                 <tr>
                     <td>
-                        <a href="{% url 'admin_project_detail' p.id %}" style="color: var(--primary); text-decoration: underline; font-weight: 600;">
+                        <a href="{% url 'admin_project_detail' p.id %}" style="color: var(--primary); font-weight: 600; text-decoration: none;">
                             {{ p.title }}
                         </a>
                     </td>
-                    <td style="max-width: 320px; color: var(--text-secondary);">{{ p.description|truncatewords:20 }}</td>
+                    <td style="max-width: 320px; color: var(--text-secondary); font-size: 0.85rem;">
+                        {{ p.description|truncatewords:16|default:"No description provided." }}
+                    </td>
                     <td>
                         {% if p.status == 'Approved' %}
-                        <span class="dossier-btn-dark success" style="padding: 0.2rem 0.6rem; font-size: 0.75rem; font-weight: 700;">
+                        <span class="dossier-btn-dark success" style="padding: 0.2rem 0.55rem; font-size: 0.72rem;">
                             <i class="fa-solid fa-circle-check"></i> Approved
                         </span>
                         {% elif p.status == 'Rejected' %}
-                        <span class="dossier-btn-dark danger" style="padding: 0.2rem 0.6rem; font-size: 0.75rem; font-weight: 700;">
+                        <span class="dossier-btn-dark danger" style="padding: 0.2rem 0.55rem; font-size: 0.72rem;">
                             <i class="fa-solid fa-circle-xmark"></i> Rejected
                         </span>
                         {% else %}
-                        <span class="dossier-btn-dark" style="padding: 0.2rem 0.6rem; font-size: 0.75rem; font-weight: 600;">
+                        <span class="dossier-btn-dark" style="padding: 0.2rem 0.55rem; font-size: 0.72rem; background: var(--warning-light); color: var(--warning-text); border-color: var(--warning-border);">
                             <i class="fa-solid fa-clock"></i> Submitted
                         </span>
                         {% endif %}
                     </td>
-                    <td>{{ p.submitted_at|date:"M d, Y" }}</td>
+                    <td><small style="color: var(--text-muted); font-size: 0.8rem;">{{ p.submitted_at|date:"M d, Y" }}</small></td>
                     <td style="text-align: right;">
-                        <div style="display: flex; gap: 0.35rem; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
+                        <div style="display: flex; gap: 0.4rem; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
                             {% for f in p.all_files %}
-                            {% if forloop.counter <= 2 %}
-                            <a href="{% if f.file %}{{ f.file.url }}{% else %}{{ f.url }}{% endif %}" download class="dossier-btn-dark" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" title="{{ f.filename }}">
+                            <a href="{% if f.file %}{{ f.file.url }}{% else %}{{ f.url }}{% endif %}" target="_blank" download class="btn-secondary" style="height: 28px; padding: 0 0.55rem; font-size: 0.72rem;" title="{{ f.filename }}">
                                 <i class="fa-solid fa-download"></i> {{ f.file_extension|default:"File" }}
                             </a>
-                            {% elif forloop.counter == 3 %}
-                            <a href="{% url 'admin_project_detail' p.id %}" class="dossier-btn-dark" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" title="View all {{ p.all_files|length }} files in project details">
-                                <i class="fa-solid fa-folder-open"></i> +{{ p.all_files|length|add:"-2" }} more
-                            </a>
-                            {% endif %}
                             {% endfor %}
                             {% for l in p.all_links %}
-                            <a href="{{ l.url }}" target="_blank" class="dossier-btn-dark" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" title="{{ l.url }}">
+                            <a href="{{ l.url }}" target="_blank" class="btn-secondary" style="height: 28px; padding: 0 0.55rem; font-size: 0.72rem;" title="{{ l.url }}">
                                 <i class="{{ l.icon_class }}"></i> {{ l.display_label }}
                             </a>
                             {% endfor %}
@@ -132,28 +193,26 @@
                         </div>
                     </td>
                 </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No projects submitted by this student yet.</td>
-                </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+    {% else %}
+    <div style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
+        <i class="fa-solid fa-diagram-project" style="font-size: 2rem; color: var(--border-color); display: block; margin-bottom: 0.5rem;"></i>
+        No projects submitted by this student yet.
+    </div>
+    {% endif %}
 </div>
 
-<!-- Exam Performance Section -->
-<div class="student-card" style="padding: 2rem; margin-bottom: 2rem;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
-        <div>
-            <h3 style="font-size: 1.25rem; color: var(--text-primary); margin-bottom: 0.25rem;">Exam Performance & Marks</h3>
-            <p style="font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">All evaluated exams and assigned grades</p>
-        </div>
-        <a href="{% url 'admin_exam_list' %}" class="dossier-btn-dark" style="font-size: 0.8rem; padding: 0.4rem 0.85rem;">
-            <i class="fa-solid fa-file-signature"></i> Manage Exams
-        </a>
+<!-- Examination & Marks Record Section -->
+<div class="student-card" style="padding: 1.75rem 2rem; margin-bottom: 2rem;">
+    <div style="margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+        <h3 style="font-size: 1.2rem; color: var(--text-primary); margin-bottom: 0.2rem;">Assessment & Marks Record ({{ marks_records.count }})</h3>
+        <small style="color: var(--text-muted); font-size: 0.8rem;">Detailed evaluation history across all enrolled exams</small>
     </div>
 
+    {% if marks_records %}
     <div class="table-responsive">
         <table class="data-table">
             <thead>
@@ -170,29 +229,31 @@
             <tbody>
                 {% for m in marks_records %}
                 <tr>
-                    <td><strong>{{ m.exam.title }}</strong></td>
-                    <td>{{ m.exam.subject }}</td>
                     <td>
-                        {{ m.exam.exam_date|date:"M d, Y" }}
+                        <strong style="color: var(--text-primary); font-size: 0.9rem;">{{ m.exam.title }}</strong>
+                    </td>
+                    <td><span class="dossier-btn-dark" style="font-size: 0.75rem;">{{ m.exam.subject }}</span></td>
+                    <td>
+                        <span style="font-size: 0.85rem;">{{ m.exam.exam_date|date:"M d, Y" }}</span>
                         {% if m.exam.exam_time %}
-                        <br><small style="color: var(--text-muted);"><i class="fa-solid fa-clock" style="font-size: 0.75rem;"></i> {{ m.exam.exam_time }}</small>
+                        <br><small style="color: var(--text-muted); font-size: 0.72rem;"><i class="fa-solid fa-clock"></i> {{ m.exam.exam_time }}</small>
                         {% endif %}
                     </td>
                     <td>
                         {% if m.is_absent %}
-                        <strong style="color: #dc2626;"><i class="fa-solid fa-user-xmark"></i> Absent</strong>
+                        <strong style="color: var(--danger); font-size: 0.85rem;"><i class="fa-solid fa-user-xmark"></i> Absent</strong>
+                        {% elif m.marks_obtained is not None %}
+                        <strong style="color: var(--text-primary); font-size: 0.95rem;">{{ m.marks_obtained }}</strong>
                         {% else %}
-                        <strong>{{ m.marks_obtained|default:"Pending" }}</strong>
+                        <span style="color: var(--warning-text); font-size: 0.8rem; font-weight: 500;">Pending</span>
                         {% endif %}
                     </td>
-                    <td>{{ m.exam.total_marks }}</td>
+                    <td><strong style="color: var(--text-primary);">{{ m.exam.total_marks }}</strong></td>
                     <td>
                         {% if m.is_absent or m.grade == 'Absent' %}
-                        <span class="dossier-btn-dark danger" style="display: inline-block; padding: 0.2rem 0.5rem; font-weight: 700; font-size: 0.85rem;">
-                            Absent
-                        </span>
+                        <span class="dossier-btn-dark danger" style="font-size: 0.75rem; padding: 0.15rem 0.5rem;">Absent</span>
                         {% elif m.grade %}
-                        <span class="dossier-btn-dark {% if m.grade == 'F' %}danger{% else %}success{% endif %}" style="display: inline-block; padding: 0.2rem 0.5rem; font-weight: 700; font-size: 0.85rem;">
+                        <span class="dossier-btn-dark {% if m.grade == 'F' %}danger{% else %}success{% endif %}" style="font-size: 0.75rem; padding: 0.15rem 0.5rem; font-weight: 700;">
                             {{ m.grade }}
                         </span>
                         {% else %}
@@ -200,18 +261,20 @@
                         {% endif %}
                     </td>
                     <td style="text-align: right;">
-                        <a href="{% url 'admin_exam_detail' m.exam.id %}" class="dossier-btn-dark" style="padding: 0.35rem 0.75rem; font-size: 0.75rem;" title="Open Exam Evaluation">
-                            <i class="fa-solid fa-clipboard-check"></i> Exam Card
+                        <a href="{% url 'admin_exam_detail' m.exam.id %}" class="btn-secondary" style="height: 30px; padding: 0 0.65rem; font-size: 0.75rem;">
+                            Grade Entry
                         </a>
                     </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">No exam marks recorded for this student yet.</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+    {% else %}
+    <div style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
+        <i class="fa-solid fa-file-signature" style="font-size: 2rem; color: var(--border-color); display: block; margin-bottom: 0.5rem;"></i>
+        This student is not enrolled in any examinations yet.
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

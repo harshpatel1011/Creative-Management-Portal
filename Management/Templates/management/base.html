@@ -4,97 +4,264 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Creative Management{% endblock %}</title>
-    <!-- Google Fonts -->
+    <title>{% block title %}Creative Management Portal{% endblock %}</title>
+    <!-- Google Fonts Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
-    <!-- FontAwesome Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome 6.5.1 Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <!-- Style CSS -->
+    <!-- Design System CSS -->
     <link rel="stylesheet" href="{% static 'style.css' %}">
 </head>
 <body>
     <div class="app-container">
         {% block sidebar %}
-        <!-- Admin Sidebar -->
-        <div class="dossier-sidebar">
-            <div style="margin-bottom: 2rem; padding: 0.5rem 0.25rem 0;">
-                <a href="{% url 'admin_dashboard' %}">
-                    <img src="{% static 'creative-logo-white.svg' %}" alt="Creative Logo">
+        <!-- Mobile Sidebar Backdrop Overlay -->
+        <div id="sidebarBackdrop" class="sidebar-backdrop" onclick="toggleSidebar(false)"></div>
+
+        <!-- Premium Modern Sidebar (Vengeance / Skiper Inspired) -->
+        <aside id="appSidebar" class="dossier-sidebar" aria-label="Main Navigation">
+            <!-- Brand Header -->
+            <div class="sidebar-brand">
+                <a href="{% url 'admin_dashboard' %}" class="brand-link">
+                    <img src="{% static 'creative-logo-white.svg' %}" alt="Creative Logo" class="brand-logo-img">
+                    <div class="brand-text-block">
+                        <span class="brand-title">Creative</span>
+                        <span class="brand-badge"><i class="fa-solid fa-shield-halved"></i> Management</span>
+                    </div>
                 </a>
             </div>
-            <div class="dossier-actions">
-                <!-- Management Category -->
-                <div style="font-size: 0.75rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem; padding-left: 1rem;">Management</div>
-                <a href="{% url 'admin_dashboard' %}" class="dossier-btn" style="{% if request.resolver_match.url_name == 'admin_dashboard' %}background-color: var(--bg-main); color: var(--primary);{% endif %}"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
-                <a href="{% url 'admin_student_list' %}" class="dossier-btn" style="{% if 'student' in request.resolver_match.url_name %}background-color: var(--bg-main); color: var(--primary);{% endif %}"><i class="fa-solid fa-user-graduate"></i> Students</a>
-                <a href="{% url 'admin_projects' %}" class="dossier-btn" style="{% if 'project' in request.resolver_match.url_name %}background-color: var(--bg-main); color: var(--primary);{% endif %}"><i class="fa-solid fa-diagram-project"></i> Projects</a>
-                <a href="{% url 'admin_exam_list' %}" class="dossier-btn" style="{% if 'exam' in request.resolver_match.url_name %}background-color: var(--bg-main); color: var(--primary);{% endif %}"><i class="fa-solid fa-file-signature"></i> Exams & Marks</a>
-                <a href="{% url 'admin_list' %}" class="dossier-btn" style="{% if 'admin_list' in request.resolver_match.url_name or 'admin_create' in request.resolver_match.url_name or 'admin_edit' in request.resolver_match.url_name %}background-color: var(--bg-main); color: var(--primary);{% endif %}"><i class="fa-solid fa-shield-halved"></i> Admins</a>
 
-                <a href="{% url 'admin_profile' %}" class="dossier-btn" style="margin-top: auto; {% if request.resolver_match.url_name == 'admin_profile' %}background-color: var(--bg-main); color: var(--primary);{% endif %}"><i class="fa-solid fa-user-circle"></i> Profile</a>
-                <a href="{% url 'admin_logout' %}" class="dossier-btn danger"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+            <!-- Navigation Sections -->
+            <nav class="dossier-actions">
+                <div class="nav-section-title">Overview</div>
+                <a href="{% url 'admin_dashboard' %}" class="dossier-btn {% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </a>
+
+                <div class="nav-section-title">Academic Management</div>
+                <a href="{% url 'admin_student_list' %}" class="dossier-btn {% if 'student' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fa-solid fa-user-graduate"></i>
+                    <span>Students</span>
+                </a>
+                <a href="{% url 'admin_projects' %}" class="dossier-btn {% if 'project' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fa-solid fa-diagram-project"></i>
+                    <span>Projects</span>
+                </a>
+                <a href="{% url 'admin_exam_list' %}" class="dossier-btn {% if 'exam' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fa-solid fa-file-signature"></i>
+                    <span>Exams & Marks</span>
+                </a>
+
+                <div class="nav-section-title">Administration</div>
+                <a href="{% url 'admin_list' %}" class="dossier-btn {% if 'admin_list' in request.resolver_match.url_name or 'admin_create' in request.resolver_match.url_name or 'admin_edit' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fa-solid fa-users-gear"></i>
+                    <span>Administrators</span>
+                </a>
+
+                <div class="nav-section-title">Account</div>
+                <a href="{% url 'admin_profile' %}" class="dossier-btn {% if request.resolver_match.url_name == 'admin_profile' %}active{% endif %}">
+                    <i class="fa-solid fa-circle-user"></i>
+                    <span>Profile</span>
+                </a>
+                <a href="{% url 'admin_change_password' %}" class="dossier-btn {% if request.resolver_match.url_name == 'admin_change_password' %}active{% endif %}">
+                    <i class="fa-solid fa-key"></i>
+                    <span>Change Password</span>
+                </a>
+
+                <a href="{% url 'admin_logout' %}" class="dossier-btn danger">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Sign Out</span>
+                </a>
+            </nav>
+
+            <!-- Sidebar User Card Footer -->
+            {% if user and user.is_authenticated or user.username %}
+            <div class="sidebar-user-footer">
+                <div class="sidebar-user-avatar">
+                    {{ user.username|default:"A"|slice:":1"|upper }}
+                </div>
+                <div class="sidebar-user-info">
+                    <div class="sidebar-user-name">{{ user.username|default:"Admin" }}</div>
+                    <div class="sidebar-user-role">
+                        {% if user.is_superuser %}Super Administrator{% else %}Staff Manager{% endif %}
+                    </div>
+                </div>
             </div>
-        </div>
+            {% endif %}
+        </aside>
         {% endblock %}
 
-        <!-- Floating Toast Notifications (Zero Layout Shift) -->
-        <div id="toast-container" class="toast-container" aria-live="polite">
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="toast-card toast-{{ message.tags|default:'info' }}" role="alert">
-                        <div class="toast-icon">
-                            {% if message.tags == 'error' %}
-                                <i class="fa-solid fa-circle-exclamation"></i>
-                            {% elif message.tags == 'success' %}
-                                <i class="fa-solid fa-circle-check"></i>
-                            {% elif message.tags == 'warning' %}
-                                <i class="fa-solid fa-triangle-exclamation"></i>
-                            {% else %}
-                                <i class="fa-solid fa-circle-info"></i>
-                            {% endif %}
-                        </div>
-                        <div class="toast-content">
-                            <strong class="toast-title">
-                                {% if message.tags == 'error' %}Error{% elif message.tags == 'success' %}Success{% elif message.tags == 'warning' %}Warning{% else %}Notice{% endif %}
-                            </strong>
-                            <p class="toast-message">{{ message }}</p>
-                        </div>
-                        <button type="button" class="toast-close" onclick="dismissToast(this.closest('.toast-card'))" aria-label="Close">
-                            <i class="fa-solid fa-xmark"></i>
-                        </button>
-                        <div class="toast-progress"></div>
+        <!-- Main Shell Area -->
+        <div class="main-content">
+            <!-- Top Sticky Navigation Bar -->
+            <header class="top-navbar">
+                <div class="topbar-left">
+                    <button type="button" class="mobile-nav-toggle" onclick="toggleSidebar()" aria-label="Toggle navigation menu">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <div class="breadcrumb-nav">
+                        <a href="{% url 'admin_dashboard' %}"><i class="fa-solid fa-house" style="font-size: 0.8rem;"></i></a>
+                        <span class="breadcrumb-separator">/</span>
+                        {% block breadcrumbs %}
+                        <span class="breadcrumb-current">Management Portal</span>
+                        {% endblock %}
                     </div>
-                {% endfor %}
-            {% endif %}
-        </div>
+                </div>
 
-        <!-- Main Content Area -->
-        <main class="main-content">
-            <div class="content-wrapper">
-                {% block content %}{% endblock %}
+                <div class="topbar-right">
+                    <div class="workspace-pill">
+                        <span>Management Workspace</span>
+                    </div>
+
+                    <!-- User Profile Dropdown -->
+                    {% if user and user.is_authenticated or user.username %}
+                    <div class="user-menu-wrapper" id="userMenuWrapper">
+                        <button type="button" class="user-profile-btn" onclick="toggleUserDropdown(event)" aria-expanded="false" aria-haspopup="true">
+                            <div class="topbar-avatar">
+                                {{ user.username|default:"A"|slice:":1"|upper }}
+                            </div>
+                            <span class="topbar-user-name">{{ user.username|default:"Admin" }}</span>
+                            <i class="fa-solid fa-chevron-down topbar-chevron"></i>
+                        </button>
+                        <div id="userDropdownMenu" class="user-dropdown-menu" role="menu">
+                            <div class="user-dropdown-header">
+                                <span class="user-dropdown-title">{{ user.username }}</span>
+                                <span class="user-dropdown-subtitle">{{ user.email|default:"Active Admin Account" }}</span>
+                            </div>
+                            <a href="{% url 'admin_profile' %}" class="user-dropdown-item" role="menuitem">
+                                <i class="fa-solid fa-id-card"></i> My Profile
+                            </a>
+                            <a href="{% url 'admin_change_password' %}" class="user-dropdown-item" role="menuitem">
+                                <i class="fa-solid fa-key"></i> Security
+                            </a>
+                            <a href="{% url 'admin_logout' %}" class="user-dropdown-item danger" role="menuitem">
+                                <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </header>
+
+            <!-- Floating Toast Notifications (Zero Layout Shift) -->
+            <div id="toast-container" class="toast-container" aria-live="polite">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="toast-card toast-{{ message.tags|default:'info' }}" role="alert">
+                            <div class="toast-icon">
+                                {% if message.tags == 'error' %}
+                                    <i class="fa-solid fa-circle-exclamation"></i>
+                                {% elif message.tags == 'success' %}
+                                    <i class="fa-solid fa-circle-check"></i>
+                                {% elif message.tags == 'warning' %}
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                {% else %}
+                                    <i class="fa-solid fa-circle-info"></i>
+                                {% endif %}
+                            </div>
+                            <div class="toast-content">
+                                <strong class="toast-title">
+                                    {% if message.tags == 'error' %}Action Failed{% elif message.tags == 'success' %}Success{% elif message.tags == 'warning' %}Notice{% else %}Information{% endif %}
+                                </strong>
+                                <p class="toast-message">{{ message }}</p>
+                            </div>
+                            <button type="button" class="toast-close" onclick="dismissToast(this.closest('.toast-card'))" aria-label="Close notification">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                            <div class="toast-progress"></div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
             </div>
-        </main>
+
+            <!-- Page Main Content Block -->
+            <main class="content-wrapper">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
     </div>
 
+    <!-- UI Scripts -->
     <script>
+    // Sidebar Mobile Toggle
+    function toggleSidebar(forceState) {
+        const sidebar = document.getElementById('appSidebar');
+        const backdrop = document.getElementById('sidebarBackdrop');
+        if (!sidebar || !backdrop) return;
+        
+        const isOpen = typeof forceState === 'boolean' ? forceState : !sidebar.classList.contains('open');
+        if (isOpen) {
+            sidebar.classList.add('open');
+            backdrop.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        } else {
+            sidebar.classList.remove('open');
+            backdrop.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    }
+
+    // User Dropdown Menu Toggle
+    function toggleUserDropdown(e) {
+        if (e) e.stopPropagation();
+        const wrapper = document.getElementById('userMenuWrapper');
+        const menu = document.getElementById('userDropdownMenu');
+        if (!wrapper || !menu) return;
+
+        const isShowing = menu.classList.contains('show');
+        if (isShowing) {
+            menu.classList.remove('show');
+            wrapper.classList.remove('active');
+        } else {
+            menu.classList.add('show');
+            wrapper.classList.add('active');
+        }
+    }
+
+    // Dismiss Toast Notification
     function dismissToast(toastEl) {
         if (!toastEl || toastEl.classList.contains('toast-hiding')) return;
         toastEl.classList.add('toast-hiding');
         setTimeout(() => {
             toastEl.remove();
-        }, 300);
+        }, 250);
     }
 
+    // Global Click & Keyboard Listeners
     document.addEventListener("DOMContentLoaded", function() {
+        // Auto-dismiss toasts
         const toasts = document.querySelectorAll(".toast-card");
         toasts.forEach(toast => {
             setTimeout(() => {
                 dismissToast(toast);
             }, 4500);
         });
+
+        // Close dropdown when clicking outside
+        document.addEventListener("click", function(e) {
+            const wrapper = document.getElementById('userMenuWrapper');
+            const menu = document.getElementById('userDropdownMenu');
+            if (menu && menu.classList.contains('show') && wrapper && !wrapper.contains(e.target)) {
+                menu.classList.remove('show');
+                wrapper.classList.remove('active');
+            }
+        });
+
+        // Close on ESC key
+        document.addEventListener("keydown", function(e) {
+            if (e.key === "Escape") {
+                toggleSidebar(false);
+                const menu = document.getElementById('userDropdownMenu');
+                const wrapper = document.getElementById('userMenuWrapper');
+                if (menu) menu.classList.remove('show');
+                if (wrapper) wrapper.classList.remove('active');
+            }
+        });
     });
     </script>
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

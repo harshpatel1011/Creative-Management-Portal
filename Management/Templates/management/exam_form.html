@@ -1,27 +1,42 @@
 {% extends 'management/base.html' %}
+{% load static %}
 
-{% block title %}{% if is_edit %}Edit Exam - {{ exam.title }}{% else %}Create Exam{% endif %} - Creative Management{% endblock %}
+{% block title %}{% if is_edit %}Edit Assessment - {{ exam.title }}{% else %}Create New Exam{% endif %} - Creative Management{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'admin_exam_list' %}">Exams</a>
+<span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-current">{% if is_edit %}Edit {{ exam.title|truncatewords:3 }}{% else %}New Exam{% endif %}</span>
+{% endblock %}
 
 {% block content %}
+<!-- Top Header & Actions -->
 <div class="page-header">
     <div class="header-text">
-        <h1>{% if is_edit %}Edit Exam{% else %}Create New Exam{% endif %}</h1>
-        <p>Set exam details and select enrolled students</p>
+        <h1>{% if is_edit %}Edit Assessment{% else %}Schedule New Exam{% endif %}</h1>
+        <p>Set assessment specifications, scoring weights, and assign enrolled student candidates</p>
     </div>
     <a href="{% url 'admin_exam_list' %}" class="back-btn">
-        <i class="fa-solid fa-arrow-left"></i> Back to Exams
+        <i class="fa-solid fa-arrow-left"></i>
+        <span>Back to Exams</span>
     </a>
 </div>
 
-<div class="student-card" style="width: 100%; padding: 2.5rem;">
-    <h2 class="form-section-title">Exam Information</h2>
+<!-- Exam Form Card -->
+<div class="student-card" style="padding: 2.25rem 2.5rem; max-width: 900px; margin: 0 auto;">
+    <div style="margin-bottom: 1.5rem; padding-bottom: 0.85rem; border-bottom: 1px solid var(--border-color);">
+        <h2 style="font-size: 1.25rem; color: var(--text-primary); margin-bottom: 0.25rem;">
+            <i class="fa-solid fa-file-signature" style="color: var(--primary); margin-right: 6px;"></i> Examination Specifications
+        </h2>
+        <small style="color: var(--text-muted); font-size: 0.82rem;">Configure assessment title, subject, schedule, and candidate enrollment</small>
+    </div>
 
     <form method="POST" action="">
         {% csrf_token %}
         <div class="form-grid">
             <div class="form-group" style="grid-column: span 2;">
-                <label class="form-label" for="title">Exam Title *</label>
-                <input type="text" id="title" name="title" value="{{ exam.title|default:'' }}" class="form-input" placeholder="e.g. Midterm Python Assessment" required autofocus>
+                <label class="form-label" for="title">Assessment Title *</label>
+                <input type="text" id="title" name="title" value="{{ exam.title|default:'' }}" class="form-input" placeholder="e.g. Midterm Full-Stack Web Assessment" required autofocus>
             </div>
 
             <div class="form-group">
@@ -35,65 +50,73 @@
             </div>
 
             <div class="form-group">
-                <label class="form-label" for="exam_date">Exam Date *</label>
+                <label class="form-label" for="exam_date">Assessment Date *</label>
                 <input type="date" id="exam_date" name="exam_date" value="{{ exam.exam_date|date:'Y-m-d'|default:'' }}" class="form-input" required>
             </div>
 
             <div class="form-group">
-                <label class="form-label" for="exam_time">Exam Time</label>
-                <input type="time" id="exam_time" name="exam_time" value="{{ exam.exam_time|default:'' }}" class="form-input">
+                <label class="form-label" for="exam_time">Time Slot (Optional)</label>
+                <input type="text" id="exam_time" name="exam_time" value="{{ exam.exam_time|default:'' }}" class="form-input" placeholder="e.g. 10:00 AM - 12:00 PM">
             </div>
         </div>
 
-        <div style="margin-top: 2rem; margin-bottom: 2rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.75rem;">
-                <h3 style="font-size: 1.1rem; margin: 0; text-transform: uppercase; letter-spacing: 1px;"><i class="fa-solid fa-user-check"></i> Select Students for this Exam</h3>
+        <!-- Student Candidate Enrollment Section -->
+        <div style="margin-top: 2rem; margin-bottom: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; flex-wrap: wrap; gap: 0.75rem;">
+                <div>
+                    <h3 style="font-size: 1.1rem; color: var(--text-primary); margin: 0 0 0.2rem 0;">
+                        <i class="fa-solid fa-users" style="color: var(--primary); margin-right: 6px;"></i> Enroll Students for this Exam
+                    </h3>
+                    <small style="color: var(--text-muted); font-size: 0.8rem;">Select students who will be taking this assessment</small>
+                </div>
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
-                    <button type="button" class="dossier-btn-dark" onclick="toggleSelectAll(true)" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">Select All</button>
-                    <button type="button" class="dossier-btn-dark" onclick="toggleSelectAll(false)" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">Deselect All</button>
+                    <button type="button" class="btn-secondary" onclick="toggleSelectAll(true)" style="height: 32px; padding: 0 0.75rem; font-size: 0.75rem;">Select All</button>
+                    <button type="button" class="btn-secondary" onclick="toggleSelectAll(false)" style="height: 32px; padding: 0 0.75rem; font-size: 0.75rem;">Deselect All</button>
                 </div>
             </div>
 
             {% if students %}
-            <!-- Search Filter Bar for Students -->
-            <div style="position: relative; margin-bottom: 0.75rem;">
-                <input type="text" id="student-search-input" class="form-input" placeholder="Search students by name, course, or class time..." autocomplete="off" style="height: 38px; padding-left: 2.2rem; font-size: 0.85rem;">
-                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem; pointer-events: none;"></i>
+            <!-- Search Filter Bar for Candidate Selection -->
+            <div style="position: relative; margin-bottom: 0.85rem;">
+                <input type="text" id="student-search-input" class="form-input" placeholder="Search candidate students by name or course..." autocomplete="off" style="height: 38px; padding-left: 2.2rem; font-size: 0.85rem;">
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.82rem; pointer-events: none;"></i>
             </div>
 
-            <div id="students-grid" class="custom-scrollbar" style="max-height: 280px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 1rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem; background: var(--bg-main);">
+            <div id="students-grid" class="custom-scrollbar" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 0.85rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.75rem; background: var(--bg-main);">
                 {% for s in students %}
-                <label class="student-select-item" style="display: flex; align-items: center; gap: 0.65rem; background: var(--bg-card); padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); cursor: pointer; transition: all var(--transition-fast);">
-                    <input type="checkbox" name="student_ids" value="{{ s.id }}" class="student-checkbox" {% if is_edit and s.id in enrolled_student_ids %}checked{% endif %}>
+                <label class="student-select-item" style="display: flex; align-items: center; gap: 0.75rem; background: var(--bg-surface); padding: 0.75rem 0.85rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); cursor: pointer; transition: all var(--transition-fast);">
+                    <input type="checkbox" name="student_ids" value="{{ s.id }}" class="student-checkbox" {% if is_edit and s.id in enrolled_student_ids %}checked{% endif %} style="width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer;">
                     <div style="flex: 1; min-width: 0;">
                         <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ s.name }}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                            {{ s.course }}{% if s.class_time %} • <i class="fa-solid fa-clock" style="font-size: 0.68rem;"></i> {{ s.class_time }}{% endif %}
+                        <div style="font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            {{ s.course }}{% if s.class_time %} &bull; {{ s.class_time }}{% endif %}
                         </div>
                     </div>
                 </label>
                 {% endfor %}
             </div>
-            <div id="no-students-found" style="display: none; padding: 1.5rem; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: var(--border-radius-sm); margin-top: 0.5rem;">
-                <i class="fa-solid fa-user-slash" style="font-size: 1.25rem; margin-bottom: 0.5rem; display: block;"></i>
+            <div id="no-students-found" style="display: none; padding: 2rem; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: var(--border-radius-sm); margin-top: 0.5rem;">
+                <i class="fa-solid fa-user-slash" style="font-size: 1.5rem; margin-bottom: 0.5rem; display: block;"></i>
                 No matching students found.
             </div>
             {% else %}
-            <div style="padding: 1.5rem; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color);">
-                No students enrolled yet. Register students first to assign them to exams.
+            <div style="padding: 2.5rem; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: var(--border-radius-sm);">
+                <i class="fa-solid fa-user-slash" style="font-size: 1.75rem; color: var(--border-color); display: block; margin-bottom: 0.5rem;"></i>
+                No students enrolled yet. <a href="{% url 'admin_student_register' %}" style="color: var(--primary); font-weight: 600; text-decoration: underline;">Register students first</a> to assign them to exams.
             </div>
             {% endif %}
         </div>
 
-        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+        <div style="display: flex; gap: 0.85rem; justify-content: flex-end; padding-top: 1.25rem; border-top: 1px solid var(--border-color);">
             <a href="{% url 'admin_exam_list' %}" class="btn-secondary">Cancel</a>
             <button type="submit" class="btn-primary">
-                <i class="fa-solid fa-floppy-disk"></i> {% if is_edit %}Save Changes{% else %}Create Exam & Proceed to Marks{% endif %}
+                <i class="fa-solid fa-floppy-disk"></i> {% if is_edit %}Save Changes{% else %}Schedule Exam & Proceed to Marks{% endif %}
             </button>
         </div>
     </form>
 </div>
 
+<!-- Candidate Filter & Toggle Script -->
 <script>
 function toggleSelectAll(select) {
     const items = document.querySelectorAll('.student-select-item');

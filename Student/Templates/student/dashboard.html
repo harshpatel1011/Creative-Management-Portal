@@ -1,89 +1,100 @@
 {% extends 'student/base.html' %}
+{% load static %}
 
 {% block title %}Dashboard - Student Portal{% endblock %}
 
+{% block breadcrumbs %}
+<span class="breadcrumb-current">Student Dashboard</span>
+{% endblock %}
+
 {% block content %}
-<!-- Top Header / Navigation -->
-<div class="page-header" style="margin-bottom: 2rem;">
+<!-- Page Header -->
+<div class="page-header">
     <div class="header-text">
         <h1>Welcome, {{ student.name }}</h1>
-        <p>{{ student.course }}{% if student.class_time %} &bull; <i class="fa-solid fa-clock" style="font-size: 0.8rem;"></i> {{ student.class_time }}{% endif %}</p>
+        <p>{{ student.course }}{% if student.class_time %} &bull; <i class="fa-solid fa-clock" style="font-size: 0.75rem; color: var(--primary);"></i> {{ student.class_time }}{% endif %}</p>
     </div>
-    <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
         <a href="{% url 'student_project_add' %}" class="btn-primary">
-            <i class="fa-solid fa-plus"></i> Submit New Project
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <span>Submit New Project</span>
         </a>
     </div>
 </div>
 
 <!-- Student Academic Profile Hero Card -->
-<div class="student-card" style="margin-bottom: 2rem; padding: 2rem;">
+<div class="student-card" style="margin-bottom: 2rem; padding: 2rem 2.25rem;">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
-        <div style="display: flex; align-items: center; gap: 1.5rem;">
-            <div class="card-avatar" style="width: 68px; height: 68px; font-size: 1.85rem; border-radius: 50%;">
+        <div style="display: flex; align-items: center; gap: 1.5rem; flex: 1; min-width: 280px;">
+            <div class="card-avatar" style="width: 68px; height: 68px; font-size: 1.85rem;">
                 {{ student.name|slice:":1"|upper }}
             </div>
-            <div>
-                <h2 style="font-size: 1.75rem; margin-bottom: 0.35rem; color: var(--text-primary);">{{ student.name }}</h2>
-                <div style="display: flex; gap: 0.75rem 1rem; align-items: center; flex-wrap: wrap; color: var(--text-secondary); font-size: 0.9rem;">
-                    <span style="display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap;">
-                        <i class="fa-solid fa-graduation-cap" style="color: var(--primary); margin-right: 2px;"></i>
+            <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.35rem;">
+                    <h2 style="font-size: 1.65rem; color: var(--text-primary); margin: 0;">{{ student.name }}</h2>
+                    <span class="dossier-btn-dark success">
+                        <i class="fa-solid fa-circle-check"></i> Enrolled Student
+                    </span>
+                </div>
+                <div style="display: flex; gap: 0.85rem 1.25rem; align-items: center; flex-wrap: wrap; color: var(--text-secondary); font-size: 0.88rem;">
+                    <span style="display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        <i class="fa-solid fa-graduation-cap" style="color: var(--primary);"></i>
                         {% for c in student.courses_list %}
-                            <span class="dossier-btn-dark" style="font-size: 0.75rem; padding: 0.15rem 0.5rem; font-weight: 600;">{{ c }}</span>
+                            <span class="dossier-btn-dark" style="font-size: 0.75rem; padding: 0.15rem 0.55rem;">{{ c }}</span>
                         {% empty %}
                             <strong>{{ student.course }}</strong>
                         {% endfor %}
                     </span>
                     {% if student.class_time %}
                     <span>&bull;</span>
-                    <span><i class="fa-solid fa-clock" style="color: var(--primary);"></i> <strong>{{ student.class_time }}</strong></span>
+                    <span><i class="fa-solid fa-clock" style="color: var(--primary); margin-right: 4px;"></i> {{ student.class_time }}</span>
                     {% endif %}
                     <span>&bull;</span>
-                    <span><i class="fa-solid fa-envelope"></i> {{ student.email }}</span>
+                    <span><i class="fa-solid fa-envelope" style="color: var(--primary); margin-right: 4px;"></i> {{ student.email }}</span>
                     <span>&bull;</span>
-                    <span><i class="fa-solid fa-phone"></i> {{ student.phone|default:"No phone provided" }}</span>
-                    <span>&bull;</span>
-                    <span><i class="fa-solid fa-calendar-days"></i> Enrolled: {{ student.created_at|date:"M d, Y" }}</span>
+                    <span><i class="fa-solid fa-calendar-days" style="color: var(--primary); margin-right: 4px;"></i> Enrolled: {{ student.created_at|date:"M d, Y" }}</span>
                 </div>
             </div>
-        </div>
-        <div>
-            <span class="dossier-btn-dark success" style="padding: 0.4rem 1rem; font-size: 0.85rem; font-weight: 700;">
-                <i class="fa-solid fa-circle-check"></i> Active Student
-            </span>
         </div>
     </div>
 </div>
 
 <!-- Modern KPI Stat Cards Grid (3 Columns) -->
-<div class="stats-overview-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-bottom: 2.5rem;">
+<div class="stats-overview-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-bottom: 2rem;">
+    <!-- Overall Academic Performance -->
     <div class="kpi-card" onclick="window.location.href='{% url 'student_marks' %}';" style="cursor: pointer;">
         <div>
             <div class="kpi-header">
-                <div class="kpi-icon"><i class="fa-solid fa-graduation-cap"></i></div>
-                <span class="dossier-btn-dark success" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 700;">
-                    Overall Grade
+                <div class="kpi-icon" style="background: rgba(79, 70, 229, 0.1); color: var(--primary);">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                </div>
+                <span class="dossier-btn-dark success">
+                    Grade Performance
                 </span>
             </div>
             <div class="kpi-value">{{ percentage }}%</div>
-            <div class="kpi-label">Aggregate Score</div>
+            <div class="kpi-label">Cumulative Score</div>
         </div>
         <div class="kpi-footer">
-            <span style="color: var(--text-muted);">{{ total_obtained }} / {{ total_possible }} marks</span>
+            <span>{{ total_obtained }} of {{ total_possible }} total marks</span>
+            <span class="kpi-link">Report <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i></span>
         </div>
     </div>
 
+    <!-- Project Submissions KPI -->
     <div class="kpi-card" onclick="window.location.href='{% url 'student_projects' %}';" style="cursor: pointer;">
         <div>
             <div class="kpi-header">
-                <div class="kpi-icon"><i class="fa-solid fa-diagram-project"></i></div>
+                <div class="kpi-icon" style="background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan);">
+                    <i class="fa-solid fa-diagram-project"></i>
+                </div>
                 {% if submitted_count > 0 %}
-                <span class="dossier-btn-dark" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600; background: #fef3c7; color: #92400e; border: 1px solid #fde68a;">
+                <span class="dossier-btn-dark" style="background: var(--warning-light); color: var(--warning-text); border-color: var(--warning-border);">
                     <i class="fa-solid fa-clock"></i> {{ submitted_count }} Under Review
                 </span>
                 {% else %}
-                <span class="dossier-btn-dark success" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 700;">
-                    Portfolio Up-to-date
+                <span class="dossier-btn-dark success">
+                    <i class="fa-solid fa-check"></i> Portfolio Up-to-date
                 </span>
                 {% endif %}
             </div>
@@ -91,29 +102,34 @@
             <div class="kpi-label">Submitted Projects</div>
         </div>
         <div class="kpi-footer">
-            <span style="color: var(--text-muted);">{{ approved_count }} Approved{% if rejected_count > 0 %} &bull; {{ rejected_count }} Rejected{% endif %}</span>
+            <span><strong>{{ approved_count }}</strong> approved{% if rejected_count %} &bull; <strong>{{ rejected_count }}</strong> rejected{% endif %}</span>
+            <span class="kpi-link">Portfolio <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i></span>
         </div>
     </div>
 
+    <!-- Completed Examinations KPI -->
     <div class="kpi-card" onclick="window.location.href='{% url 'student_marks' %}';" style="cursor: pointer;">
         <div>
             <div class="kpi-header">
-                <div class="kpi-icon"><i class="fa-solid fa-award"></i></div>
+                <div class="kpi-icon" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-violet);">
+                    <i class="fa-solid fa-award"></i>
+                </div>
                 {% if pending_exams_count > 0 %}
-                <span class="dossier-btn-dark" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600; background: #fef3c7; color: #92400e; border: 1px solid #fde68a;">
-                    {{ pending_exams_count }} Pending
+                <span class="dossier-btn-dark" style="background: var(--warning-light); color: var(--warning-text); border-color: var(--warning-border);">
+                    {{ pending_exams_count }} Pending Grade
                 </span>
                 {% else %}
-                <span class="dossier-btn-dark success" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 700;">
-                    All Graded
+                <span class="dossier-btn-dark success">
+                    Evaluated
                 </span>
                 {% endif %}
             </div>
             <div class="kpi-value">{{ graded_exams_count }}</div>
-            <div class="kpi-label">Completed Assessments</div>
+            <div class="kpi-label">Completed Exams</div>
         </div>
         <div class="kpi-footer">
-            <span style="color: var(--text-muted);">{{ marks_records.count }} enrolled exams</span>
+            <span>{{ marks_records.count }} enrolled examination{{ marks_records.count|pluralize }}</span>
+            <span class="kpi-link">Grades <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i></span>
         </div>
     </div>
 </div>
@@ -124,59 +140,63 @@
     <div class="dashboard-panel">
         <div class="dashboard-panel-header">
             <div>
-                <h3 class="dashboard-panel-title">My Recent Projects</h3>
-                <small style="color: var(--text-muted);">Recent portfolio submissions and evaluations</small>
+                <h2 class="dashboard-panel-title">My Recent Projects</h2>
+                <small style="color: var(--text-muted); font-size: 0.78rem;">Latest project submissions and evaluation decisions</small>
             </div>
-            <a href="{% url 'student_projects' %}" class="btn-secondary" style="height: 32px; padding: 0 0.75rem; font-size: 0.75rem;">
-                View All <i class="fa-solid fa-arrow-right" style="margin-left: 4px;"></i>
+            <a href="{% url 'student_projects' %}" class="btn-secondary" style="height: 32px; padding: 0 0.75rem; font-size: 0.78rem;">
+                View All <i class="fa-solid fa-arrow-right" style="margin-left: 4px; font-size: 0.7rem;"></i>
             </a>
         </div>
         <div class="dashboard-panel-body">
-            <div class="table-responsive">
+            <div class="table-responsive" style="border: none; border-radius: 0;">
                 <table class="data-table">
                     <thead>
                         <tr>
                             <th>Project Title</th>
                             <th>Status</th>
                             <th>Submitted</th>
-                            <th style="text-align: right;">Link</th>
+                            <th style="text-align: right;">Files & Links</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for p in recent_projects %}
                         <tr>
-                            <td><a href="{% url 'student_project_detail' p.id %}" style="color: var(--text-primary); text-decoration: none; font-weight: 700;">{{ p.title }}</a></td>
+                            <td>
+                                <a href="{% url 'student_project_detail' p.id %}" style="color: var(--text-primary); font-weight: 600; text-decoration: none;">
+                                    {{ p.title }}
+                                </a>
+                            </td>
                             <td>
                                 {% if p.status == 'Approved' %}
-                                <span class="dossier-btn-dark success" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 700;">
+                                <span class="dossier-btn-dark success" style="padding: 0.2rem 0.55rem; font-size: 0.72rem;">
                                     <i class="fa-solid fa-circle-check"></i> Approved
                                 </span>
                                 {% elif p.status == 'Rejected' %}
-                                <span class="dossier-btn-dark danger" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 700;">
+                                <span class="dossier-btn-dark danger" style="padding: 0.2rem 0.55rem; font-size: 0.72rem;">
                                     <i class="fa-solid fa-circle-xmark"></i> Rejected
                                 </span>
                                 {% else %}
-                                <span class="dossier-btn-dark" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600; background: #fef3c7; color: #92400e; border: 1px solid #fde68a;">
+                                <span class="dossier-btn-dark" style="padding: 0.2rem 0.55rem; font-size: 0.72rem; background: var(--warning-light); color: var(--warning-text); border-color: var(--warning-border);">
                                     <i class="fa-solid fa-clock"></i> Submitted
                                 </span>
                                 {% endif %}
                             </td>
-                            <td><small style="color: var(--text-muted);">{{ p.submitted_at|date:"M d, Y" }}</small></td>
+                            <td><small style="color: var(--text-muted); font-size: 0.78rem;">{{ p.submitted_at|date:"M d, Y" }}</small></td>
                             <td style="text-align: right;">
-                                <div style="display: flex; gap: 0.35rem; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
+                                <div style="display: flex; gap: 0.4rem; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
                                     {% for f in p.all_files %}
                                     {% if forloop.counter <= 2 %}
-                                    <a href="{% if f.file %}{{ f.file.url }}{% else %}{{ f.url }}{% endif %}" target="_blank" download class="dossier-btn-dark" style="padding: 0.25rem 0.5rem; font-size: 0.72rem;" title="{{ f.filename }}">
+                                    <a href="{% if f.file %}{{ f.file.url }}{% else %}{{ f.url }}{% endif %}" target="_blank" download class="btn-secondary" style="height: 28px; padding: 0 0.55rem; font-size: 0.72rem;" title="{{ f.filename }}">
                                         <i class="fa-solid fa-download"></i> {{ f.file_extension|default:"File" }}
                                     </a>
                                     {% elif forloop.counter == 3 %}
-                                    <a href="{% url 'student_project_detail' p.id %}" class="dossier-btn-dark" style="padding: 0.25rem 0.5rem; font-size: 0.72rem;" title="View all {{ p.all_files|length }} files in project details">
-                                        <i class="fa-solid fa-folder-open"></i> +{{ p.all_files|length|add:"-2" }} more
+                                    <a href="{% url 'student_project_detail' p.id %}" class="btn-secondary" style="height: 28px; padding: 0 0.55rem; font-size: 0.72rem;" title="View all files in details">
+                                        <i class="fa-solid fa-folder-open"></i> +{{ p.all_files|length|add:"-2" }}
                                     </a>
                                     {% endif %}
                                     {% endfor %}
                                     {% for l in p.all_links %}
-                                    <a href="{{ l.url }}" target="_blank" class="dossier-btn-dark" style="padding: 0.25rem 0.5rem; font-size: 0.72rem;" title="{{ l.url }}">
+                                    <a href="{{ l.url }}" target="_blank" class="btn-secondary" style="height: 28px; padding: 0 0.55rem; font-size: 0.72rem;" title="{{ l.url }}">
                                         <i class="{{ l.icon_class }}"></i> {{ l.display_label }}
                                     </a>
                                     {% endfor %}
@@ -188,8 +208,9 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">
-                                No projects submitted yet. <a href="{% url 'student_projects' %}" style="color: var(--primary); text-decoration: underline;">Submit your first project</a>.
+                            <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 3rem 1.5rem;">
+                                <i class="fa-solid fa-diagram-project" style="font-size: 2rem; color: var(--border-color); display: block; margin-bottom: 0.5rem;"></i>
+                                No projects submitted yet. <a href="{% url 'student_project_add' %}" style="color: var(--primary); font-weight: 600; text-decoration: underline;">Submit your first project</a>.
                             </td>
                         </tr>
                         {% endfor %}
@@ -203,15 +224,15 @@
     <div class="dashboard-panel">
         <div class="dashboard-panel-header">
             <div>
-                <h3 class="dashboard-panel-title">Recent Exam Grades</h3>
-                <small style="color: var(--text-muted);">Evaluated marks and academic grades</small>
+                <h2 class="dashboard-panel-title">Recent Exam Grades</h2>
+                <small style="color: var(--text-muted); font-size: 0.78rem;">Evaluated marks and academic grades</small>
             </div>
-            <a href="{% url 'student_marks' %}" class="btn-secondary" style="height: 32px; padding: 0 0.75rem; font-size: 0.75rem;">
-                View All <i class="fa-solid fa-arrow-right" style="margin-left: 4px;"></i>
+            <a href="{% url 'student_marks' %}" class="btn-secondary" style="height: 32px; padding: 0 0.75rem; font-size: 0.78rem;">
+                View All <i class="fa-solid fa-arrow-right" style="margin-left: 4px; font-size: 0.7rem;"></i>
             </a>
         </div>
         <div class="dashboard-panel-body">
-            <div class="table-responsive">
+            <div class="table-responsive" style="border: none; border-radius: 0;">
                 <table class="data-table">
                     <thead>
                         <tr>
@@ -224,36 +245,37 @@
                         {% for record in recent_marks %}
                         <tr>
                             <td>
-                                <strong>{{ record.exam.title }}</strong>
-                                <br><small style="color: var(--text-muted);"><i class="fa-solid fa-book-open"></i> {{ record.exam.subject }}</small>
+                                <strong style="color: var(--text-primary); font-size: 0.88rem;">{{ record.exam.title }}</strong>
+                                <small style="display: block; color: var(--text-muted); font-size: 0.75rem;"><i class="fa-solid fa-book-open" style="color: var(--primary);"></i> {{ record.exam.subject }}</small>
                             </td>
                             <td>
                                 {% if record.is_absent or record.grade == 'Absent' %}
-                                <span style="color: #dc2626; font-size: 0.85rem; font-weight: 600;"><i class="fa-solid fa-user-xmark"></i> Absent</span>
+                                <span style="color: var(--danger); font-size: 0.82rem; font-weight: 600;"><i class="fa-solid fa-user-xmark"></i> Absent</span>
                                 {% elif record.marks_obtained is not None %}
-                                <strong>{{ record.marks_obtained }}</strong> / {{ record.exam.total_marks }}
+                                <strong style="color: var(--text-primary); font-size: 0.9rem;">{{ record.marks_obtained }}</strong> <span style="color: var(--text-muted); font-size: 0.75rem;">/ {{ record.exam.total_marks }}</span>
                                 {% else %}
-                                <span style="color: #b45309; font-size: 0.8rem; font-weight: 600;"><i class="fa-solid fa-clock"></i> Pending</span>
+                                <span style="color: var(--warning-text); font-size: 0.78rem; font-weight: 600;"><i class="fa-solid fa-clock"></i> Pending</span>
                                 {% endif %}
                             </td>
                             <td style="text-align: right;">
                                 {% if record.is_absent or record.grade == 'Absent' %}
-                                <span class="dossier-btn-dark danger" style="display: inline-block; padding: 0.2rem 0.6rem; font-weight: 700; font-size: 0.85rem;">
+                                <span class="dossier-btn-dark danger" style="padding: 0.15rem 0.55rem; font-weight: 700; font-size: 0.8rem;">
                                     Absent
                                 </span>
                                 {% elif record.grade %}
-                                <span class="dossier-btn-dark {% if record.grade == 'F' %}danger{% else %}success{% endif %}" style="display: inline-block; padding: 0.2rem 0.6rem; font-weight: 700; font-size: 0.85rem;">
+                                <span class="dossier-btn-dark {% if record.grade == 'F' %}danger{% else %}success{% endif %}" style="padding: 0.15rem 0.55rem; font-weight: 700; font-size: 0.8rem;">
                                     {{ record.grade }}
                                 </span>
                                 {% else %}
-                                <span style="color: var(--text-muted);">-</span>
+                                <span style="color: var(--text-muted); font-size: 0.8rem;">-</span>
                                 {% endif %}
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">
-                                No exam evaluations recorded yet.
+                            <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 3rem 1.5rem;">
+                                <i class="fa-solid fa-award" style="font-size: 2rem; color: var(--border-color); display: block; margin-bottom: 0.5rem;"></i>
+                                No assessments evaluated yet.
                             </td>
                         </tr>
                         {% endfor %}

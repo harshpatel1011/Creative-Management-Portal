@@ -3,13 +3,18 @@
 {% block title %}My Projects - Student Portal{% endblock %}
 
 {% block content %}
-<!-- Top Header / Navigation -->
-<div class="page-header" style="margin-bottom: 2rem;">
+<!-- Page Header -->
+<div class="page-header">
     <div class="header-text">
+        <div class="page-breadcrumbs">
+            <a href="{% url 'student_dashboard' %}"><i class="fa-solid fa-house"></i> Home</a>
+            <span class="crumb-separator">/</span>
+            <span class="crumb-current">My Projects</span>
+        </div>
         <h1>My Projects</h1>
-        <p>Submit and manage your project portfolio</p>
+        <p class="header-subtitle">Submit, manage, and track your project portfolio evaluations</p>
     </div>
-    <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+    <div class="header-actions">
         <a href="{% url 'student_project_add' %}" class="btn-primary">
             <i class="fa-solid fa-plus"></i> Submit New Project
         </a>
@@ -17,157 +22,163 @@
 </div>
 
 <!-- Portfolio Metrics Stat Cards -->
-<div class="stats-overview-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: 2rem;">
+<div class="kpi-grid" style="margin-bottom: 2rem;">
     <div class="kpi-card">
-        <div>
-            <div class="kpi-header">
-                <div class="kpi-icon"><i class="fa-solid fa-folder-open"></i></div>
-                <span class="dossier-btn-dark" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600;">
-                    Portfolio
-                </span>
+        <div class="kpi-header">
+            <div class="kpi-icon-wrapper" style="background: var(--primary-light); color: var(--primary);">
+                <i class="fa-solid fa-folder-open"></i>
             </div>
-            <div class="kpi-value">{{ total_count }}</div>
-            <div class="kpi-label">Total Submissions</div>
+            <span class="badge badge-primary">Portfolio</span>
         </div>
-        <div class="kpi-footer">
-            <span style="color: var(--text-muted);">All uploaded projects</span>
+        <div class="kpi-value">{{ total_count }}</div>
+        <div class="kpi-label">Total Submissions</div>
+        <div class="kpi-trend">
+            <span style="color: var(--text-muted); font-size: 0.8rem;"><i class="fa-solid fa-layer-group"></i> All submitted projects</span>
         </div>
     </div>
 
     <div class="kpi-card">
-        <div>
-            <div class="kpi-header">
-                <div class="kpi-icon" style="background: #dcfce7; color: #15803d;"><i class="fa-solid fa-circle-check"></i></div>
-                <span class="dossier-btn-dark success" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 700;">
-                    Approved
-                </span>
+        <div class="kpi-header">
+            <div class="kpi-icon-wrapper" style="background: var(--success-light); color: var(--success);">
+                <i class="fa-solid fa-circle-check"></i>
             </div>
-            <div class="kpi-value" style="color: #15803d;">{{ approved_count }}</div>
-            <div class="kpi-label">Approved Projects</div>
+            <span class="badge badge-success">Approved</span>
         </div>
-        <div class="kpi-footer">
-            <span style="color: var(--text-muted);">Evaluated by management</span>
+        <div class="kpi-value" style="color: var(--success);">{{ approved_count }}</div>
+        <div class="kpi-label">Approved Projects</div>
+        <div class="kpi-trend">
+            <span style="color: var(--text-muted); font-size: 0.8rem;"><i class="fa-solid fa-shield-halved"></i> Evaluated & verified</span>
         </div>
     </div>
 
     <div class="kpi-card">
-        <div>
-            <div class="kpi-header">
-                <div class="kpi-icon" style="background: #fef3c7; color: #b45309;"><i class="fa-solid fa-clock"></i></div>
-                <span class="dossier-btn-dark" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600; background: #fef3c7; color: #92400e; border: 1px solid #fde68a;">
-                    Review
-                </span>
+        <div class="kpi-header">
+            <div class="kpi-icon-wrapper" style="background: var(--warning-light); color: var(--warning);">
+                <i class="fa-solid fa-clock-rotate-left"></i>
             </div>
-            <div class="kpi-value" style="color: #b45309;">{{ submitted_count }}</div>
-            <div class="kpi-label">Under Evaluation</div>
+            <span class="badge badge-warning">Review</span>
         </div>
-        <div class="kpi-footer">
-            <span style="color: var(--text-muted);">{% if rejected_count > 0 %}{{ rejected_count }} Rejected{% else %}Pending admin review{% endif %}</span>
+        <div class="kpi-value" style="color: var(--warning);">{{ submitted_count }}</div>
+        <div class="kpi-label">Under Evaluation</div>
+        <div class="kpi-trend">
+            <span style="color: var(--text-muted); font-size: 0.8rem;">
+                {% if rejected_count > 0 %}
+                    <span style="color: var(--danger); font-weight: 600;"><i class="fa-solid fa-triangle-exclamation"></i> {{ rejected_count }} Needs Revision</span>
+                {% else %}
+                    <i class="fa-solid fa-hourglass-half"></i> Pending admin review
+                {% endif %}
+            </span>
         </div>
     </div>
 </div>
 
-<!-- Section Heading & Project Count -->
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+<!-- Section Heading Bar -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
     <div>
-        <h3 style="font-size: 1.25rem; color: var(--text-primary); margin: 0 0 0.25rem 0;">Project Portfolio</h3>
-        <p style="margin: 0; font-size: 0.825rem; color: var(--text-muted);">All projects submitted for academic evaluation</p>
+        <h2 style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin: 0;">Portfolio Projects</h2>
+        <p style="margin: 0.2rem 0 0 0; font-size: 0.825rem; color: var(--text-muted);">
+            All projects submitted for academic evaluation
+        </p>
     </div>
-    <span style="font-size: 0.88rem; color: var(--text-muted); font-weight: 600;">
-        Showing <strong>{{ total_count }}</strong> project{{ total_count|pluralize }}
-    </span>
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <span class="badge badge-secondary" style="font-size: 0.8rem; font-weight: 600; padding: 0.35rem 0.75rem;">
+            Showing <strong>{{ total_count }}</strong> project{{ total_count|pluralize }}
+        </span>
+    </div>
 </div>
 
 {% if projects %}
-<!-- 2-Grid Projects Container -->
-<div class="projects-grid">
+<!-- Projects 2-Column Responsive Grid -->
+<div class="projects-responsive-grid">
     {% for p in projects %}
-    <div class="student-card project-card-item">
-        <!-- Card Header: Title & Status -->
-        <div class="card-top" style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 0;">
-            <div style="display: flex; align-items: center; gap: 0.85rem; flex: 1; min-width: 0;">
-                <div class="card-avatar" style="width: 44px; height: 44px; font-size: 1.15rem; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0;">
+    <div class="project-portfolio-card">
+        <!-- Top Bar: Avatar/Icon, Title & Status Badge -->
+        <div class="project-card-header">
+            <div class="project-card-heading">
+                <div class="project-icon-badge">
                     <i class="fa-solid fa-diagram-project"></i>
                 </div>
-                <div style="min-width: 0; flex: 1;">
-                    <a href="{% url 'student_project_detail' p.id %}" style="color: var(--text-primary); text-decoration: none; font-weight: 700; font-size: 1.15rem; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.3; display: block;" class="project-title-link" title="{{ p.title }}">
+                <div class="project-card-title-box">
+                    <a href="{% url 'student_project_detail' p.id %}" class="project-card-title" title="{{ p.title }}">
                         {{ p.title }}
                     </a>
-                    <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; color: var(--text-muted); display: block; margin-top: 0.15rem;">
-                        Project
-                    </span>
+                    <div class="project-card-meta">
+                        <i class="fa-regular fa-calendar"></i> Submitted {{ p.submitted_at|date:"M d, Y" }}
+                    </div>
                 </div>
             </div>
 
-            <div style="flex-shrink: 0; margin-left: 0.5rem;">
+            <div style="flex-shrink: 0;">
                 {% if p.status == 'Approved' %}
-                <span class="dossier-btn-dark success" style="padding: 0.25rem 0.6rem; font-size: 0.72rem; font-weight: 700;">
+                <span class="badge badge-success">
                     <i class="fa-solid fa-circle-check"></i> Approved
                 </span>
                 {% elif p.status == 'Rejected' %}
-                <span class="dossier-btn-dark danger" style="padding: 0.25rem 0.6rem; font-size: 0.72rem; font-weight: 700;">
-                    <i class="fa-solid fa-circle-xmark"></i> Rejected
+                <span class="badge badge-danger">
+                    <i class="fa-solid fa-circle-xmark"></i> Revision
                 </span>
                 {% else %}
-                <span class="dossier-btn-dark" style="padding: 0.25rem 0.6rem; font-size: 0.72rem; font-weight: 600; background: #fef3c7; color: #92400e; border: 1px solid #fde68a;">
+                <span class="badge badge-warning">
                     <i class="fa-solid fa-clock"></i> Submitted
                 </span>
                 {% endif %}
             </div>
         </div>
 
-        <!-- Card Body: Description & Assets -->
-        <div style="flex: 1; display: flex; flex-direction: column; gap: 0.75rem;">
+        <!-- Description Snippet -->
+        <div class="project-card-body">
             {% if p.description %}
-            <p style="font-size: 0.88rem; color: var(--text-secondary); line-height: 1.55; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+            <p class="project-desc-snippet">
                 {{ p.description }}
             </p>
             {% else %}
-            <p style="font-size: 0.85rem; color: var(--text-muted); font-style: italic; margin: 0;">
+            <p class="project-desc-snippet" style="color: var(--text-muted); font-style: italic;">
                 No description provided.
             </p>
             {% endif %}
 
-            <!-- Submission Date -->
-            <div style="font-size: 0.78rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.4rem;">
-                <i class="fa-regular fa-calendar" style="color: var(--primary);"></i> Submitted on {{ p.submitted_at|date:"M d, Y" }}
-            </div>
-
-            <!-- Attachments & Links -->
-            <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; padding-top: 0.25rem;">
+            <!-- Attachments & Links Pills -->
+            <div class="project-assets-pills">
                 {% for f in p.all_files %}
                 {% if forloop.counter <= 2 %}
-                <a href="{% if f.file %}{{ f.file.url }}{% else %}{{ f.url }}{% endif %}" target="_blank" download class="dossier-btn-dark" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" title="{{ f.filename }}">
-                    <i class="fa-solid fa-download"></i> {{ f.file_extension|default:"File" }}
+                <a href="{% if f.file %}{{ f.file.url }}{% else %}{{ f.url }}{% endif %}" target="_blank" download class="asset-pill" title="{{ f.filename }}">
+                    <i class="fa-solid fa-file-arrow-down" style="color: var(--primary);"></i>
+                    <span>{{ f.file_extension|default:"File" }}</span>
                 </a>
                 {% elif forloop.counter == 3 %}
-                <a href="{% url 'student_project_detail' p.id %}" class="dossier-btn-dark" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" title="View all {{ p.all_files|length }} files in project details">
-                    <i class="fa-solid fa-folder-open"></i> +{{ p.all_files|length|add:"-2" }} more
+                <a href="{% url 'student_project_detail' p.id %}" class="asset-pill asset-pill-more" title="View all files in project details">
+                    <i class="fa-solid fa-folder-open"></i>
+                    <span>+{{ p.all_files|length|add:"-2" }}</span>
                 </a>
                 {% endif %}
                 {% endfor %}
+
                 {% for l in p.all_links %}
-                <a href="{{ l.url }}" target="_blank" class="dossier-btn-dark" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" title="{{ l.url }}">
-                    <i class="{{ l.icon_class }}"></i> {{ l.display_label }}
+                <a href="{{ l.url }}" target="_blank" rel="noopener noreferrer" class="asset-pill" title="{{ l.url }}">
+                    <i class="{{ l.icon_class }}" style="color: var(--primary);"></i>
+                    <span>{{ l.display_label }}</span>
                 </a>
                 {% endfor %}
+
                 {% if not p.all_files and not p.all_links %}
-                <span style="font-size: 0.78rem; color: var(--text-muted);"><i class="fa-solid fa-paperclip"></i> No attachments</span>
+                <span style="font-size: 0.78rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: 0.35rem;">
+                    <i class="fa-solid fa-paperclip"></i> No attachments
+                </span>
                 {% endif %}
             </div>
         </div>
 
-        <!-- Card Footer: View Details & Actions -->
-        <div style="border-top: 1px solid var(--border-color); padding-top: 0.85rem; margin-top: 0.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-            <a href="{% url 'student_project_detail' p.id %}" class="dossier-btn-dark" style="height: 34px; padding: 0 0.85rem; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+        <!-- Card Footer Actions -->
+        <div class="project-card-footer">
+            <a href="{% url 'student_project_detail' p.id %}" class="btn-outline" style="padding: 0.45rem 0.85rem; font-size: 0.8rem;">
                 <i class="fa-solid fa-eye"></i> View Details
             </a>
 
-            <div style="display: inline-flex; gap: 0.5rem; align-items: center;">
+            <div style="display: flex; gap: 0.4rem; align-items: center;">
                 <a href="{% url 'student_project_edit' p.id %}" class="btn-icon" title="Edit Project">
                     <i class="fa-solid fa-pen-to-square"></i>
                 </a>
-                <a href="{% url 'student_project_delete' p.id %}" class="btn-icon btn-delete" onclick="return confirm('Delete project {{ p.title }}?');" title="Delete Project">
+                <a href="{% url 'student_project_delete' p.id %}" class="btn-icon btn-delete" onclick="return confirm('Are you sure you want to delete project: {{ p.title|escapejs }}?');" title="Delete Project">
                     <i class="fa-solid fa-trash"></i>
                 </a>
             </div>
@@ -176,42 +187,213 @@
     {% endfor %}
 </div>
 {% else %}
-<div class="student-card" style="padding: 3.5rem 2rem; text-align: center;">
-    <div style="font-size: 2.5rem; color: var(--border-color); margin-bottom: 1rem;"><i class="fa-solid fa-diagram-project"></i></div>
-    <h3 style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">No projects submitted yet</h3>
-    <p style="margin-bottom: 1.5rem; color: var(--text-secondary); font-size: 0.9rem;">Submit your first project portfolio submission for review.</p>
-    <a href="{% url 'student_project_add' %}" class="btn-primary" style="display: inline-flex;">
-        <i class="fa-solid fa-plus"></i> Submit Project
+<!-- Empty State Card -->
+<div class="empty-state-card">
+    <div class="empty-state-icon">
+        <i class="fa-solid fa-folder-plus"></i>
+    </div>
+    <h3 class="empty-state-title">No projects submitted yet</h3>
+    <p class="empty-state-text">
+        You haven't submitted any projects to your portfolio yet. Submit your course work, source code, or live demos to receive grades and feedback from the faculty.
+    </p>
+    <a href="{% url 'student_project_add' %}" class="btn-primary" style="margin-top: 0.5rem;">
+        <i class="fa-solid fa-plus"></i> Submit Your First Project
     </a>
 </div>
 {% endif %}
 
 <style>
-.projects-grid {
+.projects-responsive-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 1.5rem;
     margin-bottom: 2.5rem;
 }
 
-.project-card-item {
+.project-portfolio-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    gap: 1rem;
-    padding: 1.5rem;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+    transition: transform var(--transition-normal), box-shadow var(--transition-normal), border-color var(--transition-normal);
+    box-shadow: var(--shadow-card);
 }
 
-.project-card-item:hover {
-    border-color: rgba(10, 37, 64, 0.3);
-    box-shadow: var(--shadow-md);
+.project-portfolio-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card-hover);
+    border-color: var(--primary);
+}
+
+.project-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color-light);
+    gap: 0.75rem;
+}
+
+.project-card-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.project-icon-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--border-radius-md);
+    background: var(--primary-light);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    flex-shrink: 0;
+}
+
+.project-card-title-box {
+    min-width: 0;
+    flex: 1;
+}
+
+.project-card-title {
+    color: var(--text-primary);
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1.05rem;
+    line-height: 1.35;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: color var(--transition-fast);
+}
+
+.project-card-title:hover {
+    color: var(--primary);
+}
+
+.project-card-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.2rem;
+}
+
+.project-card-body {
+    padding: 1rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    flex: 1;
+}
+
+.project-desc-snippet {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.project-assets-pills {
+    display: flex;
+    gap: 0.45rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.asset-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--bg-main);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    padding: 0.25rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.asset-pill:hover {
+    background: var(--primary-light);
+    border-color: var(--primary);
+    color: var(--primary);
+    transform: translateY(-1px);
+}
+
+.asset-pill-more {
+    background: var(--border-color-light);
+    color: var(--text-secondary);
+}
+
+.project-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--border-color-light);
+    margin-top: auto;
+    gap: 0.75rem;
+}
+
+.empty-state-card {
+    background: var(--bg-card);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: 3.5rem 2rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.empty-state-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--border-radius-full);
+    background: var(--primary-light);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    margin-bottom: 1.25rem;
+}
+
+.empty-state-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 0.5rem 0;
+}
+
+.empty-state-text {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    max-width: 480px;
+    margin: 0 0 1.5rem 0;
+    line-height: 1.5;
 }
 
 @media (max-width: 900px) {
-    .projects-grid {
+    .projects-responsive-grid {
         grid-template-columns: 1fr;
     }
 }

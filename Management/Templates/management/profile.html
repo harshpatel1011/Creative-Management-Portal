@@ -1,61 +1,113 @@
 {% extends 'management/base.html' %}
+{% load static %}
 
-{% block title %}Admin Profile - Creative Management{% endblock %}
+{% block title %}Administrator Profile - Creative Management{% endblock %}
+
+{% block breadcrumbs %}
+<span class="breadcrumb-current">Admin Profile</span>
+{% endblock %}
 
 {% block content %}
+<!-- Page Header -->
 <div class="page-header">
     <div class="header-text">
         <h1>Administrator Profile</h1>
-        <p>Account details and credentials overview</p>
+        <p>Your administrative credentials, institutional privileges, and system activity</p>
+    </div>
+    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+        <a href="{% url 'admin_change_password' %}" class="btn-primary">
+            <i class="fa-solid fa-key"></i>
+            <span>Change Password</span>
+        </a>
     </div>
 </div>
 
-<div class="student-card" style="max-width: 900px; margin: 0 auto; padding: 2.5rem;">
-    <div class="card-top" style="margin-bottom: 2rem; border-bottom: 1px solid var(--border-color, #e2e8f0); padding-bottom: 1.5rem;">
-        <div class="card-avatar" style="width: 72px; height: 72px; font-size: 2rem; background: var(--navy, #0f172a); color: white; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
-            <i class="fa-solid fa-user-shield"></i>
+<!-- Profile Hero Card -->
+<div class="student-card" style="max-width: 900px; margin: 0 auto 2rem; padding: 2.25rem 2.5rem;">
+    <div class="card-top" style="margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.5rem;">
+        <div class="card-avatar" style="width: 72px; height: 72px; font-size: 2rem;">
+            {{ admin_user.username|slice:":1"|upper }}
         </div>
-        <div class="card-info" style="margin-left: 1.5rem;">
-            <h2 style="font-size: 1.75rem; margin-bottom: 0.25rem;">{{ admin_user.username }}</h2>
-            <p style="color: var(--navy, #0f172a); font-weight: 500;">
-                <span class="dossier-btn-dark success" style="display: inline-block; padding: 0.25rem 0.75rem; font-size: 0.85rem;">
+        <div class="card-info" style="margin-left: 1.25rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.35rem;">
+                <h2 style="font-size: 1.65rem; color: var(--text-primary); margin: 0;">{{ admin_user.username }}</h2>
+                <span class="dossier-btn-dark success">
                     <i class="fa-solid fa-circle-check"></i> Active Administrator ({% if admin_user.is_superuser %}Superuser{% else %}Staff{% endif %})
                 </span>
+            </div>
+            <p style="color: var(--text-secondary); margin: 0; font-size: 0.88rem;">
+                {{ admin_user.email|default:"No email registered" }}
             </p>
         </div>
     </div>
 
-    <div class="meta-details" style="display: flex; flex-direction: column; gap: 1rem;">
+    <!-- Administrative Scope Metrics -->
+    <div class="stats-overview-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 2rem;">
+        <div class="kpi-card" style="padding: 1.25rem;">
+            <div class="kpi-header" style="margin-bottom: 0.5rem;">
+                <div class="kpi-icon" style="width: 36px; height: 36px; font-size: 1rem;"><i class="fa-solid fa-user-graduate"></i></div>
+                <span class="dossier-btn-dark" style="font-size: 0.7rem; padding: 0.15rem 0.45rem;">Roster</span>
+            </div>
+            <div class="kpi-value" style="font-size: 1.65rem;">{{ total_students }}</div>
+            <div class="kpi-label" style="font-size: 0.75rem;">Total Students</div>
+        </div>
+
+        <div class="kpi-card" style="padding: 1.25rem;">
+            <div class="kpi-header" style="margin-bottom: 0.5rem;">
+                <div class="kpi-icon" style="width: 36px; height: 36px; font-size: 1rem; background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan);"><i class="fa-solid fa-diagram-project"></i></div>
+                <span class="dossier-btn-dark" style="font-size: 0.7rem; padding: 0.15rem 0.45rem;">Portfolios</span>
+            </div>
+            <div class="kpi-value" style="font-size: 1.65rem;">{{ total_projects }}</div>
+            <div class="kpi-label" style="font-size: 0.75rem;">Total Projects</div>
+        </div>
+
+        <div class="kpi-card" style="padding: 1.25rem;">
+            <div class="kpi-header" style="margin-bottom: 0.5rem;">
+                <div class="kpi-icon" style="width: 36px; height: 36px; font-size: 1rem; background: rgba(139, 92, 246, 0.1); color: var(--accent-violet);"><i class="fa-solid fa-file-signature"></i></div>
+                <span class="dossier-btn-dark" style="font-size: 0.7rem; padding: 0.15rem 0.45rem;">Assessments</span>
+            </div>
+            <div class="kpi-value" style="font-size: 1.65rem;">{{ total_exams }}</div>
+            <div class="kpi-label" style="font-size: 0.75rem;">Total Exams</div>
+        </div>
+    </div>
+
+    <!-- Key-Value Account Details -->
+    <div class="meta-details">
         <div class="meta-item">
-            <span class="meta-label"><i class="fa-solid fa-user"></i> Username</span>
+            <span class="meta-label"><i class="fa-solid fa-user" style="color: var(--primary); margin-right: 6px;"></i> Username</span>
             <span class="meta-value">{{ admin_user.username }}</span>
         </div>
 
         <div class="meta-item">
-            <span class="meta-label"><i class="fa-solid fa-envelope"></i> Email Address</span>
+            <span class="meta-label"><i class="fa-solid fa-envelope" style="color: var(--primary); margin-right: 6px;"></i> Email Address</span>
             <span class="meta-value">{{ admin_user.email|default:"Not specified" }}</span>
         </div>
 
         <div class="meta-item">
-            <span class="meta-label"><i class="fa-solid fa-calendar-check"></i> Date Joined</span>
+            <span class="meta-label"><i class="fa-solid fa-id-card-clip" style="color: var(--primary); margin-right: 6px;"></i> Full Name</span>
+            <span class="meta-value">{% if admin_user.first_name or admin_user.last_name %}{{ admin_user.first_name }} {{ admin_user.last_name }}{% else %}Not specified{% endif %}</span>
+        </div>
+
+        <div class="meta-item">
+            <span class="meta-label"><i class="fa-solid fa-calendar-check" style="color: var(--primary); margin-right: 6px;"></i> Account Created</span>
             <span class="meta-value">{{ admin_user.date_joined|date:"F d, Y - h:i A" }}</span>
         </div>
 
         <div class="meta-item">
-            <span class="meta-label"><i class="fa-solid fa-clock"></i> Last Login</span>
+            <span class="meta-label"><i class="fa-solid fa-clock" style="color: var(--primary); margin-right: 6px;"></i> Last Login</span>
             <span class="meta-value">{{ admin_user.last_login|default:"Current Active Session"|date:"F d, Y - h:i A" }}</span>
         </div>
 
         <div class="meta-item">
-            <span class="meta-label"><i class="fa-solid fa-shield-halved"></i> Access Level</span>
-            <span class="meta-value">{% if admin_user.is_superuser %}Superuser / Full Management Access{% else %}Staff Administrator / Management Access{% endif %}</span>
+            <span class="meta-label"><i class="fa-solid fa-shield-halved" style="color: var(--primary); margin-right: 6px;"></i> Role & Privilege Tier</span>
+            <span class="meta-value">
+                {% if admin_user.is_superuser %}
+                <strong style="color: var(--primary);">Superuser (Full Management & Root Privileges)</strong>
+                {% else %}
+                <strong style="color: var(--text-primary);">Staff Administrator (Management Access)</strong>
+                {% endif %}
+            </span>
         </div>
-    </div>
-
-    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
-        <a href="{% url 'admin_change_password' %}" class="btn-primary">
-            <i class="fa-solid fa-key"></i> Change Password
-        </a>
     </div>
 </div>
 {% endblock %}
