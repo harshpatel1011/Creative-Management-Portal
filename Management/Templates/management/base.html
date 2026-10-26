@@ -52,6 +52,10 @@
                     <i class="fa-solid fa-clipboard-user"></i>
                     <span>Batch Attendance</span>
                 </a>
+                <a href="{% url 'admin_batch_transfer' %}" class="dossier-btn {% if 'transfer' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fa-solid fa-people-arrows"></i>
+                    <span>Batch Transfer</span>
+                </a>
                 <a href="{% url 'admin_projects' %}" class="dossier-btn {% if 'project' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="fa-solid fa-diagram-project"></i>
                     <span>Projects</span>

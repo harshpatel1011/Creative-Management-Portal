@@ -3,6 +3,7 @@ import datetime
 import calendar
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
+from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth.hashers import make_password, check_password
 from django.contrib.auth.models import User
@@ -1394,6 +1395,121 @@ def admin_attendance_report_view(request):
         "total_students": students_qs.count(),
     }
     return render(request, "management/attendance_report.html", context)
+
+# --- BATCH TRANSFER VIEW ---
+
+
+def admin_batch_transfer_view(request):
+    user = get_current_admin(request)
+    if not user:
+        return redirect("admin_login")
+
+    class_time_choices = [c[0] for c in Student.CLASS_TIME_CHOICES]
+
+    # Calculate student count per batch
+    batch_stats = []
+    for slot in class_time_choices:
+        cnt = Student.objects.filter(
+            Q(class_time__icontains=slot) | Q(enrolled_batches__batch_time=slot)
+        ).distinct().count()
+        batch_stats.append({
+            "slot": slot,
+            "count": cnt,
+        })
+
+    if request.method == "POST":
+        source_batch = request.POST.get("source_batch", "").strip()
+        target_batch = request.POST.get("target_batch", "").strip()
+        selected_student_ids = request.POST.getlist("student_ids")
+
+        if not source_batch:
+            messages.error(request, "Please select the source batch timing.")
+            return redirect(f"{reverse('admin_batch_transfer')}?source_batch={source_batch}&target_batch={target_batch}")
+
+        if not target_batch:
+            messages.error(request, "Please select the destination (target) batch timing.")
+            return redirect(f"{reverse('admin_batch_transfer')}?source_batch={source_batch}&target_batch={target_batch}")
+
+        if source_batch == target_batch:
+            messages.error(request, "Source and destination batch timings cannot be the same.")
+            return redirect(f"{reverse('admin_batch_transfer')}?source_batch={source_batch}&target_batch={target_batch}")
+
+        if not selected_student_ids:
+            messages.error(request, "Please select at least one student to transfer.")
+            return redirect(f"{reverse('admin_batch_transfer')}?source_batch={source_batch}&target_batch={target_batch}")
+
+        students_to_transfer = Student.objects.filter(id__in=selected_student_ids)
+        transferred_count = 0
+        student_names = []
+
+        for student in students_to_transfer:
+            # 1. Update StudentBatch relational records
+            StudentBatch.objects.filter(student=student, batch_time=source_batch).delete()
+            StudentBatch.objects.get_or_create(student=student, batch_time=target_batch)
+
+            # 2. Re-sync Student.class_time field
+            current_batches = list(student.enrolled_batches.values_list("batch_time", flat=True))
+            if not current_batches:
+                existing = [b.strip() for b in student.class_time.split(",") if b.strip()]
+                if source_batch in existing:
+                    existing.remove(source_batch)
+                if target_batch not in existing:
+                    existing.append(target_batch)
+                current_batches = existing
+                for b in current_batches:
+                    StudentBatch.objects.get_or_create(student=student, batch_time=b)
+
+            student.class_time = ", ".join(current_batches)
+            student.save()
+            transferred_count += 1
+            student_names.append(student.name)
+
+        names_preview = ", ".join(student_names[:3])
+        if len(student_names) > 3:
+            names_preview += f" and {len(student_names) - 3} more"
+
+        messages.success(
+            request,
+            f"Successfully transferred {transferred_count} student(s) ({names_preview}) from '{source_batch}' to '{target_batch}'!"
+        )
+        return redirect(f"{reverse('admin_batch_transfer')}?source_batch={target_batch}")
+
+    # GET request
+    source_batch = request.GET.get("source_batch", "").strip()
+    target_batch = request.GET.get("target_batch", "").strip()
+    q = request.GET.get("q", "").strip()
+
+    # If no source_batch is specified in query, pick the first batch that has students, or the first choice
+    if not source_batch and batch_stats:
+        active_batch = next((b for b in batch_stats if b["count"] > 0), None)
+        if active_batch:
+            source_batch = active_batch["slot"]
+        else:
+            source_batch = class_time_choices[0]
+
+    students = []
+    if source_batch:
+        students_qs = Student.objects.filter(
+            Q(class_time__icontains=source_batch) | Q(enrolled_batches__batch_time=source_batch)
+        ).distinct().order_by("name")
+
+        if q:
+            students_qs = students_qs.filter(
+                Q(name__icontains=q) | Q(email__icontains=q) | Q(phone__icontains=q) | Q(course__icontains=q)
+            )
+        students = list(students_qs)
+
+    context = {
+        "user": user,
+        "class_time_choices": class_time_choices,
+        "batch_stats": batch_stats,
+        "source_batch": source_batch,
+        "target_batch": target_batch,
+        "students": students,
+        "total_source_students": len(students),
+        "q": q,
+    }
+    return render(request, "management/batch_transfer.html", context)
 
 # --- FACULTY MANAGEMENT VIEWS (ADMIN CREATED ONLY & ADMIN FACULTY TOGGLE) ---
 

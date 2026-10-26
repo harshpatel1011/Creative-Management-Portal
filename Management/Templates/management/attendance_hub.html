@@ -20,6 +20,10 @@
         <p>Monitor daily class timings, take real-time batch attendance, and track student presence</p>
     </div>
     <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+        <a href="{% url 'admin_batch_transfer' %}" class="btn-primary">
+            <i class="fa-solid fa-people-arrows"></i>
+            <span>Batch Transfer</span>
+        </a>
         <a href="{% url 'admin_attendance_report' %}" class="btn-secondary">
             <i class="fa-solid fa-chart-column"></i>
             <span>Monthly Reports & Matrix</span>

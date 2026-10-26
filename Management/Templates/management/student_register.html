@@ -170,7 +170,7 @@
                                     {{ choice }}
                                 </strong>
                                 <small style="color: var(--text-muted); font-size: 0.72rem;">
-                                    {% if '08:00' in choice or '10:00 am' in choice %}Morning Batch{% elif '12:00' in choice or '02:00 pm' in choice %}Afternoon Batch{% else %}Evening Batch{% endif %}
+                                    {% if '08:00 am' in choice or '10:00 am' in choice %}Morning Batch{% elif '12:00 pm' in choice or '02:00 pm' in choice %}Afternoon Batch{% elif '04:00 pm' in choice or '06:00 pm' in choice %}Evening Batch{% endif %}
                                 </small>
                             </div>
                         </li>

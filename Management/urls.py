@@ -13,6 +13,7 @@ urlpatterns = [
     path('attendance/', views.admin_attendance_hub_view, name='admin_attendance_hub'),
     path('attendance/batch/', views.admin_attendance_batch_view, name='admin_attendance_batch'),
     path('attendance/report/', views.admin_attendance_report_view, name='admin_attendance_report'),
+    path('batch-transfer/', views.admin_batch_transfer_view, name='admin_batch_transfer'),
     path('projects/', views.admin_projects_view, name='admin_projects'),
     path('projects/<int:project_id>/', views.admin_project_detail_view, name='admin_project_detail'),
     path('projects/<int:project_id>/status/', views.project_status_update_view, name='admin_project_status_update'),
