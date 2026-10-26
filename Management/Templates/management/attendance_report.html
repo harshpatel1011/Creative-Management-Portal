@@ -1,0 +1,256 @@
+{% extends 'management/base.html' %}
+{% load static %}
+
+{% block title %}Monthly Attendance Register - Creative Management{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'admin_dashboard' %}">Dashboard</a>
+<span class="breadcrumb-separator">/</span>
+<a href="{% url 'admin_attendance_hub' %}">Attendance Hub</a>
+<span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-current">Monthly Register</span>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header" style="margin-bottom: 1.5rem;">
+    <div class="header-text">
+        <h1 style="display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-table-cells" style="color: var(--primary);"></i>
+            Monthly Attendance Register
+        </h1>
+        <p>Day-by-day attendance sheet for <strong>{{ month_name }} {{ year }}</strong> across all batch schedules</p>
+    </div>
+    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+        <a href="?batch={{ selected_batch|urlencode }}&month={{ month }}&year={{ year }}&export=csv" class="btn-primary" style="background: #10b981; border-color: #10b981;">
+            <i class="fa-solid fa-file-csv"></i>
+            <span>Export to CSV</span>
+        </a>
+        <a href="{% url 'admin_attendance_hub' %}" class="btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>Back to Hub</span>
+        </a>
+    </div>
+</div>
+
+<!-- Filters Toolbar -->
+<div class="student-card" style="padding: 1.25rem 1.5rem; margin-bottom: 1.75rem;">
+    <form method="GET" action="{% url 'admin_attendance_report' %}" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+        <!-- Batch Filter -->
+        <div style="flex: 1; min-width: 200px;">
+            <label class="form-label" for="batch_filter" style="font-size: 0.8rem; margin-bottom: 0.35rem;">
+                <i class="fa-solid fa-clock" style="color: var(--primary);"></i> Batch Schedule:
+            </label>
+            <select name="batch" id="batch_filter" class="form-input" style="padding: 0.45rem 0.85rem; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">
+                <option value="All" {% if selected_batch == 'All' %}selected{% endif %}>All Batch Schedules</option>
+                {% for slot in valid_slots %}
+                <option value="{{ slot }}" {% if selected_batch == slot %}selected{% endif %}>{{ slot }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Month Filter -->
+        <div style="width: 160px;">
+            <label class="form-label" for="month_filter" style="font-size: 0.8rem; margin-bottom: 0.35rem;">
+                <i class="fa-regular fa-calendar" style="color: var(--primary);"></i> Month:
+            </label>
+            <select name="month" id="month_filter" class="form-input" style="padding: 0.45rem 0.85rem; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">
+                {% for m_num, m_str in months_list %}
+                <option value="{{ m_num }}" {% if m_num == month %}selected{% endif %}>{{ m_str }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Year Filter -->
+        <div style="width: 120px;">
+            <label class="form-label" for="year_filter" style="font-size: 0.8rem; margin-bottom: 0.35rem;">
+                Year:
+            </label>
+            <select name="year" id="year_filter" class="form-input" style="padding: 0.45rem 0.85rem; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">
+                {% for y in years_list %}
+                <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Apply Button -->
+        <div>
+            <button type="submit" class="btn-primary" style="padding: 0.5rem 1.25rem;">
+                <i class="fa-solid fa-filter"></i> Apply Filter
+            </button>
+        </div>
+
+        <!-- Clear Link -->
+        {% if selected_batch != 'All' or month != today.month %}
+        <div>
+            <a href="{% url 'admin_attendance_report' %}" class="btn-secondary" style="padding: 0.5rem 0.85rem;" title="Reset Filters">
+                <i class="fa-solid fa-rotate-left"></i>
+            </a>
+        </div>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Attendance Legend & Register Info -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+    <div style="font-size: 0.85rem; color: var(--text-secondary);">
+        Showing <strong>{{ total_students }}</strong> student{{ total_students|pluralize }} for <strong>{{ month_name }} {{ year }}</strong>
+    </div>
+
+    <!-- Color Legend -->
+    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; font-size: 0.78rem;">
+        <span style="display: flex; align-items: center; gap: 4px;">
+            <span class="matrix-cell-badge badge-p">P</span> Present
+        </span>
+        <span style="display: flex; align-items: center; gap: 4px;">
+            <span class="matrix-cell-badge badge-a">A</span> Absent
+        </span>
+        <span style="display: flex; align-items: center; gap: 4px;">
+            <span class="matrix-cell-badge badge-l">L</span> Late
+        </span>
+        <span style="display: flex; align-items: center; gap: 4px;">
+            <span class="matrix-cell-badge badge-le">Le</span> Leave
+        </span>
+        <span style="display: flex; align-items: center; gap: 4px; color: var(--text-muted);">
+            <span class="matrix-cell-badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px dashed var(--border-color);">-</span> Not Tracked
+        </span>
+    </div>
+</div>
+
+<!-- Matrix Table Card -->
+<div class="student-card" style="padding: 0; overflow: hidden; margin-bottom: 2rem;">
+    {% if matrix_rows %}
+    <div style="overflow-x: auto; max-width: 100%;">
+        <table class="data-table matrix-table" style="width: 100%; border-collapse: collapse; min-width: 900px;">
+            <thead>
+                <tr style="background: var(--bg-main); border-bottom: 2px solid var(--border-color); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em;">
+                    <th style="padding: 0.85rem 1rem; position: sticky; left: 0; background: var(--bg-main); z-index: 2; width: 220px; box-shadow: 2px 0 5px rgba(0,0,0,0.03);">
+                        Student & Batch
+                    </th>
+                    <th style="padding: 0.85rem 0.75rem; width: 120px;">Course</th>
+                    
+                    <!-- Days 1..31 -->
+                    {% for day in days_list %}
+                    <th style="padding: 0.85rem 0.35rem; text-align: center; width: 28px; font-weight: 700;">
+                        {{ day }}
+                    </th>
+                    {% endfor %}
+
+                    <!-- Summary Columns -->
+                    <th style="padding: 0.85rem 0.6rem; text-align: center; color: #10b981; font-weight: 700;">P</th>
+                    <th style="padding: 0.85rem 0.6rem; text-align: center; color: #ef4444; font-weight: 700;">A</th>
+                    <th style="padding: 0.85rem 0.6rem; text-align: center; color: #f59e0b; font-weight: 700;">L</th>
+                    <th style="padding: 0.85rem 0.85rem; text-align: center; font-weight: 700; width: 90px;">% Rate</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in matrix_rows %}
+                <tr style="border-bottom: 1px solid var(--border-color); font-size: 0.82rem;">
+                    <!-- Fixed Student Name Column -->
+                    <td style="padding: 0.75rem 1rem; position: sticky; left: 0; background: var(--bg-card); z-index: 1; box-shadow: 2px 0 5px rgba(0,0,0,0.03);">
+                        <div style="font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">
+                            <a href="{% url 'admin_student_detail' row.student.id %}" style="color: var(--text-primary); text-decoration: none;">
+                                {{ row.student.name }}
+                            </a>
+                        </div>
+                        <small style="color: var(--primary); font-size: 0.72rem; display: block; font-weight: 600;">
+                            <i class="fa-solid fa-clock" style="font-size: 0.65rem;"></i> {{ row.student.class_time|default:"No Batch" }}
+                        </small>
+                    </td>
+
+                    <!-- Course -->
+                    <td style="padding: 0.75rem 0.75rem; color: var(--text-secondary); font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">
+                        {{ row.student.courses_list|first|default:row.student.course|default:"-" }}
+                    </td>
+
+                    <!-- Day Cells -->
+                    {% for st in row.daily %}
+                    <td style="padding: 0.5rem 0.2rem; text-align: center;">
+                        {% if st == 'Present' %}
+                        <span class="matrix-cell-badge badge-p" title="Day {{ forloop.counter }}: Present">P</span>
+                        {% elif st == 'Absent' %}
+                        <span class="matrix-cell-badge badge-a" title="Day {{ forloop.counter }}: Absent">A</span>
+                        {% elif st == 'Late' %}
+                        <span class="matrix-cell-badge badge-l" title="Day {{ forloop.counter }}: Late">L</span>
+                        {% elif st == 'Leave' %}
+                        <span class="matrix-cell-badge badge-le" title="Day {{ forloop.counter }}: Leave">Le</span>
+                        {% else %}
+                        <span style="color: var(--border-color); font-size: 0.7rem;">·</span>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+
+                    <!-- Summary Values -->
+                    <td style="padding: 0.75rem 0.6rem; text-align: center; font-weight: 700; color: #10b981;">
+                        {{ row.p_count }}
+                    </td>
+                    <td style="padding: 0.75rem 0.6rem; text-align: center; font-weight: 700; color: #ef4444;">
+                        {{ row.a_count }}
+                    </td>
+                    <td style="padding: 0.75rem 0.6rem; text-align: center; font-weight: 700; color: #f59e0b;">
+                        {{ row.l_count }}
+                    </td>
+                    <td style="padding: 0.75rem 0.85rem; text-align: center;">
+                        <span class="brand-badge {% if row.pct >= 85 %}badge-success{% elif row.pct >= 75 %}badge-info{% elif row.pct >= 60 %}badge-warning{% elif row.total_marked > 0 %}badge-danger{% else %}badge-muted{% endif %}" style="font-size: 0.75rem; padding: 0.2rem 0.45rem; font-weight: 700;">
+                            {% if row.total_marked > 0 %}{{ row.pct }}%{% else %}-{% endif %}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="padding: 3rem 1.5rem; text-align: center;">
+        <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(79, 70, 229, 0.08); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; margin: 0 auto 1rem;">
+            <i class="fa-solid fa-users-slash"></i>
+        </div>
+        <h3 style="font-size: 1.15rem; color: var(--text-primary); margin-bottom: 0.4rem;">No Student Records Found</h3>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); max-width: 440px; margin: 0 auto 1.5rem;">
+            No students found matching batch schedule "{{ selected_batch }}".
+        </p>
+        <a href="{% url 'admin_attendance_report' %}" class="btn-secondary">
+            Clear Filters
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.matrix-cell-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.badge-p {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+.badge-a {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.badge-l {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+.badge-le {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+}
+
+.matrix-table tr:hover td {
+    background-color: rgba(79, 70, 229, 0.02) !important;
+}
+</style>
+{% endblock %}

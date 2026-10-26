@@ -67,16 +67,16 @@
             </div>
 
             <!-- Filter by Class Time (Searchable) -->
-            <div style="flex: 1; min-width: 220px; max-width: 320px;">
+            <div style="flex: 1; min-width: 200px; max-width: 280px;">
                 <label class="form-label" style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem;">
-                    <i class="fa-solid fa-clock" style="color: var(--primary);"></i> Filter by Class Time
+                    <i class="fa-solid fa-clock" style="color: var(--primary);"></i> Batch Schedule
                 </label>
                 <div class="searchable-select-container">
                     <input type="text" id="time-filter-input" class="searchable-select-input" placeholder="All Class Timings..." autocomplete="off" value="{{ class_time_filter }}">
                     <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
                     <ul id="time-filter-list" class="searchable-list custom-scrollbar" style="max-height: 240px;">
                         <li data-value="" class="all-option" style="padding: 9px 14px; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border-color);">
-                            <span><i class="fa-solid fa-clock" style="margin-right: 6px;"></i> All Class Timings (Show All)</span>
+                            <span><i class="fa-solid fa-clock" style="margin-right: 6px;"></i> All Batches (Show All)</span>
                         </li>
                         {% for choice in class_time_choices %}
                         <li data-value="{{ choice }}" class="time-filter-item" style="padding: 9px 14px; font-size: 0.85rem;">
@@ -85,6 +85,29 @@
                         {% endfor %}
                     </ul>
                     <input type="hidden" name="class_time" id="hidden-time-filter" value="{{ class_time_filter }}">
+                </div>
+            </div>
+
+            <!-- Filter by Assigned Faculty (Searchable) -->
+            <div style="flex: 1; min-width: 200px; max-width: 280px;">
+                <label class="form-label" style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem;">
+                    <i class="fa-solid fa-chalkboard-user" style="color: var(--primary);"></i> Assigned Faculty
+                </label>
+                <div class="searchable-select-container">
+                    <input type="text" id="faculty-filter-input" class="searchable-select-input" placeholder="All Faculty..." autocomplete="off" value="{{ faculty_filter }}">
+                    <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
+                    <ul id="faculty-filter-list" class="searchable-list custom-scrollbar" style="max-height: 240px;">
+                        <li data-value="" class="all-option" style="padding: 9px 14px; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border-color);">
+                            <span><i class="fa-solid fa-users" style="margin-right: 6px;"></i> All Faculty (Show All)</span>
+                        </li>
+                        {% for f in faculties %}
+                        <li data-value="{{ f.name }}" class="faculty-filter-item" style="padding: 9px 14px; font-size: 0.85rem;">
+                            <strong>{{ f.name }}</strong>
+                            <small style="display: block; color: var(--text-muted); font-size: 0.72rem;">{{ f.department }}</small>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <input type="hidden" name="faculty" id="hidden-faculty-filter" value="{{ faculty_filter }}">
                 </div>
             </div>
         </div>
@@ -110,7 +133,8 @@
             <tr>
                 <th>Student</th>
                 <th>Enrolled Courses</th>
-                <th>Schedule</th>
+                <th>Batch Schedule</th>
+                <th>Faculty</th>
                 <th>Phone Number</th>
                 <th style="text-align: right;">Actions</th>
             </tr>
@@ -133,12 +157,29 @@
                     <span style="font-weight: 500; color: var(--text-primary); font-size: 0.88rem;">{{ s.course }}</span>
                 </td>
                 <td>
-                    {% if s.class_time %}
-                    <span class="dossier-btn-dark" style="font-size: 0.75rem; padding: 0.2rem 0.6rem;">
+                    {% if s.batches_list %}
+                    <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                        {% for b in s.batches_list %}
+                        <span class="badge badge-secondary" style="font-size: 0.72rem; padding: 0.15rem 0.5rem;">
+                            <i class="fa-solid fa-clock" style="color: var(--primary); font-size: 0.68rem;"></i> {{ b }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                    {% elif s.class_time %}
+                    <span class="badge badge-secondary" style="font-size: 0.72rem;">
                         <i class="fa-solid fa-clock" style="color: var(--primary);"></i> {{ s.class_time }}
                     </span>
                     {% else %}
                     <span style="color: var(--text-muted);">-</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if s.faculty_display != "Not Assigned" %}
+                    <span class="badge badge-primary" style="font-size: 0.75rem; font-weight: 600;">
+                        <i class="fa-solid fa-chalkboard-user"></i> {{ s.faculty_display }}
+                    </span>
+                    {% else %}
+                    <span style="color: var(--text-muted); font-size: 0.8rem; font-style: italic;">Unassigned</span>
                     {% endif %}
                 </td>
                 <td>
@@ -281,5 +322,41 @@ document.addEventListener("DOMContentLoaded", function() {
     setupFilterDropdown("course-filter-input", "course-filter-list", "hidden-course-filter", ".course-filter-item, .all-option", true);
     setupFilterDropdown("time-filter-input", "time-filter-list", "hidden-time-filter", ".time-filter-item, .all-option", false);
 });
+
+    // Faculty Search Filter Logic
+    const facFilterInput = document.getElementById("faculty-filter-input");
+    const facFilterList = document.getElementById("faculty-filter-list");
+    const hiddenFacFilter = document.getElementById("hidden-faculty-filter");
+    const facFilterItems = document.querySelectorAll(".faculty-filter-item, #faculty-filter-list .all-option");
+
+    if (facFilterInput && facFilterList) {
+        facFilterInput.addEventListener("focus", () => facFilterList.style.display = "block");
+        facFilterInput.addEventListener("click", (e) => {
+            e.stopPropagation();
+            facFilterList.style.display = "block";
+        });
+        facFilterInput.addEventListener("input", function() {
+            const q = facFilterInput.value.toLowerCase().trim();
+            facFilterList.style.display = "block";
+            facFilterItems.forEach(item => {
+                item.style.display = item.textContent.toLowerCase().includes(q) ? "block" : "none";
+            });
+        });
+        facFilterItems.forEach(item => {
+            item.addEventListener("click", function() {
+                const val = item.getAttribute("data-value");
+                hiddenFacFilter.value = val;
+                facFilterInput.value = val;
+                facFilterList.style.display = "none";
+                filterForm.submit();
+            });
+        });
+        document.addEventListener("click", function(e) {
+            if (!facFilterInput.contains(e.target) && !facFilterList.contains(e.target)) {
+                facFilterList.style.display = "none";
+            }
+        });
+    }
+
 </script>
 {% endblock %}

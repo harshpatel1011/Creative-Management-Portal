@@ -1,0 +1,270 @@
+{% extends 'student/base.html' %}
+{% load static %}
+
+{% block title %}My Attendance - Creative Student Portal{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'student_dashboard' %}">Dashboard</a>
+<span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-current">My Attendance</span>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header" style="margin-bottom: 1.5rem;">
+    <div class="header-text">
+        <h1 style="display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-calendar-check" style="color: var(--primary);"></i>
+            My Attendance Portfolio
+        </h1>
+        <p>Monitor your academic attendance standing, monthly registers, and batch schedules</p>
+    </div>
+    <div>
+        <span class="brand-badge" style="font-size: 0.88rem; padding: 0.5rem 1rem; background: rgba(79, 70, 229, 0.08); color: var(--primary); border: 1px solid rgba(79, 70, 229, 0.2);">
+            <i class="fa-solid fa-clock"></i> Batch: <strong>{{ student.class_time|default:"Not Assigned" }}</strong>
+        </span>
+    </div>
+</div>
+
+<!-- Attendance KPI Overview Cards -->
+<div class="stats-overview-grid" style="margin-bottom: 2rem;">
+    <!-- All-Time Attendance Percentage Gauge Card -->
+    <div class="kpi-card" style="border-left: 4px solid {% if all_time_stats.percentage >= 85 %}#10b981{% elif all_time_stats.percentage >= 75 %}#3b82f6{% elif all_time_stats.percentage >= 60 %}#f59e0b{% elif all_time_stats.total > 0 %}#ef4444{% else %}var(--border-color){% endif %};">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(79, 70, 229, 0.1); color: var(--primary);">
+                    <i class="fa-solid fa-percent"></i>
+                </div>
+                <span class="dossier-btn-dark {% if all_time_stats.percentage >= 85 %}success{% endif %}">
+                    {{ all_time_stats.status }}
+                </span>
+            </div>
+            <div class="kpi-value" style="color: {% if all_time_stats.percentage >= 85 %}#10b981{% elif all_time_stats.percentage >= 75 %}#3b82f6{% elif all_time_stats.percentage >= 60 %}#f59e0b{% elif all_time_stats.total > 0 %}#ef4444{% else %}var(--text-primary){% endif %};">
+                {% if all_time_stats.total > 0 %}{{ all_time_stats.percentage }}%{% else %}N/A{% endif %}
+            </div>
+            <div class="kpi-label">Cumulative Attendance</div>
+        </div>
+        <div class="kpi-footer">
+            <span>{{ all_time_stats.total }} total session{{ all_time_stats.total|pluralize }} tracked</span>
+        </div>
+    </div>
+
+    <!-- Present Days Card -->
+    <div class="kpi-card">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                    <i class="fa-solid fa-user-check"></i>
+                </div>
+                <span class="dossier-btn-dark success">Attended</span>
+            </div>
+            <div class="kpi-value" style="color: #10b981;">{{ all_time_stats.present }}</div>
+            <div class="kpi-label">Classes Attended</div>
+        </div>
+        <div class="kpi-footer">
+            <span>{{ all_time_stats.late }} late arrival{{ all_time_stats.late|pluralize }} recorded</span>
+        </div>
+    </div>
+
+    <!-- Absent Days Card -->
+    <div class="kpi-card">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                    <i class="fa-solid fa-user-xmark"></i>
+                </div>
+                <span class="dossier-btn-dark" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">Missed</span>
+            </div>
+            <div class="kpi-value" style="color: #ef4444;">{{ all_time_stats.absent }}</div>
+            <div class="kpi-label">Classes Missed</div>
+        </div>
+        <div class="kpi-footer">
+            <span>{{ all_time_stats.leave }} excused leave{{ all_time_stats.leave|pluralize }}</span>
+        </div>
+    </div>
+
+    <!-- Monthly Rate Card -->
+    <div class="kpi-card">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan);">
+                    <i class="fa-regular fa-calendar-days"></i>
+                </div>
+                <span class="dossier-btn-dark success">{{ month_name }}</span>
+            </div>
+            <div class="kpi-value">{{ monthly_pct }}%</div>
+            <div class="kpi-label">{{ month_name }} Attendance Rate</div>
+        </div>
+        <div class="kpi-footer">
+            <span>{{ monthly_total }} class{{ monthly_total|pluralize:"es" }} recorded this month</span>
+        </div>
+    </div>
+</div>
+
+<!-- Attendance Performance Alert Banner -->
+{% if all_time_stats.total > 0 and all_time_stats.percentage < 75 %}
+<div class="student-card" style="padding: 1.25rem 1.75rem; margin-bottom: 2rem; background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); border-left: 5px solid #ef4444; display: flex; align-items: center; gap: 1rem;">
+    <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(239, 68, 68, 0.15); color: #ef4444; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+    </div>
+    <div>
+        <h3 style="font-size: 1.05rem; color: #ef4444; margin: 0 0 0.25rem 0; font-weight: 700;">Low Attendance Notice</h3>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">
+            Your cumulative attendance is currently at <strong>{{ all_time_stats.percentage }}%</strong>, which is below the recommended 75% threshold required for certification and exam eligibility. Please contact faculty administration.
+        </p>
+    </div>
+</div>
+{% elif all_time_stats.total > 0 and all_time_stats.percentage >= 85 %}
+<div class="student-card" style="padding: 1.25rem 1.75rem; margin-bottom: 2rem; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-left: 5px solid #10b981; display: flex; align-items: center; gap: 1rem;">
+    <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(16, 185, 129, 0.15); color: #10b981; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+        <i class="fa-solid fa-award"></i>
+    </div>
+    <div>
+        <h3 style="font-size: 1.05rem; color: #10b981; margin: 0 0 0.25rem 0; font-weight: 700;">Outstanding Attendance Record!</h3>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">
+            You have maintained a commendable <strong>{{ all_time_stats.percentage }}%</strong> attendance score. Consistent participation significantly boosts your project and placement opportunities!
+        </p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Month Navigator Toolbar -->
+<div class="student-card" style="padding: 1rem 1.5rem; margin-bottom: 1.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <form method="GET" action="{% url 'student_attendance' %}" style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin: 0;">
+        <span style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.4rem;">
+            <i class="fa-regular fa-calendar" style="color: var(--primary);"></i> View Month:
+        </span>
+        <select name="month" class="form-input" style="padding: 0.4rem 0.85rem; width: auto; font-weight: 600; border-radius: 8px;">
+            {% for m_num, m_str in months_list %}
+            <option value="{{ m_num }}" {% if m_num == month %}selected{% endif %}>{{ m_str }}</option>
+            {% endfor %}
+        </select>
+        <select name="year" class="form-input" style="padding: 0.4rem 0.85rem; width: auto; font-weight: 600; border-radius: 8px;">
+            {% for y in years_list %}
+            <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn-primary" style="padding: 0.45rem 1rem; font-size: 0.85rem;">
+            Change Month
+        </button>
+    </form>
+
+    <div style="font-size: 0.82rem; color: var(--text-muted); display: flex; gap: 0.75rem; align-items: center;">
+        <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #10b981; display: inline-block;"></span> Present</span>
+        <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #ef4444; display: inline-block;"></span> Absent</span>
+        <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; display: inline-block;"></span> Late</span>
+        <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #3b82f6; display: inline-block;"></span> Leave</span>
+    </div>
+</div>
+
+<!-- Monthly Calendar Grid View -->
+<div class="student-card" style="padding: 1.5rem; margin-bottom: 2rem;">
+    <h3 style="font-size: 1.1rem; color: var(--text-primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+        <i class="fa-solid fa-calendar-days" style="color: var(--primary);"></i>
+        {{ month_name }} {{ year }} Day-by-Day Calendar
+    </h3>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 0.6rem;">
+        {% for day in calendar_days %}
+        <div style="border: 1px solid {% if day.is_today %}var(--primary){% elif day.status == 'Present' %}rgba(16, 185, 129, 0.4){% elif day.status == 'Absent' %}rgba(239, 68, 68, 0.4){% elif day.status == 'Late' %}rgba(245, 158, 11, 0.4){% elif day.status == 'Leave' %}rgba(59, 130, 246, 0.4){% else %}var(--border-color){% endif %}; background: {% if day.status == 'Present' %}rgba(16, 185, 129, 0.08){% elif day.status == 'Absent' %}rgba(239, 68, 68, 0.08){% elif day.status == 'Late' %}rgba(245, 158, 11, 0.08){% elif day.status == 'Leave' %}rgba(59, 130, 246, 0.08){% elif day.is_weekend %}rgba(0,0,0,0.02){% else %}var(--bg-main){% endif %}; border-radius: 8px; padding: 0.5rem 0.25rem; text-align: center; position: relative;">
+            
+            <small style="font-size: 0.68rem; color: var(--text-muted); display: block; text-transform: uppercase;">{{ day.weekday }}</small>
+            <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin: 2px 0;">{{ day.day }}</div>
+
+            {% if day.status == 'Present' %}
+            <span style="display: inline-block; font-size: 0.68rem; font-weight: 700; color: #10b981;">P</span>
+            {% elif day.status == 'Absent' %}
+            <span style="display: inline-block; font-size: 0.68rem; font-weight: 700; color: #ef4444;">A</span>
+            {% elif day.status == 'Late' %}
+            <span style="display: inline-block; font-size: 0.68rem; font-weight: 700; color: #f59e0b;">L</span>
+            {% elif day.status == 'Leave' %}
+            <span style="display: inline-block; font-size: 0.68rem; font-weight: 700; color: #3b82f6;">Le</span>
+            {% elif day.is_weekend %}
+            <span style="display: inline-block; font-size: 0.65rem; color: var(--text-muted);">Sun</span>
+            {% else %}
+            <span style="display: inline-block; font-size: 0.65rem; color: var(--border-color);">-</span>
+            {% endif %}
+
+            {% if day.is_today %}
+            <div style="position: absolute; top: 3px; right: 4px; width: 5px; height: 5px; border-radius: 50%; background: var(--primary);" title="Today"></div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Detailed Monthly Records Table -->
+<div class="student-card" style="padding: 0; overflow: hidden; margin-bottom: 2rem;">
+    <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 1.1rem; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-list-check" style="color: var(--primary);"></i>
+            Detailed Log for {{ month_name }} {{ year }}
+        </h3>
+        <span class="brand-badge" style="font-size: 0.78rem;">{{ month_records.count }} Session{{ month_records.count|pluralize }} Recorded</span>
+    </div>
+
+    {% if month_records %}
+    <div style="overflow-x: auto;">
+        <table class="data-table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: var(--bg-main); border-bottom: 2px solid var(--border-color); text-align: left;">
+                    <th style="padding: 0.85rem 1.25rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 700;">Date</th>
+                    <th style="padding: 0.85rem 1.25rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 700;">Day</th>
+                    <th style="padding: 0.85rem 1.25rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 700;">Batch Timing</th>
+                    <th style="padding: 0.85rem 1.25rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 700;">Status</th>
+                    <th style="padding: 0.85rem 1.25rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 700;">Faculty Remarks</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in month_records %}
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                    <td style="padding: 0.9rem 1.25rem; font-weight: 600; color: var(--text-primary); font-size: 0.88rem;">
+                        {{ rec.date|date:"M d, Y" }}
+                    </td>
+                    <td style="padding: 0.9rem 1.25rem; color: var(--text-secondary); font-size: 0.85rem;">
+                        {{ rec.date|date:"l" }}
+                    </td>
+                    <td style="padding: 0.9rem 1.25rem; color: var(--text-secondary); font-size: 0.82rem;">
+                        <i class="fa-solid fa-clock" style="color: var(--primary); font-size: 0.75rem; margin-right: 4px;"></i>
+                        {{ rec.time_slot|default:student.class_time|default:"Regular Batch" }}
+                    </td>
+                    <td style="padding: 0.9rem 1.25rem;">
+                        {% if rec.status == 'Present' %}
+                        <span class="dossier-btn-dark success" style="font-size: 0.78rem; padding: 0.25rem 0.65rem;">
+                            <i class="fa-solid fa-check"></i> Present
+                        </span>
+                        {% elif rec.status == 'Absent' %}
+                        <span class="dossier-btn-dark" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.25); font-size: 0.78rem; padding: 0.25rem 0.65rem;">
+                            <i class="fa-solid fa-xmark"></i> Absent
+                        </span>
+                        {% elif rec.status == 'Late' %}
+                        <span class="dossier-btn-dark" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-color: rgba(245, 158, 11, 0.25); font-size: 0.78rem; padding: 0.25rem 0.65rem;">
+                            <i class="fa-solid fa-clock"></i> Late
+                        </span>
+                        {% elif rec.status == 'Leave' %}
+                        <span class="dossier-btn-dark" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; border-color: rgba(59, 130, 246, 0.25); font-size: 0.78rem; padding: 0.25rem 0.65rem;">
+                            <i class="fa-solid fa-calendar-minus"></i> Leave
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.9rem 1.25rem; color: var(--text-secondary); font-size: 0.82rem;">
+                        {{ rec.remarks|default:"-" }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="padding: 3rem 1.5rem; text-align: center;">
+        <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(79, 70, 229, 0.08); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.35rem; margin: 0 auto 1rem;">
+            <i class="fa-solid fa-calendar-xmark"></i>
+        </div>
+        <h4 style="font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.35rem;">No Attendance Records in {{ month_name }} {{ year }}</h4>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">
+            There are no recorded class attendance entries for this month yet.
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -2,18 +2,24 @@
 
 {% block title %}Edit Project - Student Portal{% endblock %}
 
+{% block breadcrumbs %}
+<a href="{% url 'student_dashboard' %}">Dashboard</a>
+<span class="breadcrumb-separator">/</span>
+<a href="{% url 'student_projects' %}">My Projects</a>
+<span class="breadcrumb-separator">/</span>
+<a href="{% url 'student_project_detail' project.id %}">{{ project.title|truncatechars:20 }}</a>
+<span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-current">Edit</span>
+{% endblock %}
+
 {% block content %}
 <!-- Page Header -->
-<div class="page-header">
+<div class="page-header" style="margin-bottom: 1.5rem;">
     <div class="header-text">
-        <div class="page-breadcrumbs">
-            <a href="{% url 'student_dashboard' %}"><i class="fa-solid fa-house"></i> Home</a>
-            <span class="crumb-separator">/</span>
-            <a href="{% url 'student_projects' %}">Projects</a>
-            <span class="crumb-separator">/</span>
-            <span class="crumb-current">Edit Project</span>
-        </div>
-        <h1>Edit Project</h1>
+        <h1 style="display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-pen-to-square" style="color: var(--primary);"></i>
+            Edit Project
+        </h1>
         <p class="header-subtitle">Update project information, attachments, links, and technical details</p>
     </div>
     <div class="header-actions">

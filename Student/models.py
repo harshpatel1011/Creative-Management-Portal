@@ -1,6 +1,46 @@
 import os
 from django.db import models
 
+class Faculty(models.Model):
+    DEPARTMENT_CHOICES = [
+        ('Development Courses', 'Development Courses'),
+        ('Design Courses', 'Design Courses'),
+        ('Programming IT', 'Programming IT'),
+        ('Trendy Courses', 'Trendy Courses'),
+        ('Civil-Mech. Engineering', 'Civil-Mech. Engineering'),
+        ('Business Development', 'Business Development'),
+        ('Short Term Courses', 'Short Term Courses'),
+        ('Diploma Courses', 'Diploma Courses'),
+    ]
+
+    name = models.CharField(max_length=150)
+    email = models.EmailField(max_length=150, blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    department = models.CharField(max_length=100, choices=DEPARTMENT_CHOICES, default='Development Courses')
+    specialization = models.CharField(max_length=255, blank=True, default='')
+    courses = models.TextField(blank=True, default='')
+    is_admin = models.BooleanField(default=False)
+    admin_account = models.ForeignKey('Management.Admin', on_delete=models.SET_NULL, null=True, blank=True, related_name='faculty_profiles')
+    created_by = models.CharField(max_length=100, blank=True, default='Admin')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name_plural = 'Faculties'
+
+    def __str__(self):
+        dept_str = f" ({self.department})" if self.department else ""
+        return f"{self.name}{dept_str}"
+
+
+    @property
+    def courses_list(self):
+        if self.courses:
+            return [c.strip() for c in self.courses.split(',') if c.strip()]
+        return []
+
+
 class Student(models.Model):
     CLASS_TIME_CHOICES = [
         ('08:00 am to 10:00 am', '08:00 am to 10:00 am'),
@@ -97,7 +137,9 @@ class Student(models.Model):
     email = models.EmailField(max_length=100, unique=True)
     password = models.CharField(max_length=255)
     course = models.CharField(max_length=255, blank=True, default='')
-    class_time = models.CharField(max_length=50, choices=CLASS_TIME_CHOICES, blank=True, null=True)
+    class_time = models.CharField(max_length=255, blank=True, null=True)
+    faculty = models.CharField(max_length=255, blank=True, default='')
+    faculty_member = models.ForeignKey(Faculty, on_delete=models.SET_NULL, null=True, blank=True, related_name='students')
     phone = models.CharField(max_length=20, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -110,13 +152,78 @@ class Student(models.Model):
             return [c.strip() for c in self.course.split(',') if c.strip()]
         return []
 
+    @property
+    def batches_list(self):
+        enrolled = list(self.enrolled_batches.values_list('batch_time', flat=True))
+        if enrolled:
+            return enrolled
+        if self.class_time:
+            return [b.strip() for b in self.class_time.split(',') if b.strip()]
+        return []
+
+    @property
+    def faculty_display(self):
+        if self.faculty_member:
+            return self.faculty_member.name
+        if self.faculty:
+            return self.faculty
+        return "Not Assigned"
+
+    @property
+    def attendance_stats(self):
+        records = self.attendance_records.all()
+        total = records.count()
+        if total == 0:
+            return {
+                "total": 0, "present": 0, "absent": 0, "late": 0, "leave": 0,
+                "percentage": 0, "status": "No Records"
+            }
+        present = records.filter(status="Present").count()
+        absent = records.filter(status="Absent").count()
+        late = records.filter(status="Late").count()
+        leave = records.filter(status="Leave").count()
+        attended = present + late
+        percentage = round((attended / total) * 100, 1) if total > 0 else 0
+        if percentage >= 85:
+            status = "Excellent"
+        elif percentage >= 75:
+            status = "Good"
+        elif percentage >= 60:
+            status = "Average"
+        else:
+            status = "Low Attendance"
+        return {
+            "total": total,
+            "present": present,
+            "absent": absent,
+            "late": late,
+            "leave": leave,
+            "percentage": percentage,
+            "status": status
+        }
+
     def __str__(self):
         return f"{self.name} ({self.email})"
+
+
+class StudentBatch(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='enrolled_batches')
+    batch_time = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('student', 'batch_time')
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.student.name} - {self.batch_time}"
 
 
 class StudentCourse(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='enrolled_courses')
     course_name = models.CharField(max_length=150)
+    faculty = models.CharField(max_length=150, blank=True, default='')
+    faculty_member = models.ForeignKey(Faculty, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -381,5 +488,35 @@ class ExamMarks(models.Model):
             self.grade = None
         super().save(*args, **kwargs)
 
+    @property
+    def percentage(self):
+        if self.marks_obtained is not None and self.exam and self.exam.total_marks and self.exam.total_marks > 0:
+            return round((float(self.marks_obtained) / float(self.exam.total_marks)) * 100, 1)
+        return None
+
     def __str__(self):
         return f"{self.student.name} - {self.exam.title}: {self.marks_obtained}/{self.exam.total_marks}"
+
+class Attendance(models.Model):
+    STATUS_CHOICES = [
+        ("Present", "Present"),
+        ("Absent", "Absent"),
+        ("Late", "Late"),
+        ("Leave", "Leave"),
+    ]
+
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="attendance_records")
+    date = models.DateField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="Present")
+    time_slot = models.CharField(max_length=50, choices=Student.CLASS_TIME_CHOICES, blank=True, null=True)
+    remarks = models.CharField(max_length=255, blank=True, default="")
+    marked_by = models.CharField(max_length=100, blank=True, default="Admin")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("student", "date")
+        ordering = ["-date", "student__name"]
+
+    def __str__(self):
+        return f"{self.student.name} - {self.date}: {self.status}"

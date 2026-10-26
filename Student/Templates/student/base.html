@@ -10,7 +10,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- FontAwesome 6.5.1 Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="icon" type="image/svg+xml" href="{% static 'creative-logo-blue.svg' %}">
+    <!-- FontAwesome 6.5.1 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <!-- Design System CSS -->
     <link rel="stylesheet" href="{% static 'style.css' %}">
 </head>
@@ -49,6 +51,10 @@
                 <a href="{% url 'student_marks' %}" class="dossier-btn {% if 'marks' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="fa-solid fa-award"></i>
                     <span>Marks & Grades</span>
+                </a>
+                <a href="{% url 'student_attendance' %}" class="dossier-btn {% if 'attendance' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fa-solid fa-calendar-check"></i>
+                    <span>My Attendance</span>
                 </a>
 
                 <div class="nav-section-title">Account</div>

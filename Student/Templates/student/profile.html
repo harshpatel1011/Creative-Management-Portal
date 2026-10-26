@@ -1,323 +1,428 @@
 {% extends 'student/base.html' %}
+{% load static %}
 
 {% block title %}My Profile - Student Portal{% endblock %}
 
+{% block breadcrumbs %}
+<a href="{% url 'student_dashboard' %}">Dashboard</a>
+<span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-current">My Profile</span>
+{% endblock %}
+
 {% block content %}
 <!-- Page Header -->
-<div class="page-header">
+<div class="page-header" style="margin-bottom: 1.5rem;">
     <div class="header-text">
-        <div class="page-breadcrumbs">
-            <a href="{% url 'student_dashboard' %}"><i class="fa-solid fa-house"></i> Home</a>
-            <span class="crumb-separator">/</span>
-            <span class="crumb-current">My Profile</span>
-        </div>
-        <h1>Student Profile</h1>
-        <p class="header-subtitle">Academic registration records, enrolled courses, and account security</p>
+        <h1 style="display: flex; align-items: center; gap: 0.6rem;">
+            <i class="fa-solid fa-id-card" style="color: var(--primary);"></i>
+            Student Profile & Account
+        </h1>
+        <p>Official academic registration records, enrolled courses, performance standing, and security</p>
     </div>
-    <div class="header-actions">
+    <div class="header-actions" style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+        <button type="button" class="btn-secondary" onclick="window.print();" title="Print Student Dossier">
+            <i class="fa-solid fa-print"></i>
+            <span>Print Profile</span>
+        </button>
         <a href="{% url 'student_change_password' %}" class="btn-primary">
-            <i class="fa-solid fa-key"></i> Change Password
+            <i class="fa-solid fa-key"></i>
+            <span>Change Password</span>
         </a>
     </div>
 </div>
 
-<div style="max-width: 1000px; margin: 0 auto 3rem auto; display: flex; flex-direction: column; gap: 2rem;">
-    <!-- Profile Hero Card -->
-    <div class="profile-hero-card">
-        <div class="profile-hero-content">
-            <div class="profile-large-avatar">
-                <i class="fa-solid fa-user-graduate"></i>
+<!-- Profile Hero Banner Card -->
+<div class="student-card" style="padding: 2rem; margin-bottom: 2rem; position: relative; overflow: hidden; background: linear-gradient(135deg, var(--bg-card) 0%, rgba(79, 70, 229, 0.04) 100%);">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+            <!-- Profile Avatar with Initial -->
+            <div style="width: 76px; height: 76px; border-radius: var(--border-radius-full); background: var(--primary-gradient); color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 800; box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35); flex-shrink: 0;">
+                {{ student.name|slice:":1"|upper }}
             </div>
-            <div class="profile-hero-details">
+
+            <!-- Profile Primary Details -->
+            <div>
                 <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-                    <h2 class="profile-student-name">{{ student.name }}</h2>
-                    <span class="badge badge-success" style="padding: 0.3rem 0.75rem; font-size: 0.8rem;">
+                    <h2 style="font-size: 1.6rem; font-weight: 800; color: var(--text-primary); margin: 0; line-height: 1.2;">{{ student.name }}</h2>
+                    <span class="badge badge-success" style="font-size: 0.8rem; padding: 0.35rem 0.75rem;">
                         <i class="fa-solid fa-circle-check"></i> Enrolled Student
                     </span>
+                    <span class="badge badge-secondary" style="font-weight: 700; font-size: 0.8rem;">
+                        ID: #{{ student.id }}
+                    </span>
                 </div>
-                <div class="profile-hero-meta">
-                    <span><i class="fa-solid fa-envelope"></i> {{ student.email }}</span>
-                    <span>•</span>
-                    <span><i class="fa-regular fa-calendar"></i> Enrolled {{ student.created_at|date:"M d, Y" }}</span>
-                    <span>•</span>
-                    <span><i class="fa-solid fa-fingerprint"></i> ID #{{ student.id }}</span>
+
+                <!-- Meta Details Chips -->
+                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 0.65rem; font-size: 0.85rem; color: var(--text-secondary);">
+                    <span>
+                        <i class="fa-solid fa-book-open" style="color: var(--primary); margin-right: 4px;"></i> {{ student.course }}
+                    </span>
+                    {% if student.batches_list %}
+                    <span style="color: var(--border-color);">&bull;</span>
+                    <span>
+                        <i class="fa-regular fa-clock" style="color: var(--primary); margin-right: 4px;"></i> Batches:
+                        {% for b in student.batches_list %}
+                            <strong>{{ b }}</strong>{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                    </span>
+                    {% elif student.class_time %}
+                    <span style="color: var(--border-color);">&bull;</span>
+                    <span>
+                        <i class="fa-regular fa-clock" style="color: var(--primary); margin-right: 4px;"></i> Batch: <strong>{{ student.class_time }}</strong>
+                    </span>
+                    {% endif %}
+                    {% if student.faculty_display != "Not Assigned" %}
+                    <span style="color: var(--border-color);">&bull;</span>
+                    <span>
+                        <i class="fa-solid fa-chalkboard-user" style="color: var(--primary); margin-right: 4px;"></i> Faculty: <strong>{{ student.faculty_display }}</strong>
+                    </span>
+                    {% endif %}
+                    <span style="color: var(--border-color);">&bull;</span>
+                    <span>
+                        <i class="fa-solid fa-envelope" style="color: var(--primary); margin-right: 4px;"></i> {{ student.email }}
+                    </span>
+                    <span style="color: var(--border-color);">&bull;</span>
+                    <span>
+                        <i class="fa-regular fa-calendar" style="color: var(--primary); margin-right: 4px;"></i> Enrolled: {{ student.created_at|date:"M d, Y" }}
+                    </span>
                 </div>
             </div>
         </div>
+
+        <!-- Academic Standing Status Badge -->
+        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.4rem;">
+            {% if overall_grade != "N/A" %}
+            <span class="brand-badge" style="font-size: 0.9rem; padding: 0.5rem 1rem; background: rgba(79, 70, 229, 0.08); color: var(--primary); border: 1px solid rgba(79, 70, 229, 0.2);">
+                <i class="fa-solid fa-shield-halved"></i> {{ standing }}
+            </span>
+            <small style="font-size: 0.78rem; color: var(--text-muted);">Cumulative Grade: <strong>{{ overall_grade }} ({{ percentage }}%)</strong></small>
+            {% else %}
+            <span class="badge badge-secondary" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+                <i class="fa-solid fa-hourglass-half"></i> Curriculum In Progress
+            </span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Academic & Portfolio KPI Stats Grid (4 Cards) -->
+<div class="stats-overview-grid" style="margin-bottom: 2rem;">
+    <!-- Cumulative Academic Score Card -->
+    <div class="kpi-card" onclick="window.location.href='{% url 'student_marks' %}';" style="cursor: pointer;">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(79, 70, 229, 0.1); color: var(--primary);">
+                    <i class="fa-solid fa-award"></i>
+                </div>
+                <span class="badge {% if overall_grade == 'A+' or overall_grade == 'A' %}badge-success{% elif overall_grade == 'B+' or overall_grade == 'B' %}badge-primary{% elif overall_grade == 'C' or overall_grade == 'D' %}badge-warning{% elif overall_grade == 'F' %}badge-danger{% else %}badge-secondary{% endif %}">
+                    {{ overall_grade }}
+                </span>
+            </div>
+            <div class="kpi-value" style="color: {% if percentage >= 80 %}#10b981{% elif percentage >= 60 %}var(--primary){% elif percentage >= 33 %}#f59e0b{% elif total_marks_records > 0 %}#ef4444{% else %}var(--text-primary){% endif %};">
+                {{ percentage }}%
+            </div>
+            <div class="kpi-label">Cumulative Exam Score</div>
+        </div>
+        <div class="kpi-footer">
+            <span>{{ total_marks_records }} examination{{ total_marks_records|pluralize }} evaluated</span>
+            <span class="kpi-link">Grades <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i></span>
+        </div>
     </div>
 
-    <!-- 3-Column Info Cards Grid -->
-    <div class="profile-info-grid">
-        <!-- Academic Enrollment Card -->
-        <div class="profile-card">
-            <div class="profile-card-header">
-                <div class="profile-card-icon">
-                    <i class="fa-solid fa-book-open"></i>
+    <!-- Attendance Standing Card -->
+    <div class="kpi-card" onclick="window.location.href='{% url 'student_attendance' %}';" style="cursor: pointer;">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                    <i class="fa-solid fa-calendar-check"></i>
+                </div>
+                <span class="badge {% if attendance_stats.percentage >= 85 %}badge-success{% elif attendance_stats.percentage >= 75 %}badge-primary{% elif attendance_stats.percentage >= 60 %}badge-warning{% else %}badge-danger{% endif %}">
+                    {{ attendance_stats.status }}
+                </span>
+            </div>
+            <div class="kpi-value" style="color: {% if attendance_stats.percentage >= 85 %}#10b981{% elif attendance_stats.percentage >= 75 %}#3b82f6{% elif attendance_stats.percentage >= 60 %}#f59e0b{% elif attendance_stats.total > 0 %}#ef4444{% else %}var(--text-primary){% endif %};">
+                {% if attendance_stats.total > 0 %}{{ attendance_stats.percentage }}%{% else %}N/A{% endif %}
+            </div>
+            <div class="kpi-label">Cumulative Attendance</div>
+        </div>
+        <div class="kpi-footer">
+            <span>{{ attendance_stats.present }} of {{ attendance_stats.total }} sessions attended</span>
+            <span class="kpi-link">Attendance <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i></span>
+        </div>
+    </div>
+
+    <!-- Project Portfolio Card -->
+    <div class="kpi-card" onclick="window.location.href='{% url 'student_projects' %}';" style="cursor: pointer;">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan);">
+                    <i class="fa-solid fa-diagram-project"></i>
+                </div>
+                <span class="badge badge-info">Portfolio</span>
+            </div>
+            <div class="kpi-value">{{ total_projects }}</div>
+            <div class="kpi-label">Projects Submitted</div>
+        </div>
+        <div class="kpi-footer">
+            <span>{{ approved_projects_count }} approved &bull; {{ submitted_projects_count }} pending</span>
+            <span class="kpi-link">Projects <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i></span>
+        </div>
+    </div>
+
+    <!-- Security & Access State Card -->
+    <div class="kpi-card" onclick="window.location.href='{% url 'student_change_password' %}';" style="cursor: pointer;">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-violet);">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <span class="badge badge-success">Verified</span>
+            </div>
+            <div class="kpi-value" style="font-size: 1.55rem; color: #10b981; display: flex; align-items: center; gap: 0.4rem; padding-top: 0.2rem;">
+                <i class="fa-solid fa-lock" style="font-size: 1.3rem;"></i> Protected
+            </div>
+            <div class="kpi-label">Portal Security State</div>
+        </div>
+        <div class="kpi-footer">
+            <span>Password encrypted with PBKDF2</span>
+            <span class="kpi-link">Security <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i></span>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Dossier (2-Column Grid) -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.75rem; margin-bottom: 2.5rem;">
+    <!-- Left Column: Academic & Identification Details -->
+    <div style="display: flex; flex-direction: column; gap: 1.75rem;">
+        <!-- Academic Curriculum Card -->
+        <div class="student-card" style="padding: 1.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.85rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1.25rem;">
+                <div style="width: 40px; height: 40px; border-radius: var(--border-radius-md); background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.15rem; flex-shrink: 0;">
+                    <i class="fa-solid fa-graduation-cap"></i>
                 </div>
                 <div>
-                    <h3 class="profile-card-title">Academic Courses</h3>
-                    <p class="profile-card-subtitle">Active curriculum & batch timetable</p>
+                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">Academic Curriculum & Batch</h3>
+                    <p style="margin: 0.15rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Active academic program, course modules, and batch timing</p>
                 </div>
             </div>
 
-            <div class="profile-details-list">
-                <div class="profile-detail-item">
-                    <span class="detail-label">Enrolled Modules</span>
-                    <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.35rem;">
+            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <!-- Primary Course -->
+                <div>
+                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem;">Primary Course / Specialization</div>
+                    <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.45rem;">
+                        <i class="fa-solid fa-award" style="color: var(--primary);"></i>
+                        <span>{{ student.course }}</span>
+                    </div>
+                </div>
+
+                <!-- Enrolled Course Modules -->
+                <div>
+                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Enrolled Modules / Subjects</div>
+                    <div style="display: flex; gap: 0.45rem; flex-wrap: wrap;">
                         {% for c in student.courses_list %}
-                            <span class="badge badge-primary" style="font-size: 0.78rem; padding: 0.25rem 0.65rem;">
-                                {{ c }}
+                            <span class="badge badge-primary" style="font-size: 0.8rem; padding: 0.35rem 0.75rem;">
+                                <i class="fa-solid fa-check" style="font-size: 0.7rem;"></i> {{ c }}
                             </span>
                         {% empty %}
-                            <span class="badge badge-secondary" style="font-size: 0.78rem;">
+                            <span class="badge badge-secondary" style="font-size: 0.8rem; padding: 0.35rem 0.75rem;">
                                 {{ student.course|default:"General Curriculum" }}
                             </span>
                         {% endfor %}
                     </div>
                 </div>
 
-                <div class="profile-detail-item">
-                    <span class="detail-label">Batch Schedule / Class Time</span>
-                    <div class="detail-value" style="display: flex; align-items: center; gap: 0.45rem;">
-                        <i class="fa-regular fa-clock" style="color: var(--primary);"></i>
-                        <span>{{ student.class_time|default:"Flexible Batch" }}</span>
+                <!-- Class Batch Timetable & Assigned Faculty -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding-top: 0.5rem; border-top: 1px dashed var(--border-color);">
+                    <div>
+                        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem;">Assigned Batch Schedules</div>
+                        <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                            {% for b in student.batches_list %}
+                            <span class="badge badge-secondary" style="font-size: 0.75rem; padding: 0.2rem 0.55rem;">
+                                <i class="fa-regular fa-clock" style="color: var(--primary);"></i> {{ b }}
+                            </span>
+                            {% empty %}
+                            <span style="font-size: 0.88rem; color: var(--text-muted);">{{ student.class_time|default:"Flexible Schedule" }}</span>
+                            {% endfor %}
+                        </div>
                     </div>
-                </div>
-
-                <div class="profile-detail-item">
-                    <span class="detail-label">Enrollment Date</span>
-                    <div class="detail-value">
-                        {{ student.created_at|date:"F d, Y - h:i A" }}
+                    <div>
+                        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem;">Assigned Faculty Instructor</div>
+                        <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.45rem;">
+                            <i class="fa-solid fa-chalkboard-user" style="color: var(--primary);"></i>
+                            <span>{{ student.faculty_display }}</span>
+                        </div>
+                        {% if student.faculty_member and student.faculty_member.specialization %}
+                        <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 2px;">{{ student.faculty_member.specialization }}</small>
+                        {% endif %}
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Contact & Identification Card -->
-        <div class="profile-card">
-            <div class="profile-card-header">
-                <div class="profile-card-icon" style="background: var(--info-light); color: var(--info);">
+        <!-- Personal & Contact Card -->
+        <div class="student-card" style="padding: 1.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.85rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1.25rem;">
+                <div style="width: 40px; height: 40px; border-radius: var(--border-radius-md); background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan); display: flex; align-items: center; justify-content: center; font-size: 1.15rem; flex-shrink: 0;">
                     <i class="fa-solid fa-address-card"></i>
                 </div>
                 <div>
-                    <h3 class="profile-card-title">Contact & Security</h3>
-                    <p class="profile-card-subtitle">Verified contact and account state</p>
+                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">Contact & Personal Record</h3>
+                    <p style="margin: 0.15rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Verified communication channels and registration identifiers</p>
                 </div>
             </div>
 
-            <div class="profile-details-list">
-                <div class="profile-detail-item">
-                    <span class="detail-label">Email Address</span>
-                    <div class="detail-value" style="word-break: break-all;">
-                        <a href="mailto:{{ student.email }}" style="color: var(--primary); text-decoration: none;">
-                            {{ student.email }}
+            <div style="display: flex; flex-direction: column; gap: 1.15rem;">
+                <div>
+                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Full Legal Name</div>
+                    <div style="font-size: 0.98rem; font-weight: 700; color: var(--text-primary);">{{ student.name }}</div>
+                </div>
+
+                <div>
+                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Email Address</div>
+                    <div style="font-size: 0.92rem; font-weight: 600;">
+                        <a href="mailto:{{ student.email }}" style="color: var(--primary); text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">
+                            <i class="fa-regular fa-envelope"></i> {{ student.email }}
                         </a>
                     </div>
                 </div>
 
-                <div class="profile-detail-item">
-                    <span class="detail-label">Phone Number</span>
-                    <div class="detail-value">
+                <div>
+                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Phone Number</div>
+                    <div style="font-size: 0.92rem; font-weight: 600;">
                         {% if student.phone %}
-                            <a href="tel:{{ student.phone }}" style="color: var(--text-primary); text-decoration: none;">
-                                <i class="fa-solid fa-phone" style="color: var(--success); font-size: 0.8rem; margin-right: 4px;"></i> {{ student.phone }}
-                            </a>
+                        <a href="tel:{{ student.phone }}" style="color: var(--text-primary); text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">
+                            <i class="fa-solid fa-phone" style="color: var(--success); font-size: 0.85rem;"></i> {{ student.phone }}
+                        </a>
                         {% else %}
-                            <span style="color: var(--text-muted); font-style: italic;">Not registered</span>
+                        <span style="color: var(--text-muted); font-style: italic; font-size: 0.88rem;">Not registered in student record</span>
                         {% endif %}
                     </div>
                 </div>
 
-                <div class="profile-detail-item">
-                    <span class="detail-label">Account Security</span>
-                    <div class="detail-value" style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.25rem;">
-                        <span style="font-size: 0.85rem; color: var(--text-secondary);">
-                            <i class="fa-solid fa-lock" style="color: var(--success); margin-right: 4px;"></i> Password Protected
-                        </span>
-                        <a href="{% url 'student_change_password' %}" class="btn-outline" style="padding: 0.25rem 0.65rem; font-size: 0.75rem;">
-                            Update
-                        </a>
+                <div>
+                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Student Portal UID</div>
+                    <div style="font-size: 0.92rem; font-weight: 700; color: var(--text-secondary); font-family: monospace;">
+                        STD-{{ student.id|stringformat:"04d" }}
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Performance Summary Card -->
-        <div class="profile-card">
-            <div class="profile-card-header">
-                <div class="profile-card-icon" style="background: var(--success-light); color: var(--success);">
-                    <i class="fa-solid fa-chart-pie"></i>
+    <!-- Right Column: Account Security & Portfolio Shortcuts -->
+    <div style="display: flex; flex-direction: column; gap: 1.75rem;">
+        <!-- Account Security Card -->
+        <div class="student-card" style="padding: 1.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.85rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1.25rem;">
+                <div style="width: 40px; height: 40px; border-radius: var(--border-radius-md); background: rgba(16, 185, 129, 0.1); color: #10b981; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; flex-shrink: 0;">
+                    <i class="fa-solid fa-key"></i>
                 </div>
                 <div>
-                    <h3 class="profile-card-title">Academic Record</h3>
-                    <p class="profile-card-subtitle">Portfolio & examination metrics</p>
+                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">Account Security & Access</h3>
+                    <p style="margin: 0.15rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Manage portal authentication credentials and security</p>
                 </div>
             </div>
 
-            <div class="profile-details-list">
-                <div class="profile-detail-item">
-                    <span class="detail-label">Overall Grade Percentage</span>
-                    <div class="detail-value" style="display: flex; align-items: center; gap: 0.75rem; margin-top: 0.25rem;">
-                        <span style="font-size: 1.4rem; font-weight: 800; color: var(--primary);">{{ percentage }}%</span>
-                        <div style="flex: 1; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
-                            <div style="width: {{ percentage }}%; height: 100%; background: var(--primary); border-radius: 999px;"></div>
+            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <!-- Password Protection State -->
+                <div style="background: var(--bg-main); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 1rem 1.15rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+                    <div>
+                        <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.4rem;">
+                            <i class="fa-solid fa-shield-halved" style="color: var(--success);"></i>
+                            <span>Portal Password</span>
+                        </div>
+                        <small style="color: var(--text-muted); font-size: 0.78rem;">Last updated or configured at enrollment</small>
+                    </div>
+                    <a href="{% url 'student_change_password' %}" class="btn-outline" style="padding: 0.35rem 0.85rem; font-size: 0.8rem;">
+                        <i class="fa-solid fa-key"></i> Update
+                    </a>
+                </div>
+
+                <!-- Security Tips Box -->
+                <div style="background: rgba(79, 70, 229, 0.05); border: 1px solid rgba(79, 70, 229, 0.15); border-radius: var(--border-radius-md); padding: 1rem 1.15rem;">
+                    <strong style="color: var(--primary); font-size: 0.85rem; display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.35rem;">
+                        <i class="fa-solid fa-circle-info"></i> Security Recommendation
+                    </strong>
+                    <p style="margin: 0; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5;">
+                        To protect your academic portfolio and exam marks, ensure you use a strong password and never share your credentials with fellow students.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Academic Activity & Quick Access Card -->
+        <div class="student-card" style="padding: 1.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.85rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1.25rem;">
+                <div style="width: 40px; height: 40px; border-radius: var(--border-radius-md); background: rgba(245, 158, 11, 0.1); color: #f59e0b; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; flex-shrink: 0;">
+                    <i class="fa-solid fa-gauge-high"></i>
+                </div>
+                <div>
+                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">Academic Portfolio Shortcuts</h3>
+                    <p style="margin: 0.15rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Quick access to key academic portals and registers</p>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <!-- Marks Sheet Shortcut -->
+                <a href="{% url 'student_marks' %}" class="student-quick-link" style="display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1rem; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); text-decoration: none; color: var(--text-primary); transition: all var(--transition-fast);">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <i class="fa-solid fa-award" style="color: var(--primary); font-size: 1.1rem;"></i>
+                        <div>
+                            <div style="font-weight: 700; font-size: 0.88rem;">Marks & Examination Grades</div>
+                            <small style="color: var(--text-muted); font-size: 0.75rem;">{{ total_marks_records }} exam evaluations recorded</small>
                         </div>
                     </div>
-                </div>
+                    <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.8rem;"></i>
+                </a>
 
-                <div class="profile-detail-item">
-                    <span class="detail-label">Projects Submitted</span>
-                    <div class="detail-value" style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.25rem;">
-                        <span style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">{{ total_projects }} Project{{ total_projects|pluralize }}</span>
-                        <a href="{% url 'student_projects' %}" class="btn-outline" style="padding: 0.25rem 0.65rem; font-size: 0.75rem;">
-                            View Portfolio
-                        </a>
+                <!-- Attendance Register Shortcut -->
+                <a href="{% url 'student_attendance' %}" class="student-quick-link" style="display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1rem; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); text-decoration: none; color: var(--text-primary); transition: all var(--transition-fast);">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <i class="fa-solid fa-calendar-check" style="color: #10b981; font-size: 1.1rem;"></i>
+                        <div>
+                            <div style="font-weight: 700; font-size: 0.88rem;">Attendance Portfolio</div>
+                            <small style="color: var(--text-muted); font-size: 0.75rem;">{{ attendance_stats.percentage }}% cumulative attendance</small>
+                        </div>
                     </div>
-                </div>
+                    <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.8rem;"></i>
+                </a>
 
-                <div class="profile-detail-item">
-                    <span class="detail-label">Evaluated Examinations</span>
-                    <div class="detail-value" style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.25rem;">
-                        <span style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">{{ total_marks_records }} Exam{{ total_marks_records|pluralize }}</span>
-                        <a href="{% url 'student_marks' %}" class="btn-outline" style="padding: 0.25rem 0.65rem; font-size: 0.75rem;">
-                            View Grades
-                        </a>
+                <!-- Projects Shortcut -->
+                <a href="{% url 'student_projects' %}" class="student-quick-link" style="display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1rem; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); text-decoration: none; color: var(--text-primary); transition: all var(--transition-fast);">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <i class="fa-solid fa-diagram-project" style="color: var(--accent-cyan); font-size: 1.1rem;"></i>
+                        <div>
+                            <div style="font-weight: 700; font-size: 0.88rem;">Project Portfolio Submissions</div>
+                            <small style="color: var(--text-muted); font-size: 0.75rem;">{{ total_projects }} submissions recorded</small>
+                        </div>
                     </div>
-                </div>
+                    <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.8rem;"></i>
+                </a>
             </div>
         </div>
     </div>
 </div>
 
 <style>
-.profile-hero-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-lg);
-    padding: 2.25rem;
-    box-shadow: var(--shadow-card);
+.student-quick-link:hover {
+    border-color: var(--primary);
+    background: var(--bg-card-hover);
+    transform: translateX(4px);
 }
 
-.profile-hero-content {
-    display: flex;
-    align-items: center;
-    gap: 1.75rem;
-    flex-wrap: wrap;
-}
-
-.profile-large-avatar {
-    width: 80px;
-    height: 80px;
-    border-radius: var(--border-radius-full);
-    background: var(--primary);
-    color: #ffffff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2.25rem;
-    box-shadow: 0 4px 12px var(--primary-glow);
-    flex-shrink: 0;
-}
-
-.profile-hero-details {
-    flex: 1;
-    min-width: 260px;
-}
-
-.profile-student-name {
-    font-size: 1.75rem;
-    font-weight: 800;
-    color: var(--text-primary);
-    margin: 0;
-    line-height: 1.25;
-}
-
-.profile-hero-meta {
-    display: flex;
-    gap: 0.85rem;
-    align-items: center;
-    flex-wrap: wrap;
-    color: var(--text-muted);
-    font-size: 0.875rem;
-    margin-top: 0.5rem;
-}
-
-.profile-info-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
-}
-
-.profile-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-lg);
-    padding: 1.75rem;
-    box-shadow: var(--shadow-card);
-    display: flex;
-    flex-direction: column;
-}
-
-.profile-card-header {
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--border-color-light);
-    margin-bottom: 1.25rem;
-}
-
-.profile-card-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: var(--border-radius-md);
-    background: var(--primary-light);
-    color: var(--primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.15rem;
-    flex-shrink: 0;
-}
-
-.profile-card-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 0 0 0.15rem 0;
-}
-
-.profile-card-subtitle {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    margin: 0;
-}
-
-.profile-details-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1.1rem;
-    flex: 1;
-}
-
-.profile-detail-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.detail-label {
-    font-size: 0.78rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-muted);
-}
-
-.detail-value {
-    font-size: 0.92rem;
-    font-weight: 600;
-    color: var(--text-primary);
+@media print {
+    .sidebar, .top-navbar, .page-header, .header-actions, .kpi-card .kpi-link, .btn-outline {
+        display: none !important;
+    }
+    .main-content {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    .student-card {
+        border: 1px solid #cbd5e1 !important;
+        box-shadow: none !important;
+    }
 }
 </style>
 {% endblock %}

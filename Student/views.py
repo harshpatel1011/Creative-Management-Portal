@@ -3,7 +3,9 @@ from django.contrib import messages
 from django.contrib.auth.hashers import make_password, check_password
 from django.db.models import Q
 from django.utils import timezone
-from .models import Student, Project, ProjectFile, ProjectLink, Exam, ExamMarks
+import datetime
+import calendar
+from .models import Student, Project, ProjectFile, ProjectLink, Exam, ExamMarks, Attendance
 
 
 def get_current_student(request):
@@ -93,6 +95,8 @@ def student_dashboard_view(request):
         "total_obtained": total_obtained,
         "total_possible": total_possible,
         "percentage": percentage,
+        "attendance_stats": user.attendance_stats,
+        "recent_attendance": user.attendance_records.all()[:5],
     }
     return render(request, "student/dashboard.html", context)
 
@@ -377,7 +381,7 @@ def student_marks_view(request):
     if not user:
         return redirect("student_login")
 
-    marks_records = ExamMarks.objects.filter(student=user).order_by("-exam__exam_date")
+    marks_records = ExamMarks.objects.filter(student=user).select_related("exam").order_by("-exam__exam_date")
 
     total_obtained = sum(m.marks_obtained for m in marks_records if m.marks_obtained is not None)
     total_possible = sum(m.exam.total_marks for m in marks_records if m.marks_obtained is not None)
@@ -387,31 +391,60 @@ def student_marks_view(request):
         else 0
     )
 
+    total_exams = marks_records.count()
+    graded_records = [m for m in marks_records if m.marks_obtained is not None]
+    graded_count = len(graded_records)
+    absent_count = sum(1 for m in marks_records if m.is_absent or m.grade == "Absent")
+    pending_count = sum(
+        1 for m in marks_records if m.marks_obtained is None and not m.is_absent and m.grade != "Absent"
+    )
+    passed_count = sum(1 for m in graded_records if m.grade != "F")
+    failed_count = sum(1 for m in graded_records if m.grade == "F") + absent_count
+
     overall_grade = "N/A"
+    standing = "Awaiting Evaluation"
     if total_possible > 0:
         if percentage >= 90:
             overall_grade = "A+"
+            standing = "Distinction with Honors"
         elif percentage >= 80:
             overall_grade = "A"
+            standing = "First Class with Distinction"
         elif percentage >= 70:
             overall_grade = "B+"
+            standing = "First Class"
         elif percentage >= 60:
             overall_grade = "B"
+            standing = "Higher Second Class"
         elif percentage >= 50:
             overall_grade = "C"
-        elif percentage >= 40:
+            standing = "Second Class"
+        elif percentage >= 33:
             overall_grade = "D"
+            standing = "Pass Class"
         else:
             overall_grade = "F"
+            standing = "Needs Improvement"
+
+    # Distinct subjects for filter
+    subjects = sorted(list(set(m.exam.subject for m in marks_records if m.exam and m.exam.subject)))
 
     context = {
         "user": user,
         "student": user,
         "marks_records": marks_records,
+        "total_exams": total_exams,
+        "graded_count": graded_count,
+        "absent_count": absent_count,
+        "pending_count": pending_count,
+        "passed_count": passed_count,
+        "failed_count": failed_count,
         "total_obtained": total_obtained,
         "total_possible": total_possible,
         "percentage": percentage,
         "overall_grade": overall_grade,
+        "standing": standing,
+        "subjects": subjects,
     }
     return render(request, "student/marks.html", context)
 
@@ -432,12 +465,46 @@ def student_profile_view(request):
         else 0
     )
 
+    overall_grade = "N/A"
+    standing = "Awaiting Evaluation"
+    if total_possible > 0:
+        if percentage >= 90:
+            overall_grade = "A+"
+            standing = "Distinction with Honors"
+        elif percentage >= 80:
+            overall_grade = "A"
+            standing = "First Class with Distinction"
+        elif percentage >= 70:
+            overall_grade = "B+"
+            standing = "First Class"
+        elif percentage >= 60:
+            overall_grade = "B"
+            standing = "Higher Second Class"
+        elif percentage >= 50:
+            overall_grade = "C"
+            standing = "Second Class"
+        elif percentage >= 33:
+            overall_grade = "D"
+            standing = "Pass Class"
+        else:
+            overall_grade = "F"
+            standing = "Needs Improvement"
+
+    approved_projects_count = projects.filter(status="Approved").count()
+    submitted_projects_count = projects.filter(status="Submitted").count()
+
     context = {
         "user": user,
         "student": user,
         "total_projects": projects.count(),
+        "approved_projects_count": approved_projects_count,
+        "submitted_projects_count": submitted_projects_count,
         "total_marks_records": marks_records.count(),
         "percentage": percentage,
+        "overall_grade": overall_grade,
+        "standing": standing,
+        "attendance_stats": user.attendance_stats,
+        "recent_attendance": user.attendance_records.all()[:5],
     }
     return render(request, "student/profile.html", context)
 
@@ -468,6 +535,14 @@ def student_change_password_view(request):
                 {"user": user, "student": user},
             )
 
+        if len(new_password) < 6:
+            messages.error(request, "New password must be at least 6 characters long!")
+            return render(
+                request,
+                "student/change_password.html",
+                {"user": user, "student": user},
+            )
+
         if new_password != confirm_password:
             messages.error(request, "New password and Confirm password do not match!")
             return render(
@@ -486,3 +561,83 @@ def student_change_password_view(request):
         "student/change_password.html",
         {"user": user, "student": user},
     )
+
+
+# --- STUDENT ATTENDANCE PORTAL VIEW ---
+
+
+def student_attendance_view(request):
+    user = get_current_student(request)
+    if not user:
+        return redirect("student_login")
+
+    today = datetime.date.today()
+    try:
+        month = int(request.GET.get("month", today.month))
+        year = int(request.GET.get("year", today.year))
+    except (ValueError, TypeError):
+        month = today.month
+        year = today.year
+
+    month_name = calendar.month_name[month]
+    _, num_days = calendar.monthrange(year, month)
+    start_date = datetime.date(year, month, 1)
+    end_date = datetime.date(year, month, num_days)
+
+    # Monthly attendance records
+    month_records = (
+        user.attendance_records.filter(date__range=[start_date, end_date])
+        .order_by("-date")
+    )
+
+    monthly_present = month_records.filter(status="Present").count()
+    monthly_absent = month_records.filter(status="Absent").count()
+    monthly_late = month_records.filter(status="Late").count()
+    monthly_leave = month_records.filter(status="Leave").count()
+    monthly_total = month_records.count()
+    monthly_pct = (
+        round(((monthly_present + monthly_late) / monthly_total) * 100, 1)
+        if monthly_total > 0
+        else 0
+    )
+
+    records_by_day = {r.date.day: r for r in month_records}
+    calendar_days = []
+    for d in range(1, num_days + 1):
+        day_date = datetime.date(year, month, d)
+        rec = records_by_day.get(d)
+        calendar_days.append({
+            "day": d,
+            "weekday": day_date.strftime("%a"),
+            "date": day_date,
+            "status": rec.status if rec else None,
+            "remarks": rec.remarks if rec else "",
+            "time_slot": rec.time_slot if rec else user.class_time,
+            "is_weekend": day_date.weekday() >= 6,
+            "is_today": day_date == today,
+        })
+
+    all_time_stats = user.attendance_stats
+
+    months_list = [(i, calendar.month_name[i]) for i in range(1, 13)]
+    years_list = [year - 1, year, year + 1]
+
+    context = {
+        "user": user,
+        "student": user,
+        "month": month,
+        "month_name": month_name,
+        "year": year,
+        "months_list": months_list,
+        "years_list": years_list,
+        "calendar_days": calendar_days,
+        "month_records": month_records,
+        "monthly_present": monthly_present,
+        "monthly_absent": monthly_absent,
+        "monthly_late": monthly_late,
+        "monthly_leave": monthly_leave,
+        "monthly_total": monthly_total,
+        "monthly_pct": monthly_pct,
+        "all_time_stats": all_time_stats,
+    }
+    return render(request, "student/attendance.html", context)

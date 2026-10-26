@@ -23,6 +23,10 @@
             <i class="fa-solid fa-calendar-plus"></i>
             <span>Create Exam</span>
         </a>
+        <a href="{% url 'admin_attendance_hub' %}" class="btn-secondary">
+            <i class="fa-solid fa-clipboard-user"></i>
+            <span>Batch Attendance</span>
+        </a>
         <a href="{% url 'admin_projects' %}" class="btn-secondary">
             <i class="fa-solid fa-diagram-project"></i>
             <span>View Projects</span>
@@ -115,6 +119,28 @@
         <div class="kpi-footer">
             <span>Superusers & staff</span>
             <span class="kpi-link">Directory <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i></span>
+        </div>
+    </div>
+
+    <!-- Today Attendance KPI -->
+    <div class="kpi-card" onclick="window.location.href='{% url 'admin_attendance_hub' %}';" style="cursor: pointer;">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                    <i class="fa-solid fa-clipboard-user"></i>
+                </div>
+                <span class="dossier-btn-dark {% if today_marked > 0 %}success{% endif %}">
+                    {% if today_marked > 0 %}{{ today_present }} Present{% else %}Attendance{% endif %}
+                </span>
+            </div>
+            <div class="kpi-value" style="color: #10b981;">
+                {% if today_marked > 0 %}{{ today_attendance_pct }}%{% else %}Hub{% endif %}
+            </div>
+            <div class="kpi-label">Today's Attendance</div>
+        </div>
+        <div class="kpi-footer">
+            <span>{% if today_marked > 0 %}{{ today_marked }} marked today{% else %}Batch attendance tracking{% endif %}</span>
+            <span class="kpi-link">Manage <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i></span>
         </div>
     </div>
 </div>

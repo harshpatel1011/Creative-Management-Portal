@@ -1,0 +1,324 @@
+{% extends 'management/base.html' %}
+{% load static %}
+
+{% block title %}Batch Attendance - {{ batch_time }} - Creative Management{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'admin_dashboard' %}">Dashboard</a>
+<span class="breadcrumb-separator">/</span>
+<a href="{% url 'admin_attendance_hub' %}?date={{ selected_date_str }}">Batch Attendance</a>
+<span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-current">{{ batch_time }}</span>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header" style="margin-bottom: 1.5rem;">
+    <div class="header-text">
+        <h1 style="display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-clipboard-check" style="color: var(--primary);"></i>
+            Batch Attendance Sheet
+        </h1>
+        <p>Record daily student presence for batch <strong>{{ batch_time }}</strong> on <strong>{{ selected_date|date:"F d, Y" }}</strong></p>
+    </div>
+    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+        <a href="{% url 'admin_attendance_hub' %}?date={{ selected_date_str }}" class="btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>Back to Hub</span>
+        </a>
+        <a href="{% url 'admin_attendance_report' %}?batch={{ batch_time|urlencode }}" class="btn-secondary">
+            <i class="fa-solid fa-chart-column"></i>
+            <span>Batch Register</span>
+        </a>
+    </div>
+</div>
+
+<!-- Controls & Selector Toolbar -->
+<div class="student-card" style="padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <!-- Batch Selector Dropdown -->
+    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+        <label for="batch_select" style="font-weight: 600; color: var(--text-primary); font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem;">
+            <i class="fa-solid fa-clock" style="color: var(--primary);"></i> Batch Timing:
+        </label>
+        <select id="batch_select" class="form-input" style="padding: 0.45rem 1rem; width: auto; font-weight: 600; border-radius: 8px; cursor: pointer;" onchange="location.href='?batch=' + encodeURIComponent(this.value) + '&date={{ selected_date_str }}';">
+            {% for slot in valid_slots %}
+            <option value="{{ slot }}" {% if slot == batch_time %}selected{% endif %}>{{ slot }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Date Navigator -->
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-weight: 600; color: var(--text-secondary); font-size: 0.85rem;">Date:</span>
+        <a href="?batch={{ batch_time|urlencode }}&date={{ prev_date_str }}" class="btn-secondary" style="padding: 0.4rem 0.7rem;" title="Previous Day">
+            <i class="fa-solid fa-chevron-left"></i>
+        </a>
+        <input type="date" id="date_picker" value="{{ selected_date_str }}" onchange="location.href='?batch={{ batch_time|urlencode }}&date=' + this.value;" class="form-input" style="padding: 0.4rem 0.75rem; width: auto; font-weight: 600; border-radius: 8px;">
+        <a href="?batch={{ batch_time|urlencode }}&date={{ next_date_str }}" class="btn-secondary" style="padding: 0.4rem 0.7rem;" title="Next Day">
+            <i class="fa-solid fa-chevron-right"></i>
+        </a>
+        {% if not is_today %}
+        <a href="?batch={{ batch_time|urlencode }}" class="btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.82rem;">
+            Today
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Main Attendance Form -->
+<form method="POST" id="attendanceForm" action="?batch={{ batch_time|urlencode }}&date={{ selected_date_str }}">
+    {% csrf_token %}
+    <input type="hidden" name="batch" value="{{ batch_time }}">
+    <input type="hidden" name="date" value="{{ selected_date_str }}">
+
+    <!-- Attendance Action Toolbar -->
+    <div class="student-card" style="padding: 1rem 1.5rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; background: var(--bg-card); border-left: 4px solid var(--primary);">
+        <!-- Quick Fill Controls -->
+        <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+            <span style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary);">One-Click Batch Fill:</span>
+            <button type="button" onclick="markAllStatus('Present')" class="btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.25);">
+                <i class="fa-solid fa-check-double"></i> All Present
+            </button>
+            <button type="button" onclick="markAllStatus('Absent')" class="btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.25);">
+                <i class="fa-solid fa-xmark"></i> All Absent
+            </button>
+            <button type="button" onclick="markAllStatus('Late')" class="btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-color: rgba(245, 158, 11, 0.25);">
+                <i class="fa-solid fa-clock"></i> All Late
+            </button>
+        </div>
+
+        <!-- Real-time Counter Badge & Search Filter -->
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <div style="position: relative;">
+                <input type="text" id="student_search" placeholder="Filter by name..." onkeyup="filterStudentList()" class="form-input" style="padding: 0.4rem 0.85rem 0.4rem 2rem; font-size: 0.85rem; width: 190px; border-radius: 8px;">
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 0.78rem; color: var(--text-muted);"></i>
+            </div>
+            <button type="submit" class="btn-primary" style="padding: 0.45rem 1.25rem;">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span>Save Attendance</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Students Attendance Roster Card -->
+    <div class="student-card" style="padding: 0; overflow: hidden; margin-bottom: 2rem;">
+        {% if students_count > 0 %}
+        <div style="overflow-x: auto;">
+            <table class="data-table" style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: var(--bg-main); border-bottom: 2px solid var(--border-color); text-align: left;">
+                        <th style="padding: 1rem 1.25rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 700; width: 40px;">#</th>
+                        <th style="padding: 1rem 1.25rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 700;">Student Details</th>
+                        <th style="padding: 1rem 1.25rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 700; width: 140px;">Academic Course</th>
+                        <th style="padding: 1rem 1.25rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 700; width: 330px;">Attendance Status</th>
+                        <th style="padding: 1rem 1.25rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 700; width: 220px;">Remarks / Note</th>
+                        <th style="padding: 1rem 1.25rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 700; width: 110px; text-align: center;">Overall %</th>
+                    </tr>
+                </thead>
+                <tbody id="student_table_body">
+                    {% for row in student_rows %}
+                    <tr class="student-row" data-name="{{ row.student.name|lower }}" style="border-bottom: 1px solid var(--border-color); transition: background 0.15s ease;">
+                        <!-- Counter -->
+                        <td style="padding: 1rem 1.25rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
+                            {{ forloop.counter }}
+                        </td>
+
+                        <!-- Student Avatar & Name -->
+                        <td style="padding: 1rem 1.25rem;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <div style="width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, var(--primary) 0%, var(--accent-cyan) 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.95rem; flex-shrink: 0;">
+                                    {{ row.student.name|slice:":1"|upper }}
+                                </div>
+                                <div>
+                                    <a href="{% url 'admin_student_detail' row.student.id %}" style="font-weight: 700; color: var(--text-primary); text-decoration: none; font-size: 0.92rem; display: block;" target="_blank">
+                                        {{ row.student.name }} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.65rem; color: var(--text-muted);"></i>
+                                    </a>
+                                    <small style="color: var(--text-muted); font-size: 0.75rem;">
+                                        {{ row.student.email }}
+                                    </small>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Course -->
+                        <td style="padding: 1rem 1.25rem; font-size: 0.82rem; color: var(--text-secondary);">
+                            {% if row.student.courses_list %}
+                                {{ row.student.courses_list|first }}
+                                {% if row.student.courses_list|length > 1 %}
+                                <span class="brand-badge" style="font-size: 0.65rem; padding: 0.15rem 0.4rem;">+{{ row.student.courses_list|length|add:"-1" }}</span>
+                                {% endif %}
+                            {% else %}
+                                {{ row.student.course|default:"-" }}
+                            {% endif %}
+                        </td>
+
+                        <!-- Interactive Status Radio Buttons -->
+                        <td style="padding: 1rem 1.25rem;">
+                            <div style="display: flex; gap: 0.4rem; align-items: center;">
+                                <!-- Present (P) -->
+                                <label class="status-radio-label status-present" style="cursor: pointer;">
+                                    <input type="radio" name="status_{{ row.student.id }}" value="Present" {% if row.status == 'Present' %}checked{% endif %} class="status-input status-p" style="display: none;">
+                                    <span class="status-pill pill-present">
+                                        <i class="fa-solid fa-check"></i> Present
+                                    </span>
+                                </label>
+
+                                <!-- Absent (A) -->
+                                <label class="status-radio-label status-absent" style="cursor: pointer;">
+                                    <input type="radio" name="status_{{ row.student.id }}" value="Absent" {% if row.status == 'Absent' %}checked{% endif %} class="status-input status-a" style="display: none;">
+                                    <span class="status-pill pill-absent">
+                                        <i class="fa-solid fa-xmark"></i> Absent
+                                    </span>
+                                </label>
+
+                                <!-- Late (L) -->
+                                <label class="status-radio-label status-late" style="cursor: pointer;">
+                                    <input type="radio" name="status_{{ row.student.id }}" value="Late" {% if row.status == 'Late' %}checked{% endif %} class="status-input status-l" style="display: none;">
+                                    <span class="status-pill pill-late">
+                                        <i class="fa-solid fa-clock"></i> Late
+                                    </span>
+                                </label>
+
+                                <!-- Leave (Le) -->
+                                <label class="status-radio-label status-leave" style="cursor: pointer;">
+                                    <input type="radio" name="status_{{ row.student.id }}" value="Leave" {% if row.status == 'Leave' %}checked{% endif %} class="status-input status-le" style="display: none;">
+                                    <span class="status-pill pill-leave">
+                                        <i class="fa-solid fa-calendar-minus"></i> Leave
+                                    </span>
+                                </label>
+                            </div>
+                        </td>
+
+                        <!-- Remarks / Notes -->
+                        <td style="padding: 1rem 1.25rem;">
+                            <input type="text" name="remarks_{{ row.student.id }}" value="{{ row.remarks }}" placeholder="Optional remark..." class="form-input" style="padding: 0.35rem 0.65rem; font-size: 0.8rem; border-radius: 6px; width: 100%;">
+                        </td>
+
+                        <!-- Overall Attendance % -->
+                        <td style="padding: 1rem 1.25rem; text-align: center;">
+                            <span class="brand-badge {{ row.stats.badge_class }}" style="font-size: 0.78rem; font-weight: 700; padding: 0.3rem 0.6rem;">
+                                {{ row.stats.percentage }}%
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Bottom Action Bar -->
+        <div style="padding: 1.25rem 1.75rem; background: var(--bg-main); border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div style="font-size: 0.85rem; color: var(--text-muted);">
+                Showing <strong>{{ students_count }}</strong> student{{ students_count|pluralize }} assigned to batch <strong>{{ batch_time }}</strong>
+            </div>
+            <div style="display: flex; gap: 0.75rem; align-items: center;">
+                <a href="{% url 'admin_attendance_hub' %}?date={{ selected_date_str }}" class="btn-secondary">
+                    Cancel
+                </a>
+                <button type="submit" class="btn-primary" style="padding: 0.55rem 1.75rem; font-size: 0.95rem;">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span>Save Batch Attendance</span>
+                </button>
+            </div>
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <div style="padding: 3rem 1.5rem; text-align: center;">
+            <div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(79, 70, 229, 0.08); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 1rem;">
+                <i class="fa-solid fa-user-slash"></i>
+            </div>
+            <h3 style="font-size: 1.2rem; color: var(--text-primary); margin-bottom: 0.4rem;">No Students in this Batch</h3>
+            <p style="font-size: 0.88rem; color: var(--text-secondary); max-width: 480px; margin: 0 auto 1.5rem;">
+                There are currently no students registered with class timing <strong>{{ batch_time }}</strong>. You can register new students or edit existing students to assign them to this batch slot.
+            </p>
+            <div style="display: flex; justify-content: center; gap: 0.75rem;">
+                <a href="{% url 'admin_student_register' %}" class="btn-primary">
+                    <i class="fa-solid fa-user-plus"></i> Register Student
+                </a>
+                <a href="{% url 'admin_student_list' %}" class="btn-secondary">
+                    <i class="fa-solid fa-users"></i> View All Students
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</form>
+
+<style>
+/* Attendance Status Radio Toggle Buttons */
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0.32rem 0.65rem;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    transition: all 0.15s ease;
+    user-select: none;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+}
+
+.status-pill:hover {
+    border-color: var(--primary);
+    transform: translateY(-1px);
+}
+
+/* Active State for Radios */
+.status-input:checked + .pill-present {
+    background: #10b981 !important;
+    color: #ffffff !important;
+    border-color: #10b981 !important;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);
+}
+
+.status-input:checked + .pill-absent {
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    border-color: #ef4444 !important;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);
+}
+
+.status-input:checked + .pill-late {
+    background: #f59e0b !important;
+    color: #ffffff !important;
+    border-color: #f59e0b !important;
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.35);
+}
+
+.status-input:checked + .pill-leave {
+    background: #3b82f6 !important;
+    color: #ffffff !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.35);
+}
+
+.student-row:hover {
+    background: rgba(79, 70, 229, 0.02);
+}
+</style>
+
+<script>
+function markAllStatus(statusValue) {
+    const inputs = document.querySelectorAll(`input.status-input[value="${statusValue}"]`);
+    inputs.forEach(input => {
+        input.checked = true;
+    });
+}
+
+function filterStudentList() {
+    const q = document.getElementById('student_search').value.toLowerCase().trim();
+    const rows = document.querySelectorAll('.student-row');
+    rows.forEach(row => {
+        const name = row.getAttribute('data-name') || '';
+        if (name.includes(q)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -55,10 +55,20 @@
                             <strong>{{ student.course }}</strong>
                         {% endfor %}
                     </span>
-                    {% if student.class_time %}
                     <span>&bull;</span>
-                    <span><i class="fa-solid fa-clock" style="color: var(--primary); margin-right: 4px;"></i> {{ student.class_time }}</span>
-                    {% endif %}
+                    <span style="display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap;">
+                        <i class="fa-solid fa-clock" style="color: var(--primary);"></i>
+                        {% for b in student.batches_list %}
+                            <span class="badge badge-secondary" style="font-size: 0.75rem; padding: 0.15rem 0.5rem;">{{ b }}</span>
+                        {% empty %}
+                            <span>{{ student.class_time|default:"Flexible Batch" }}</span>
+                        {% endfor %}
+                    </span>
+                    <span>&bull;</span>
+                    <span style="display: inline-flex; align-items: center; gap: 5px;">
+                        <i class="fa-solid fa-chalkboard-user" style="color: var(--primary);"></i>
+                        Faculty: <strong>{{ student.faculty_display }}</strong>
+                    </span>
                     <span>&bull;</span>
                     <span><i class="fa-solid fa-envelope" style="color: var(--primary); margin-right: 4px;"></i> {{ student.email }}</span>
                     {% if student.phone %}
@@ -120,6 +130,25 @@
         </div>
         <div class="kpi-footer">
             <span>Evaluated examinations</span>
+        </div>
+    </div>
+
+    <!-- Attendance Standing KPI -->
+    <div class="kpi-card">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                    <i class="fa-solid fa-clipboard-user"></i>
+                </div>
+                <span class="dossier-btn-dark {% if attendance_stats.percentage >= 85 %}success{% endif %}">{{ attendance_stats.status }}</span>
+            </div>
+            <div class="kpi-value" style="color: {% if attendance_stats.percentage >= 85 %}#10b981{% elif attendance_stats.percentage >= 75 %}#3b82f6{% elif attendance_stats.percentage >= 60 %}#f59e0b{% elif attendance_stats.total > 0 %}#ef4444{% else %}var(--text-primary){% endif %};">
+                {% if attendance_stats.total > 0 %}{{ attendance_stats.percentage }}%{% else %}N/A{% endif %}
+            </div>
+            <div class="kpi-label">Batch Attendance</div>
+        </div>
+        <div class="kpi-footer">
+            <span>{{ attendance_stats.present }} Present / {{ attendance_stats.total }} Sessions</span>
         </div>
     </div>
 </div>
@@ -274,6 +303,85 @@
     <div style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
         <i class="fa-solid fa-file-signature" style="font-size: 2rem; color: var(--border-color); display: block; margin-bottom: 0.5rem;"></i>
         This student is not enrolled in any examinations yet.
+    </div>
+    {% endif %}
+</div>
+<!-- Attendance History Section -->
+<div class="student-card" style="padding: 1.75rem 2rem; margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.75rem;">
+        <div>
+            <h3 style="font-size: 1.2rem; color: var(--text-primary); margin-bottom: 0.2rem;">
+                <i class="fa-solid fa-calendar-check" style="color: var(--primary); margin-right: 6px;"></i>
+                Attendance History ({{ attendance_stats.total }} Sessions)
+            </h3>
+            <small style="color: var(--text-muted); font-size: 0.8rem;">
+                Batch Time: <strong>{{ student.class_time|default:"Not Assigned" }}</strong> &bull; {{ attendance_stats.present }} Present, {{ attendance_stats.absent }} Absent, {{ attendance_stats.late }} Late
+            </small>
+        </div>
+        <a href="{% url 'admin_attendance_batch' %}?batch={{ student.class_time|urlencode }}" class="btn-secondary" style="height: 32px; padding: 0 0.85rem; font-size: 0.78rem;">
+            <i class="fa-solid fa-clock" style="margin-right: 4px;"></i> Open Batch Attendance
+        </a>
+    </div>
+
+    {% if recent_attendance %}
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Day</th>
+                    <th>Batch Time</th>
+                    <th>Status</th>
+                    <th>Faculty Remarks</th>
+                    <th style="text-align: right;">Recorded By</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in recent_attendance %}
+                <tr>
+                    <td style="font-weight: 600; color: var(--text-primary);">
+                        {{ a.date|date:"M d, Y" }}
+                    </td>
+                    <td style="color: var(--text-secondary); font-size: 0.85rem;">
+                        {{ a.date|date:"l" }}
+                    </td>
+                    <td style="color: var(--text-secondary); font-size: 0.82rem;">
+                        <i class="fa-solid fa-clock" style="color: var(--primary); font-size: 0.75rem;"></i> {{ a.time_slot|default:student.class_time }}
+                    </td>
+                    <td>
+                        {% if a.status == 'Present' %}
+                        <span class="dossier-btn-dark success" style="font-size: 0.75rem; padding: 0.15rem 0.55rem;">
+                            <i class="fa-solid fa-check"></i> Present
+                        </span>
+                        {% elif a.status == 'Absent' %}
+                        <span class="dossier-btn-dark danger" style="font-size: 0.75rem; padding: 0.15rem 0.55rem;">
+                            <i class="fa-solid fa-xmark"></i> Absent
+                        </span>
+                        {% elif a.status == 'Late' %}
+                        <span class="dossier-btn-dark" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-color: rgba(245, 158, 11, 0.25); font-size: 0.75rem; padding: 0.15rem 0.55rem;">
+                            <i class="fa-solid fa-clock"></i> Late
+                        </span>
+                        {% elif a.status == 'Leave' %}
+                        <span class="dossier-btn-dark" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; border-color: rgba(59, 130, 246, 0.25); font-size: 0.75rem; padding: 0.15rem 0.55rem;">
+                            <i class="fa-solid fa-calendar-minus"></i> Leave
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td style="color: var(--text-secondary); font-size: 0.82rem;">
+                        {{ a.remarks|default:"-" }}
+                    </td>
+                    <td style="text-align: right; color: var(--text-muted); font-size: 0.78rem;">
+                        {{ a.marked_by|default:"Admin" }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
+        <i class="fa-solid fa-calendar-xmark" style="font-size: 2rem; color: var(--border-color); display: block; margin-bottom: 0.5rem;"></i>
+        No attendance sessions recorded for this student yet.
     </div>
     {% endif %}
 </div>

@@ -1,0 +1,186 @@
+{% extends 'management/base.html' %}
+{% load static %}
+
+{% block title %}{% if faculty %}Edit Faculty: {{ faculty.name }}{% else %}Add New Faculty{% endif %} - Creative Management{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'admin_faculty_list' %}">Faculty Directory</a>
+<span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-current">{% if faculty %}Edit: {{ faculty.name }}{% else %}New Faculty{% endif %}</span>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-text">
+        <h1>{% if faculty %}Edit Faculty Instructor{% else %}Add Faculty Instructor{% endif %}</h1>
+        <p>Faculty instructors are strictly created and maintained by Administrators. Instructors added here will be available for student course assignment.</p>
+    </div>
+    <div class="header-actions">
+        <a href="{% url 'admin_faculty_list' %}" class="btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i> Back to Faculty Directory
+        </a>
+    </div>
+</div>
+
+<div class="student-card" style="padding: 2.25rem; max-width: 900px; margin: 0 auto 3rem;">
+    <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 1.75rem;">
+        <h3 style="font-size: 1.15rem; color: var(--text-primary); margin: 0 0 0.35rem; display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-chalkboard-user" style="color: var(--primary);"></i>
+            Instructor Academic Profile
+        </h3>
+        <small style="color: var(--text-muted); font-size: 0.82rem;">Configure credentials, department specialization, and course curriculum responsibilities</small>
+    </div>
+
+    <form method="POST" id="faculty_form" action="{% if faculty %}{% url 'admin_faculty_edit' faculty.id %}{% else %}{% url 'admin_faculty_create' %}{% endif %}">
+        {% csrf_token %}
+        <div class="form-grid">
+            <!-- Faculty Full Name -->
+            <div class="form-group" style="grid-column: span 2;">
+                <label class="form-label" for="name">Faculty Full Name *</label>
+                <input type="text" id="name" name="name" class="form-input" placeholder="e.g. Prof. Rajesh Sharma" value="{{ faculty.name|default:'' }}" required>
+            </div>
+
+            <!-- Email Address -->
+            <div class="form-group">
+                <label class="form-label" for="email">Email Address</label>
+                <input type="email" id="email" name="email" class="form-input" placeholder="faculty@creative.com" value="{{ faculty.email|default:'' }}">
+            </div>
+
+            <!-- Phone Number -->
+            <div class="form-group">
+                <label class="form-label" for="phone">Phone / Mobile Number</label>
+                <input type="text" id="phone" name="phone" class="form-input" placeholder="e.g. +91 98250 12345" value="{{ faculty.phone|default:'' }}">
+            </div>
+
+            <!-- Primary Department -->
+            <div class="form-group">
+                <label class="form-label" for="department">Primary Department *</label>
+                <select name="department" id="department" class="form-input" required>
+                    <option value="">-- Select Department --</option>
+                    {% for d in departments %}
+                    <option value="{{ d }}" {% if faculty.department == d %}selected{% endif %}>{{ d }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Specialization -->
+            <div class="form-group">
+                <label class="form-label" for="specialization">Specialization / Expertise</label>
+                <input type="text" id="specialization" name="specialization" class="form-input" placeholder="e.g. Full Stack Web Development, Python & Flutter" value="{{ faculty.specialization|default:'' }}">
+            </div>
+
+            <!-- Active Status Checkbox -->
+            <div class="form-group" style="grid-column: span 2; padding: 0.9rem 1.15rem; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: var(--border-radius-md);">
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 0.88rem; font-weight: 500; color: var(--text-primary); margin: 0;">
+                    <input type="checkbox" name="is_active" id="is_active" {% if faculty %}{% if faculty.is_active %}checked{% endif %}{% else %}checked{% endif %} style="width: 18px; height: 18px; accent-color: var(--primary);">
+                    <span>Active Faculty Status (Available for student course assignment)</span>
+                </label>
+            </div>
+
+            <!-- Courses Handled Selection -->
+            <div class="form-group" style="grid-column: span 2;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <label class="form-label" style="margin: 0;">Courses Handled / Taught</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="text" id="course_filter_search" placeholder="Search courses..." style="height: 32px; padding: 0 0.65rem; font-size: 0.78rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); background: var(--bg-card); color: var(--text-primary);">
+                        <button type="button" class="btn-secondary" id="select_all_courses_btn" style="height: 32px; padding: 0 0.65rem; font-size: 0.75rem;">Select All</button>
+                        <button type="button" class="btn-secondary" id="clear_all_courses_btn" style="height: 32px; padding: 0 0.65rem; font-size: 0.75rem;">Clear All</button>
+                    </div>
+                </div>
+
+                <div class="custom-scrollbar" style="max-height: 360px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 1rem; background: var(--bg-card);">
+                    {% for category, courses in course_categories.items %}
+                    <div class="category-block" style="margin-bottom: 1.25rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--border-color);">
+                            <span style="font-size: 0.78rem; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.04em;">
+                                <i class="fa-solid fa-folder-open" style="margin-right: 4px;"></i> {{ category }}
+                            </span>
+                            <button type="button" class="category-toggle-btn" data-cat="{{ forloop.counter }}" style="background: transparent; border: none; font-size: 0.72rem; color: var(--text-muted); cursor: pointer; text-decoration: underline;">
+                                Select Category
+                            </button>
+                        </div>
+                        <div class="courses-subgrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px;">
+                            {% for c in courses %}
+                            <label class="course-checkbox-label" data-name="{{ c|lower }}" style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-primary); cursor: pointer; padding: 4px 8px; border-radius: 4px; border: 1px solid transparent; transition: background 0.15s ease;">
+                                <input type="checkbox" name="courses" value="{{ c }}" class="cat-chk-{{ forloop.parentloop.counter }} course-checkbox" {% if c in faculty.courses_list %}checked{% endif %} style="width: 15px; height: 15px; accent-color: var(--primary); cursor: pointer;">
+                                <span>{{ c }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;">
+                    <i class="fa-solid fa-circle-info" style="color: var(--primary);"></i> Students enrolling in these courses will have this faculty highlighted as a specialist instructor.
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Action Footer -->
+        <div style="display: flex; gap: 0.85rem; justify-content: flex-end; margin-top: 2.25rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+            <a href="{% url 'admin_faculty_list' %}" class="btn-secondary">Cancel</a>
+            <button type="submit" class="btn-primary">
+                <i class="fa-solid fa-check"></i>
+                <span>{% if faculty %}Save Changes{% else %}Create Faculty Instructor{% endif %}</span>
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Quick search filter for courses
+    const searchInput = document.getElementById("course_filter_search");
+    const labels = document.querySelectorAll(".course-checkbox-label");
+    const categoryBlocks = document.querySelectorAll(".category-block");
+
+    if (searchInput) {
+        searchInput.addEventListener("input", function() {
+            const q = searchInput.value.toLowerCase().trim();
+            labels.forEach(lbl => {
+                const name = lbl.getAttribute("data-name") || "";
+                lbl.style.display = name.includes(q) ? "flex" : "none";
+            });
+
+            // Hide category block if all its items are hidden
+            categoryBlocks.forEach(blk => {
+                const visible = blk.querySelectorAll(".course-checkbox-label[style*='display: flex']");
+                const hidden = blk.querySelectorAll(".course-checkbox-label[style*='display: none']");
+                if (q && visible.length === 0 && hidden.length > 0) {
+                    blk.style.display = "none";
+                } else {
+                    blk.style.display = "block";
+                }
+            });
+        });
+    }
+
+    // Select all / Clear all
+    const selectAllBtn = document.getElementById("select_all_courses_btn");
+    const clearAllBtn = document.getElementById("clear_all_courses_btn");
+    const allCourseCheckboxes = document.querySelectorAll(".course-checkbox");
+
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener("click", () => {
+            allCourseCheckboxes.forEach(chk => chk.checked = true);
+        });
+    }
+    if (clearAllBtn) {
+        clearAllBtn.addEventListener("click", () => {
+            allCourseCheckboxes.forEach(chk => chk.checked = false);
+        });
+    }
+
+    // Category select toggles
+    document.querySelectorAll(".category-toggle-btn").forEach(btn => {
+        btn.addEventListener("click", function() {
+            const catId = btn.getAttribute("data-cat");
+            const chks = document.querySelectorAll(`.cat-chk-${catId}`);
+            const allChecked = Array.from(chks).every(c => c.checked);
+            chks.forEach(c => c.checked = !allChecked);
+            btn.textContent = allChecked ? "Select Category" : "Deselect Category";
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -13,18 +13,21 @@
 
 {% block content %}
 <!-- Page Header -->
-<div class="page-header">
+<div class="page-header" style="margin-bottom: 1.5rem;">
     <div class="header-text">
-        <h1>Edit Student Profile</h1>
-        <p>Modify course enrollment, class timing, contact details, or credentials for {{ student.name }}</p>
+        <h1 style="display: flex; align-items: center; gap: 0.6rem;">
+            <i class="fa-solid fa-user-pen" style="color: var(--primary);"></i>
+            Edit Student Profile
+        </h1>
+        <p>Modify course enrollment, batch schedule timings, assigned faculty, and credentials for {{ student.name }}</p>
     </div>
     {% if next_url == 'list' %}
-    <a href="{% url 'admin_student_list' %}" class="back-btn">
+    <a href="{% url 'admin_student_list' %}" class="btn-secondary">
         <i class="fa-solid fa-arrow-left"></i>
         <span>Back to Roster</span>
     </a>
     {% else %}
-    <a href="{% url 'admin_student_detail' student.id %}" class="back-btn">
+    <a href="{% url 'admin_student_detail' student.id %}" class="btn-secondary">
         <i class="fa-solid fa-arrow-left"></i>
         <span>Back to Dossier</span>
     </a>
@@ -32,19 +35,25 @@
 </div>
 
 <!-- Edit Form Card -->
-<div class="student-card" style="padding: 2.25rem 2.5rem; max-width: 900px; margin: 0 auto;">
-    <div style="margin-bottom: 1.5rem; padding-bottom: 0.85rem; border-bottom: 1px solid var(--border-color);">
-        <h2 style="font-size: 1.25rem; color: var(--text-primary); margin-bottom: 0.25rem;">
-            <i class="fa-solid fa-user-pen" style="color: var(--primary); margin-right: 6px;"></i> Student Details & Course Enrollment
-        </h2>
-        <small style="color: var(--text-muted); font-size: 0.82rem;">Update information below and save changes</small>
+<div class="student-card" style="padding: 2.25rem; max-width: 950px; margin: 0 auto 3rem auto;">
+    <div style="margin-bottom: 1.75rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary); margin: 0 0 0.25rem 0;">
+                Academic Registration & Enrollment
+            </h2>
+            <small style="color: var(--text-muted); font-size: 0.82rem;">Editing Student ID: #{{ student.id }} &bull; Enrolled: {{ student.created_at|date:"M d, Y" }}</small>
+        </div>
+        <span class="badge badge-secondary" style="font-size: 0.8rem; font-weight: 700;">
+            STD-{{ student.id|stringformat:"04d" }}
+        </span>
     </div>
 
-    <form method="POST" action="{% url 'admin_student_edit' student.id %}">
+    <form method="POST" action="{% url 'admin_student_edit' student.id %}" id="student_edit_form">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ next_url }}">
         
         <div class="form-grid">
+            <!-- Full Name -->
             <div class="form-group" style="grid-column: span 2;">
                 <label class="form-label" for="name">Student Full Name *</label>
                 <input type="text" id="name" name="name" value="{{ student.name }}" class="form-input" required autofocus>
@@ -63,18 +72,23 @@
                     
                     <ul id="course_dropdown_list" class="searchable-list custom-scrollbar" style="max-height: 280px; display: none;">
                         {% for category, courses in course_categories.items %}
-                        <li class="category-header" style="background: var(--bg-main); font-weight: 700; color: var(--primary); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 14px; cursor: default; border-bottom: 1px solid var(--border-color); pointer-events: none;">
+                        <li class="category-header" data-category="{{ category }}" style="background: var(--bg-main); font-weight: 700; color: var(--primary); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 14px; cursor: default; border-bottom: 1px solid var(--border-color); pointer-events: none;">
                             <i class="fa-solid fa-folder-open" style="margin-right: 5px;"></i> {{ category }}
                         </li>
                         {% for c in courses %}
-                        <li data-value="{{ c }}" class="course-option-item" style="display: flex; align-items: center; gap: 10px; padding: 9px 14px; cursor: pointer;">
-                            <input type="checkbox" name="courses" value="{{ c }}" id="course_chk_{{ forloop.parentloop.counter }}_{{ forloop.counter }}" class="course-checkbox" {% if c in student.courses_list %}checked{% endif %} style="width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer;">
+                        <li data-value="{{ c }}" data-category="{{ category }}" class="course-option-item" style="display: flex; align-items: center; gap: 10px; padding: 9px 14px; cursor: pointer;">
+                            <input type="checkbox" name="courses" value="{{ c }}" data-category="{{ category }}" id="course_chk_{{ forloop.parentloop.counter }}_{{ forloop.counter }}" class="course-checkbox" {% if c in student.courses_list %}checked{% endif %} style="width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer;">
                             <div class="course-option-text">
                                 <strong style="color: var(--text-primary); font-size: 0.88rem; display: block;">{{ c }}</strong>
                                 <small style="color: var(--text-muted); font-size: 0.72rem;">{{ category }}</small>
                             </div>
                         </li>
                         {% endfor %}
+                        {% empty %}
+                        <li style="padding: 14px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+                            <i class="fa-solid fa-chalkboard-user" style="margin-right: 6px; color: var(--text-muted);"></i> No faculty instructors configured yet.<br>
+                            <a href="{% url 'admin_faculty_create' %}" target="_blank" style="color: var(--primary); font-weight: 600; text-decoration: underline; margin-top: 4px; display: inline-block;">+ Add Faculty Instructor</a> or proceed without one.
+                        </li>
                         {% endfor %}
                     </ul>
                 </div>
@@ -83,27 +97,120 @@
                 </div>
             </div>
 
-            <!-- Class Time Dropdown -->
-            <div class="form-group" style="position: relative;">
-                <label class="form-label" for="class_time_search_input">Class Schedule / Timing *</label>
+            <!-- Course-Based Faculty Selection -->
+            <div class="form-group" style="grid-column: span 2; position: relative;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                    <label class="form-label" style="margin: 0;">Assigned Faculty / Instructor (Optional - Course-Based)</label>
+                    <span id="faculty_match_status_pill" class="badge badge-secondary" style="font-size: 0.72rem; display: none;">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> <span id="faculty_match_count">0</span> matching specialists
+                    </span>
+                </div>
+
+                <!-- Selected Faculty Chip/Card -->
+                <div id="selected_faculty_chip" style="{% if student.faculty_member or student.faculty %}display: flex;{% else %}display: none;{% endif %} align-items: center; justify-content: space-between; padding: 0.6rem 0.95rem; background: rgba(79, 70, 229, 0.06); border: 1px solid rgba(79, 70, 229, 0.25); border-radius: var(--border-radius-md); margin-bottom: 8px;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <div id="selected_faculty_avatar" style="width: 32px; height: 32px; border-radius: var(--border-radius-full); background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">
+                            {% if student.faculty_member %}{{ student.faculty_member.name|slice:":1"|upper }}{% elif student.faculty %}{{ student.faculty|slice:":1"|upper }}{% else %}F{% endif %}
+                        </div>
+                        <div>
+                            <strong id="selected_faculty_name" style="color: var(--text-primary); font-size: 0.9rem; display: block;">
+                                {% if student.faculty_member %}{{ student.faculty_member.name }}{% elif student.faculty %}{{ student.faculty }}{% else %}Not Assigned{% endif %}
+                            </strong>
+                            <small id="selected_faculty_meta" style="color: var(--text-muted); font-size: 0.75rem;">
+                                {% if student.faculty_member %}{{ student.faculty_member.department }} &bull; {{ student.faculty_member.specialization }}{% else %}Assigned Instructor{% endif %}
+                            </small>
+                        </div>
+                    </div>
+                    <button type="button" id="clear_faculty_btn" style="background: transparent; border: none; color: var(--danger); cursor: pointer; font-size: 0.85rem; padding: 4px;" title="Change selected faculty">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
                 <div class="searchable-select-container" style="position: relative;">
-                    <input type="text" id="class_time_search_input" class="searchable-select-input" placeholder="Search and select timing..." autocomplete="off" value="{{ student.class_time|default:'' }}" required>
+                    <input type="text" id="faculty_search_input" class="searchable-select-input" placeholder="Select or search faculty instructor..." autocomplete="off">
                     <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
-                    <ul id="class_time_dropdown_list" class="searchable-list custom-scrollbar" style="max-height: 240px; display: none;">
-                        {% for choice in class_time_choices %}
-                        <li data-value="{{ choice }}" class="time-option-item" style="padding: 10px 14px; cursor: pointer;">
-                            <strong style="font-size: 0.85rem; color: var(--text-primary);"><i class="fa-solid fa-clock" style="color: var(--primary); margin-right: 6px; font-size: 0.78rem;"></i>{{ choice }}</strong>
+
+                    <ul id="faculty_dropdown_list" class="searchable-list custom-scrollbar" style="max-height: 280px; display: none;">
+                        <li data-id="" data-name="" data-department="None" data-courses="" class="faculty-option-item no-faculty-option" style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(148, 163, 184, 0.06);">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 34px; height: 34px; border-radius: var(--border-radius-full); background: rgba(148, 163, 184, 0.2); color: var(--text-muted); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.82rem; flex-shrink: 0;">
+                                    <i class="fa-solid fa-user-slash"></i>
+                                </div>
+                                <div>
+                                    <strong style="color: var(--text-primary); font-size: 0.88rem;">No Faculty Assigned</strong>
+                                    <small style="color: var(--text-muted); font-size: 0.75rem; display: block;">Flexible Self-Study / Unassigned</small>
+                                </div>
+                            </div>
+                            <span class="badge badge-secondary" style="font-size: 0.72rem;">Optional</span>
+                        </li>
+                        {% for f in faculties %}
+                        <li data-id="{{ f.id }}" data-name="{{ f.name }}" data-department="{{ f.department }}" data-courses="{{ f.courses }}" class="faculty-option-item" style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 34px; height: 34px; border-radius: var(--border-radius-full); background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.82rem; flex-shrink: 0;">
+                                    {{ f.name|slice:":1"|upper }}
+                                </div>
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <strong style="color: var(--text-primary); font-size: 0.88rem;">{{ f.name }}</strong>
+                                        <span class="badge badge-success faculty-match-tag" style="display: none; font-size: 0.68rem; padding: 0.15rem 0.45rem;">
+                                            <i class="fa-solid fa-star"></i> Matches Course
+                                        </span>
+                                    </div>
+                                    <small style="color: var(--text-muted); font-size: 0.75rem; display: block;">
+                                        <span style="color: var(--primary); font-weight: 600;">{{ f.department }}</span> &bull; {{ f.specialization }}
+                                    </small>
+                                </div>
+                            </div>
+                            <span class="badge badge-secondary" style="font-size: 0.72rem;">Select</span>
                         </li>
                         {% endfor %}
                     </ul>
-                    <input type="hidden" name="class_time" id="selected_class_time_hidden" value="{{ student.class_time|default:'' }}" required>
+                </div>
+                <input type="hidden" name="faculty_id" id="selected_faculty_id_hidden" value="{% if student.faculty_member %}{{ student.faculty_member.id }}{% endif %}">
+                <input type="hidden" name="faculty_name" id="selected_faculty_name_hidden" value="{{ student.faculty|default:'' }}">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                    <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary);"></i>
+                    <span id="faculty_hint_text">Faculty list automatically highlights specialist instructors based on your selected courses.</span>
                 </div>
             </div>
 
-            <!-- Phone Number -->
+            <!-- Multiple Batch / Schedule Selection -->
+            <div class="form-group" style="grid-column: span 2; position: relative;">
+                <label class="form-label">Class Schedule / Timing (Select one or multiple batches) *</label>
+                
+                <!-- Selected Batch Chips Display -->
+                <div id="batch_chips_container" class="batch-chips-container" style="display: none; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;"></div>
+                
+                <div class="searchable-select-container" style="position: relative;">
+                    <input type="text" id="batch_search_input" class="searchable-select-input" placeholder="Search and select batch timing(s)..." autocomplete="off">
+                    <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
+                    
+                    <ul id="batch_dropdown_list" class="searchable-list custom-scrollbar" style="max-height: 240px; display: none;">
+                        {% for choice in class_time_choices %}
+                        <li data-value="{{ choice }}" class="batch-option-item" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border-color);">
+                            <input type="checkbox" name="class_times" value="{{ choice }}" id="batch_chk_{{ forloop.counter }}" class="batch-checkbox" {% if choice in student.batches_list %}checked{% endif %} style="width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer;">
+                            <div class="batch-option-text">
+                                <strong style="font-size: 0.88rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                                    <i class="fa-solid fa-clock" style="color: var(--primary); font-size: 0.78rem;"></i>
+                                    {{ choice }}
+                                </strong>
+                                <small style="color: var(--text-muted); font-size: 0.72rem;">
+                                    {% if '08:00' in choice or '10:00 am' in choice %}Morning Batch{% elif '12:00' in choice or '02:00 pm' in choice %}Afternoon Batch{% else %}Evening Batch{% endif %}
+                                </small>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div id="batch_count_help" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 5px;">
+                    <i class="fa-solid fa-clock" style="color: var(--primary);"></i> <span id="selected_batches_count_text">No batches selected</span> (At least 1 batch schedule required)
+                </div>
+            </div>
+
+            <!-- Contact Phone Number -->
             <div class="form-group">
                 <label class="form-label" for="phone">Contact Phone Number</label>
-                <input type="text" id="phone" name="phone" value="{{ student.phone|default:'' }}" class="form-input" placeholder="e.g. +1 555-0199">
+                <input type="text" id="phone" name="phone" value="{{ student.phone|default:'' }}" class="form-input" placeholder="e.g. +91 98250 01234">
             </div>
 
             <!-- Email Address -->
@@ -113,42 +220,63 @@
             </div>
 
             <!-- Password Reset (Optional) -->
-            <div class="form-group">
+            <div class="form-group" style="grid-column: span 2;">
                 <label class="form-label" for="password">Change Password (Leave blank to keep existing password)</label>
-                <input type="password" id="password" name="password" class="form-input" placeholder="Enter new password to reset">
+                <input type="password" id="password" name="password" class="form-input" placeholder="Enter new password to reset (leave blank to retain current)">
             </div>
         </div>
 
-        <div style="display: flex; gap: 0.85rem; justify-content: flex-end; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border-color);">
+        <div style="display: flex; gap: 0.85rem; justify-content: flex-end; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
             {% if next_url == 'list' %}
             <a href="{% url 'admin_student_list' %}" class="btn-secondary">Cancel</a>
             {% else %}
             <a href="{% url 'admin_student_detail' student.id %}" class="btn-secondary">Cancel</a>
             {% endif %}
-            <button type="submit" class="btn-primary">
-                <i class="fa-solid fa-floppy-disk"></i> Save Changes
+            <button type="submit" id="submit_btn" class="btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i> Save Student Changes
             </button>
         </div>
     </form>
 </div>
 
-<!-- Multi-Course & Time Selection Interactive Script -->
+<!-- Interactive Multi-Course, Multi-Batch & Course-Based Faculty Script -->
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    // 1. Course Multi-Select Logic
+    // -------------------------------------------------------------------------
+    // 1. MULTI-COURSE SELECTION & CHIPS
+    // -------------------------------------------------------------------------
     const courseInput = document.getElementById("course_search_input");
     const courseList = document.getElementById("course_dropdown_list");
-    const chipsContainer = document.getElementById("course_chips_container");
-    const countText = document.getElementById("selected_count_text");
-    const checkboxes = document.querySelectorAll(".course-checkbox");
+    const courseChipsContainer = document.getElementById("course_chips_container");
+    const courseCountText = document.getElementById("selected_count_text");
+    const courseCheckboxes = document.querySelectorAll(".course-checkbox");
     const courseItems = document.querySelectorAll(".course-option-item");
     const categoryHeaders = document.querySelectorAll("#course_dropdown_list .category-header");
 
+    function getSelectedCategories() {
+        const categories = new Set();
+        courseCheckboxes.forEach(chk => {
+            if (chk.checked) {
+                const cat = chk.getAttribute("data-category");
+                if (cat) categories.add(cat);
+            }
+        });
+        return Array.from(categories);
+    }
+
+    function getSelectedCourseNames() {
+        const names = [];
+        courseCheckboxes.forEach(chk => {
+            if (chk.checked) names.push(chk.value);
+        });
+        return names;
+    }
+
     function updateCourseUI() {
-        chipsContainer.innerHTML = "";
+        courseChipsContainer.innerHTML = "";
         let selected = [];
 
-        checkboxes.forEach(chk => {
+        courseCheckboxes.forEach(chk => {
             if (chk.checked) {
                 selected.push(chk.value);
 
@@ -162,19 +290,22 @@ document.addEventListener("DOMContentLoaded", function() {
                     updateCourseUI();
                 });
 
-                chipsContainer.appendChild(chip);
+                courseChipsContainer.appendChild(chip);
             }
         });
 
         if (selected.length > 0) {
-            chipsContainer.style.display = "flex";
-            countText.innerHTML = `<strong>${selected.length}</strong> course(s) selected`;
-            countText.style.color = "var(--success-text)";
+            courseChipsContainer.style.display = "flex";
+            courseCountText.innerHTML = `<strong>${selected.length}</strong> course(s) selected`;
+            courseCountText.style.color = "var(--success)";
         } else {
-            chipsContainer.style.display = "none";
-            countText.textContent = "No courses selected";
-            countText.style.color = "var(--text-muted)";
+            courseChipsContainer.style.display = "none";
+            courseCountText.textContent = "No courses selected";
+            courseCountText.style.color = "var(--text-muted)";
         }
+
+        // Trigger Course-based Faculty Filtering!
+        filterFacultyBySelectedCourses();
     }
 
     courseInput.addEventListener("focus", () => courseList.style.display = "block");
@@ -221,50 +352,240 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     });
 
-    checkboxes.forEach(chk => {
+    courseCheckboxes.forEach(chk => {
         chk.addEventListener("change", updateCourseUI);
     });
 
-    // 2. Class Time Select Logic
-    const timeInput = document.getElementById("class_time_search_input");
-    const timeList = document.getElementById("class_time_dropdown_list");
-    const timeHidden = document.getElementById("selected_class_time_hidden");
-    const timeItems = document.querySelectorAll(".time-option-item");
+    // -------------------------------------------------------------------------
+    // 2. MULTI-BATCH SELECTION & CHIPS
+    // -------------------------------------------------------------------------
+    const batchInput = document.getElementById("batch_search_input");
+    const batchList = document.getElementById("batch_dropdown_list");
+    const batchChipsContainer = document.getElementById("batch_chips_container");
+    const batchCountText = document.getElementById("selected_batches_count_text");
+    const batchCheckboxes = document.querySelectorAll(".batch-checkbox");
+    const batchItems = document.querySelectorAll(".batch-option-item");
 
-    timeInput.addEventListener("focus", () => timeList.style.display = "block");
-    timeInput.addEventListener("click", (e) => {
+    function updateBatchUI() {
+        batchChipsContainer.innerHTML = "";
+        let selectedBatches = [];
+
+        batchCheckboxes.forEach(chk => {
+            if (chk.checked) {
+                selectedBatches.push(chk.value);
+
+                const chip = document.createElement("span");
+                chip.style.cssText = "display: inline-flex; align-items: center; gap: 6px; background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.25); padding: 4px 10px; border-radius: var(--border-radius-full); font-size: 0.78rem; font-weight: 600;";
+                chip.innerHTML = `<i class="fa-solid fa-clock" style="font-size: 0.7rem;"></i> <span>${chk.value}</span> <i class="fa-solid fa-xmark" style="cursor: pointer; font-size: 0.75rem; margin-left: 2px;"></i>`;
+
+                chip.querySelector(".fa-xmark").addEventListener("click", function(e) {
+                    e.stopPropagation();
+                    chk.checked = false;
+                    updateBatchUI();
+                });
+
+                batchChipsContainer.appendChild(chip);
+            }
+        });
+
+        if (selectedBatches.length > 0) {
+            batchChipsContainer.style.display = "flex";
+            batchCountText.innerHTML = `<strong>${selectedBatches.length}</strong> batch schedule(s) selected`;
+            batchCountText.style.color = "var(--success)";
+        } else {
+            batchChipsContainer.style.display = "none";
+            batchCountText.textContent = "No batches selected";
+            batchCountText.style.color = "var(--text-muted)";
+        }
+    }
+
+    batchInput.addEventListener("focus", () => batchList.style.display = "block");
+    batchInput.addEventListener("click", (e) => {
         e.stopPropagation();
-        timeList.style.display = "block";
+        batchList.style.display = "block";
     });
 
-    timeInput.addEventListener("input", function() {
-        const q = timeInput.value.toLowerCase().trim();
-        timeList.style.display = "block";
-        timeItems.forEach(item => {
-            item.style.display = item.textContent.toLowerCase().includes(q) ? "" : "none";
+    batchInput.addEventListener("input", function() {
+        const q = batchInput.value.toLowerCase().trim();
+        batchList.style.display = "block";
+        batchItems.forEach(item => {
+            const txt = item.textContent.toLowerCase();
+            item.style.display = txt.includes(q) ? "flex" : "none";
         });
     });
 
-    timeItems.forEach(item => {
+    batchItems.forEach(item => {
+        item.addEventListener("click", function(e) {
+            if (e.target.tagName !== "INPUT") {
+                const chk = item.querySelector(".batch-checkbox");
+                chk.checked = !chk.checked;
+            }
+            updateBatchUI();
+        });
+    });
+
+    batchCheckboxes.forEach(chk => {
+        chk.addEventListener("change", updateBatchUI);
+    });
+
+    // -------------------------------------------------------------------------
+    // 3. COURSE-BASED FACULTY SELECTION LOGIC
+    // -------------------------------------------------------------------------
+    const facultyInput = document.getElementById("faculty_search_input");
+    const facultyList = document.getElementById("faculty_dropdown_list");
+    const facultyItems = document.querySelectorAll(".faculty-option-item");
+    const selectedFacultyIdHidden = document.getElementById("selected_faculty_id_hidden");
+    const selectedFacultyNameHidden = document.getElementById("selected_faculty_name_hidden");
+    const selectedFacultyChip = document.getElementById("selected_faculty_chip");
+    const selectedFacultyAvatar = document.getElementById("selected_faculty_avatar");
+    const selectedFacultyName = document.getElementById("selected_faculty_name");
+    const selectedFacultyMeta = document.getElementById("selected_faculty_meta");
+    const clearFacultyBtn = document.getElementById("clear_faculty_btn");
+    const facultyMatchStatusPill = document.getElementById("faculty_match_status_pill");
+    const facultyMatchCount = document.getElementById("faculty_match_count");
+    const facultyHintText = document.getElementById("faculty_hint_text");
+
+    function filterFacultyBySelectedCourses() {
+        const selectedCategories = getSelectedCategories();
+        const selectedCourseNames = getSelectedCourseNames();
+        let matchCount = 0;
+
+        facultyItems.forEach(item => {
+            const facDept = item.getAttribute("data-department") || "";
+            const facCourses = item.getAttribute("data-courses") || "";
+            const matchTag = item.querySelector(".faculty-match-tag");
+
+            let isMatch = false;
+            // Check category match
+            if (selectedCategories.includes(facDept)) {
+                isMatch = true;
+            }
+            // Check course keyword match
+            if (!isMatch && selectedCourseNames.length > 0) {
+                for (let c of selectedCourseNames) {
+                    if (facCourses.toLowerCase().includes(c.toLowerCase())) {
+                        isMatch = true;
+                        break;
+                    }
+                }
+            }
+
+            if (isMatch && selectedCourseNames.length > 0) {
+                matchCount++;
+                if (matchTag) matchTag.style.display = "inline-flex";
+                item.style.backgroundColor = "rgba(79, 70, 229, 0.03)";
+                // Elevate matching faculties in DOM order
+                facultyList.insertBefore(item, facultyList.firstChild);
+            } else {
+                if (matchTag) matchTag.style.display = "none";
+                item.style.backgroundColor = "";
+            }
+        });
+
+        if (selectedCourseNames.length > 0 && matchCount > 0) {
+            facultyMatchStatusPill.style.display = "inline-flex";
+            facultyMatchCount.textContent = matchCount;
+            facultyHintText.innerHTML = `Highlighted <strong style="color: var(--success);">${matchCount} specialist instructor(s)</strong> matching your enrolled course(s).`;
+        } else if (selectedCourseNames.length > 0) {
+            facultyMatchStatusPill.style.display = "none";
+            facultyHintText.textContent = "All faculty members are available for selection.";
+        } else {
+            facultyMatchStatusPill.style.display = "none";
+            facultyHintText.textContent = "Select courses above to automatically highlight specialist faculty.";
+        }
+    }
+
+    function selectFaculty(id, name, department, specialization) {
+        selectedFacultyIdHidden.value = id;
+        selectedFacultyNameHidden.value = name;
+        if (!id || !name) {
+            selectedFacultyChip.style.display = "none";
+            facultyInput.value = "";
+            facultyList.style.display = "none";
+            return;
+        }
+        selectedFacultyAvatar.textContent = name.charAt(0).toUpperCase();
+        selectedFacultyName.textContent = name;
+        selectedFacultyMeta.textContent = `${department} • ${specialization}`;
+        selectedFacultyChip.style.display = "flex";
+        facultyInput.value = "";
+        facultyList.style.display = "none";
+    }
+
+    clearFacultyBtn.addEventListener("click", function() {
+        selectedFacultyIdHidden.value = "";
+        selectedFacultyNameHidden.value = "";
+        selectedFacultyChip.style.display = "none";
+    });
+
+    facultyInput.addEventListener("focus", () => facultyList.style.display = "block");
+    facultyInput.addEventListener("click", (e) => {
+        e.stopPropagation();
+        facultyList.style.display = "block";
+    });
+
+    facultyInput.addEventListener("input", function() {
+        const q = facultyInput.value.toLowerCase().trim();
+        facultyList.style.display = "block";
+        facultyItems.forEach(item => {
+            const name = item.getAttribute("data-name").toLowerCase();
+            const dept = item.getAttribute("data-department").toLowerCase();
+            const spec = item.getAttribute("data-courses").toLowerCase();
+            if (name.includes(q) || dept.includes(q) || spec.includes(q)) {
+                item.style.display = "flex";
+            } else {
+                item.style.display = "none";
+            }
+        });
+    });
+
+    facultyItems.forEach(item => {
         item.addEventListener("click", function() {
-            const val = item.getAttribute("data-value");
-            timeHidden.value = val;
-            timeInput.value = val;
-            timeList.style.display = "none";
+            const id = item.getAttribute("data-id");
+            const name = item.getAttribute("data-name");
+            const dept = item.getAttribute("data-department");
+            const spec = item.querySelector("small").textContent;
+            selectFaculty(id, name, dept, spec);
         });
     });
 
-    // Close dropdowns on outside click
+    // -------------------------------------------------------------------------
+    // 4. GLOBAL CLICK TO CLOSE DROPDOWNS
+    // -------------------------------------------------------------------------
     document.addEventListener("click", function(e) {
         if (!courseInput.contains(e.target) && !courseList.contains(e.target)) {
             courseList.style.display = "none";
         }
-        if (!timeInput.contains(e.target) && !timeList.contains(e.target)) {
-            timeList.style.display = "none";
+        if (!batchInput.contains(e.target) && !batchList.contains(e.target)) {
+            batchList.style.display = "none";
+        }
+        if (!facultyInput.contains(e.target) && !facultyList.contains(e.target)) {
+            facultyList.style.display = "none";
         }
     });
 
+    // Form submission validation
+    document.getElementById("student_edit_form").addEventListener("submit", function(e) {
+        const hasCourses = document.querySelectorAll(".course-checkbox:checked").length > 0;
+        if (!hasCourses) {
+            e.preventDefault();
+            alert("Please select at least one course for the student.");
+            courseInput.focus();
+            return false;
+        }
+
+        const hasBatches = document.querySelectorAll(".batch-checkbox:checked").length > 0;
+        if (!hasBatches) {
+            e.preventDefault();
+            alert("Please select at least one batch schedule timing.");
+            batchInput.focus();
+            return false;
+        }
+    });
+
+    // Initialize pre-checked courses and batches
     updateCourseUI();
+    updateBatchUI();
 });
 </script>
 {% endblock %}

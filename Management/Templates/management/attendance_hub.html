@@ -1,0 +1,261 @@
+{% extends 'management/base.html' %}
+{% load static %}
+
+{% block title %}Batch Attendance Hub - Creative Management{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'admin_dashboard' %}">Dashboard</a>
+<span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-current">Batch Attendance</span>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header" style="margin-bottom: 1.5rem;">
+    <div class="header-text">
+        <h1 style="display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-clipboard-user" style="color: var(--primary);"></i>
+            Batch Attendance Hub
+        </h1>
+        <p>Monitor daily class timings, take real-time batch attendance, and track student presence</p>
+    </div>
+    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+        <a href="{% url 'admin_attendance_report' %}" class="btn-secondary">
+            <i class="fa-solid fa-chart-column"></i>
+            <span>Monthly Reports & Matrix</span>
+        </a>
+        <a href="{% url 'admin_student_list' %}" class="btn-secondary">
+            <i class="fa-solid fa-users"></i>
+            <span>Student Roster</span>
+        </a>
+    </div>
+</div>
+
+<!-- Date Navigation Bar -->
+<div class="student-card" style="padding: 1.1rem 1.5rem; margin-bottom: 1.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+        <span style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem; display: flex; align-items: center; gap: 0.4rem;">
+            <i class="fa-regular fa-calendar" style="color: var(--primary);"></i> Attendance Date:
+        </span>
+        <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <a href="?date={{ prev_date_str }}" class="btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;" title="Previous Day">
+                <i class="fa-solid fa-chevron-left"></i>
+            </a>
+            <form method="GET" action="{% url 'admin_attendance_hub' %}" style="margin: 0; display: inline-flex;">
+                <input type="date" name="date" value="{{ selected_date_str }}" onchange="this.form.submit()" class="form-input" style="padding: 0.4rem 0.75rem; font-size: 0.88rem; width: auto; font-weight: 600; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px;">
+            </form>
+            <a href="?date={{ next_date_str }}" class="btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;" title="Next Day">
+                <i class="fa-solid fa-chevron-right"></i>
+            </a>
+            {% if not is_today %}
+            <a href="{% url 'admin_attendance_hub' %}" class="btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.82rem;">
+                <i class="fa-solid fa-clock-rotate-left"></i> Today
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    <div>
+        <span class="brand-badge" style="font-size: 0.85rem; padding: 0.4rem 0.85rem; background: rgba(79, 70, 229, 0.08); color: var(--primary); border: 1px solid rgba(79, 70, 229, 0.2);">
+            <i class="fa-solid fa-calendar-day"></i> {{ selected_date|date:"l, F d, Y" }}
+        </span>
+    </div>
+</div>
+
+<!-- Daily Overview KPI Grid -->
+<div class="stats-overview-grid" style="margin-bottom: 2rem;">
+    <!-- Enrolled Students KPI -->
+    <div class="kpi-card">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(79, 70, 229, 0.1); color: var(--primary);">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+                <span class="dossier-btn-dark success">Total</span>
+            </div>
+            <div class="kpi-value">{{ total_enrolled_all }}</div>
+            <div class="kpi-label">Active Batch Students</div>
+        </div>
+        <div class="kpi-footer">
+            <span>Across all 6 daily time slots</span>
+        </div>
+    </div>
+
+    <!-- Present Today KPI -->
+    <div class="kpi-card">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                    <i class="fa-solid fa-user-check"></i>
+                </div>
+                <span class="dossier-btn-dark success">Present</span>
+            </div>
+            <div class="kpi-value" style="color: #10b981;">{{ total_present_all }}</div>
+            <div class="kpi-label">Present Today</div>
+        </div>
+        <div class="kpi-footer">
+            <span>{{ total_late_all }} student(s) arrived late</span>
+        </div>
+    </div>
+
+    <!-- Absent Today KPI -->
+    <div class="kpi-card">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                    <i class="fa-solid fa-user-xmark"></i>
+                </div>
+                <span class="dossier-btn-dark" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">Absent</span>
+            </div>
+            <div class="kpi-value" style="color: #ef4444;">{{ total_absent_all }}</div>
+            <div class="kpi-label">Absent Today</div>
+        </div>
+        <div class="kpi-footer">
+            <span>{{ total_leave_all }} on approved leave</span>
+        </div>
+    </div>
+
+    <!-- Day Attendance Rate KPI -->
+    <div class="kpi-card">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan);">
+                    <i class="fa-solid fa-percent"></i>
+                </div>
+                <span class="dossier-btn-dark success">Rate</span>
+            </div>
+            <div class="kpi-value">{{ day_rate }}%</div>
+            <div class="kpi-label">Overall Day Turnout</div>
+        </div>
+        <div class="kpi-footer">
+            <span>{{ total_marked_all }} / {{ total_enrolled_all }} students recorded</span>
+        </div>
+    </div>
+</div>
+
+<!-- Batch Cards Section Title -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+    <div>
+        <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">
+            Daily Class Time Batches
+        </h2>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">
+            Select any batch to record or review attendance for {{ selected_date|date:"M d, Y" }}
+        </p>
+    </div>
+</div>
+
+<!-- Batches Grid -->
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem;">
+    {% for b in batch_cards %}
+    <div class="student-card" style="padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; position: relative; border-top: 4px solid {% if b.is_complete %}#10b981{% elif b.is_marked %}#f59e0b{% elif b.total_students == 0 %}var(--border-color){% else %}var(--primary){% endif %};">
+        
+        <!-- Batch Header -->
+        <div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div style="width: 42px; height: 42px; border-radius: 10px; background: rgba(79, 70, 229, 0.08); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+                        <i class="fa-solid fa-clock"></i>
+                    </div>
+                    <div>
+                        <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin: 0;">
+                            {{ b.slot }}
+                        </h3>
+                        <small style="color: var(--text-muted); font-size: 0.78rem;">
+                            Daily Batch Schedule
+                        </small>
+                    </div>
+                </div>
+                <div>
+                    {% if b.total_students == 0 %}
+                    <span class="dossier-btn-dark" style="font-size: 0.72rem; padding: 0.25rem 0.6rem; color: var(--text-muted);">Empty</span>
+                    {% elif b.is_complete %}
+                    <span class="dossier-btn-dark success" style="font-size: 0.72rem; padding: 0.25rem 0.6rem;">
+                        <i class="fa-solid fa-check"></i> Marked
+                    </span>
+                    {% elif b.is_marked %}
+                    <span class="dossier-btn-dark" style="font-size: 0.72rem; padding: 0.25rem 0.6rem; background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-color: rgba(245, 158, 11, 0.2);">
+                        <i class="fa-solid fa-circle-half-stroke"></i> Partial
+                    </span>
+                    {% else %}
+                    <span class="dossier-btn-dark" style="font-size: 0.72rem; padding: 0.25rem 0.6rem; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">
+                        <i class="fa-solid fa-clock"></i> Unmarked
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Batch Progress / Metrics -->
+            <div style="margin-bottom: 1.25rem; padding: 0.85rem; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border-color);">
+                <div style="display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 0.4rem;">
+                    <span style="color: var(--text-secondary); font-weight: 500;">Batch Roster:</span>
+                    <strong style="color: var(--text-primary);">{{ b.total_students }} Student{{ b.total_students|pluralize }}</strong>
+                </div>
+
+                {% if b.total_students > 0 %}
+                <!-- Progress Bar -->
+                <div style="width: 100%; height: 6px; background: rgba(0, 0, 0, 0.05); border-radius: 3px; overflow: hidden; margin-bottom: 0.6rem; display: flex;">
+                    {% if b.marked_count > 0 %}
+                    <div style="background: #10b981; width: {% widthratio b.present_count b.total_students 100 %}%;"></div>
+                    <div style="background: #f59e0b; width: {% widthratio b.late_count b.total_students 100 %}%;"></div>
+                    <div style="background: #3b82f6; width: {% widthratio b.leave_count b.total_students 100 %}%;"></div>
+                    <div style="background: #ef4444; width: {% widthratio b.absent_count b.total_students 100 %}%;"></div>
+                    {% else %}
+                    <div style="background: var(--border-color); width: 100%;"></div>
+                    {% endif %}
+                </div>
+
+                <!-- Mini Status Breakdown -->
+                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); flex-wrap: wrap; gap: 4px;">
+                    <span style="color: #10b981;"><i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> {{ b.present_count }} Present</span>
+                    <span style="color: #ef4444;"><i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> {{ b.absent_count }} Absent</span>
+                    <span style="color: #f59e0b;"><i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> {{ b.late_count }} Late</span>
+                    <span style="color: #3b82f6;"><i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> {{ b.leave_count }} Leave</span>
+                </div>
+                {% else %}
+                <small style="color: var(--text-muted); font-size: 0.75rem; display: block; text-align: center;">No students currently assigned to this time slot.</small>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Card Action Buttons -->
+        <div style="display: flex; gap: 0.5rem; align-items: center; justify-content: space-between; padding-top: 0.75rem; border-top: 1px solid var(--border-color);">
+            <a href="{% url 'admin_student_list' %}?class_time={{ b.slot|urlencode }}" class="btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.75rem;" title="View all students in this batch">
+                <i class="fa-solid fa-user-group"></i> Roster
+            </a>
+
+            {% if b.total_students > 0 %}
+            <a href="{% url 'admin_attendance_batch' %}?batch={{ b.slot|urlencode }}&date={{ selected_date_str }}" class="btn-primary" style="font-size: 0.82rem; padding: 0.45rem 0.95rem;">
+                {% if b.is_marked %}
+                <i class="fa-solid fa-pen-to-square"></i>
+                <span>Edit Attendance</span>
+                {% else %}
+                <i class="fa-solid fa-clipboard-check"></i>
+                <span>Take Attendance</span>
+                {% endif %}
+            </a>
+            {% else %}
+            <a href="{% url 'admin_student_register' %}" class="btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.75rem;">
+                <i class="fa-solid fa-plus"></i> Add Student
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Quick Link Banner to Report -->
+<div class="student-card" style="padding: 1.5rem 2rem; background: linear-gradient(135deg, rgba(79, 70, 229, 0.05) 0%, rgba(6, 182, 212, 0.05) 100%); border: 1px solid rgba(79, 70, 229, 0.15); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+        <h3 style="font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-file-excel" style="color: #10b981;"></i> Need Monthly Attendance Registers or CSV Export?
+        </h3>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">
+            View full 30-day student matrix tables, attendance percentages, and download instant CSV reports.
+        </p>
+    </div>
+    <a href="{% url 'admin_attendance_report' %}" class="btn-primary">
+        <i class="fa-solid fa-arrow-right"></i>
+        <span>Go to Monthly Register</span>
+    </a>
+</div>
+{% endblock %}

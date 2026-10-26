@@ -45,9 +45,20 @@
                             <strong>{{ student.course }}</strong>
                         {% endfor %}
                     </span>
-                    {% if student.class_time %}
                     <span>&bull;</span>
-                    <span><i class="fa-solid fa-clock" style="color: var(--primary); margin-right: 4px;"></i> {{ student.class_time }}</span>
+                    <span style="display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap;">
+                        <i class="fa-solid fa-clock" style="color: var(--primary);"></i>
+                        {% for b in student.batches_list %}
+                            <span class="badge badge-secondary" style="font-size: 0.72rem; padding: 0.15rem 0.45rem;">{{ b }}</span>
+                        {% empty %}
+                            <span>{{ student.class_time|default:"Flexible Batch" }}</span>
+                        {% endfor %}
+                    </span>
+                    {% if student.faculty_display != "Not Assigned" %}
+                    <span>&bull;</span>
+                    <span>
+                        <i class="fa-solid fa-chalkboard-user" style="color: var(--primary); margin-right: 4px;"></i> Faculty: <strong>{{ student.faculty_display }}</strong>
+                    </span>
                     {% endif %}
                     <span>&bull;</span>
                     <span><i class="fa-solid fa-envelope" style="color: var(--primary); margin-right: 4px;"></i> {{ student.email }}</span>
@@ -132,6 +143,28 @@
             <span class="kpi-link">Grades <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i></span>
         </div>
     </div>
+
+    <!-- Attendance Standing KPI -->
+    <div class="kpi-card" onclick="window.location.href='{% url 'student_attendance' %}';" style="cursor: pointer;">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                    <i class="fa-solid fa-calendar-check"></i>
+                </div>
+                <span class="dossier-btn-dark {% if attendance_stats.percentage >= 85 %}success{% endif %}">
+                    {{ attendance_stats.status }}
+                </span>
+            </div>
+            <div class="kpi-value" style="color: {% if attendance_stats.percentage >= 85 %}#10b981{% elif attendance_stats.percentage >= 75 %}#3b82f6{% elif attendance_stats.percentage >= 60 %}#f59e0b{% elif attendance_stats.total > 0 %}#ef4444{% else %}var(--text-primary){% endif %};">
+                {% if attendance_stats.total > 0 %}{{ attendance_stats.percentage }}%{% else %}N/A{% endif %}
+            </div>
+            <div class="kpi-label">Class Attendance</div>
+        </div>
+        <div class="kpi-footer">
+            <span>{{ attendance_stats.present }} Present / {{ attendance_stats.total }} Sessions</span>
+            <span class="kpi-link">Log <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i></span>
+        </div>
+    </div>
 </div>
 
 <!-- 2-Column Split Activity Grid -->
@@ -148,60 +181,60 @@
             </a>
         </div>
         <div class="dashboard-panel-body">
-            <div class="table-responsive" style="border: none; border-radius: 0;">
-                <table class="data-table">
+            <div class="table-responsive" style="border: none; border-radius: 0; overflow-x: auto;">
+                <table class="data-table" style="min-width: 520px;">
                     <thead>
                         <tr>
-                            <th>Project Title</th>
-                            <th>Status</th>
-                            <th>Submitted</th>
-                            <th style="text-align: right;">Files & Links</th>
+                            <th style="min-width: 160px;">Project Title</th>
+                            <th style="min-width: 110px;">Status</th>
+                            <th style="min-width: 95px;">Submitted</th>
+                            <th style="text-align: right; min-width: 120px;">Deliverables</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for p in recent_projects %}
                         <tr>
                             <td>
-                                <a href="{% url 'student_project_detail' p.id %}" style="color: var(--text-primary); font-weight: 600; text-decoration: none;">
+                                <a href="{% url 'student_project_detail' p.id %}" style="color: var(--text-primary); font-weight: 700; text-decoration: none; font-size: 0.9rem;" class="project-title-link">
                                     {{ p.title }}
                                 </a>
                             </td>
-                            <td>
+                            <td style="white-space: nowrap;">
                                 {% if p.status == 'Approved' %}
                                 <span class="dossier-btn-dark success" style="padding: 0.2rem 0.55rem; font-size: 0.72rem;">
                                     <i class="fa-solid fa-circle-check"></i> Approved
                                 </span>
                                 {% elif p.status == 'Rejected' %}
                                 <span class="dossier-btn-dark danger" style="padding: 0.2rem 0.55rem; font-size: 0.72rem;">
-                                    <i class="fa-solid fa-circle-xmark"></i> Rejected
+                                    <i class="fa-solid fa-circle-xmark"></i> Needs Revision
                                 </span>
                                 {% else %}
                                 <span class="dossier-btn-dark" style="padding: 0.2rem 0.55rem; font-size: 0.72rem; background: var(--warning-light); color: var(--warning-text); border-color: var(--warning-border);">
-                                    <i class="fa-solid fa-clock"></i> Submitted
+                                    <i class="fa-solid fa-clock"></i> Under Review
                                 </span>
                                 {% endif %}
                             </td>
-                            <td><small style="color: var(--text-muted); font-size: 0.78rem;">{{ p.submitted_at|date:"M d, Y" }}</small></td>
+                            <td style="white-space: nowrap;"><small style="color: var(--text-muted); font-size: 0.78rem;">{{ p.submitted_at|date:"M d, Y" }}</small></td>
                             <td style="text-align: right;">
-                                <div style="display: flex; gap: 0.4rem; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
+                                <div style="display: flex; gap: 0.35rem; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
                                     {% for f in p.all_files %}
                                     {% if forloop.counter <= 2 %}
-                                    <a href="{% if f.file %}{{ f.file.url }}{% else %}{{ f.url }}{% endif %}" target="_blank" download class="btn-secondary" style="height: 28px; padding: 0 0.55rem; font-size: 0.72rem;" title="{{ f.filename }}">
-                                        <i class="fa-solid fa-download"></i> {{ f.file_extension|default:"File" }}
+                                    <a href="{{ f.url }}" download class="btn-secondary" style="height: 26px; padding: 0 0.5rem; font-size: 0.72rem;" title="{{ f.filename }}">
+                                        <i class="fa-solid fa-download" style="color: var(--primary);"></i> {{ f.file_extension|default:"File" }}
                                     </a>
                                     {% elif forloop.counter == 3 %}
-                                    <a href="{% url 'student_project_detail' p.id %}" class="btn-secondary" style="height: 28px; padding: 0 0.55rem; font-size: 0.72rem;" title="View all files in details">
+                                    <a href="{% url 'student_project_detail' p.id %}" class="btn-secondary" style="height: 26px; padding: 0 0.5rem; font-size: 0.72rem;" title="View all files">
                                         <i class="fa-solid fa-folder-open"></i> +{{ p.all_files|length|add:"-2" }}
                                     </a>
                                     {% endif %}
                                     {% endfor %}
                                     {% for l in p.all_links %}
-                                    <a href="{{ l.url }}" target="_blank" class="btn-secondary" style="height: 28px; padding: 0 0.55rem; font-size: 0.72rem;" title="{{ l.url }}">
-                                        <i class="{{ l.icon_class }}"></i> {{ l.display_label }}
+                                    <a href="{{ l.url }}" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="height: 26px; padding: 0 0.5rem; font-size: 0.72rem;" title="{{ l.url }}">
+                                        <i class="{{ l.icon_class }}" style="color: var(--primary);"></i> {{ l.display_label }}
                                     </a>
                                     {% endfor %}
                                     {% if not p.all_files and not p.all_links %}
-                                    <span style="color: var(--text-muted); font-size: 0.8rem;">-</span>
+                                    <span style="color: var(--text-muted); font-size: 0.78rem;">-</span>
                                     {% endif %}
                                 </div>
                             </td>
@@ -259,23 +292,24 @@
                             </td>
                             <td style="text-align: right;">
                                 {% if record.is_absent or record.grade == 'Absent' %}
-                                <span class="dossier-btn-dark danger" style="padding: 0.15rem 0.55rem; font-weight: 700; font-size: 0.8rem;">
+                                <span class="badge badge-danger" style="font-weight: 700; font-size: 0.78rem;">
                                     Absent
                                 </span>
                                 {% elif record.grade %}
-                                <span class="dossier-btn-dark {% if record.grade == 'F' %}danger{% else %}success{% endif %}" style="padding: 0.15rem 0.55rem; font-weight: 700; font-size: 0.8rem;">
+                                <span class="badge {% if record.grade == 'F' %}badge-danger{% elif record.grade == 'A+' or record.grade == 'A' %}badge-success{% elif record.grade == 'B+' or record.grade == 'B' %}badge-primary{% else %}badge-warning{% endif %}" style="font-weight: 700; font-size: 0.78rem; min-width: 32px; justify-content: center;">
                                     {{ record.grade }}
                                 </span>
                                 {% else %}
-                                <span style="color: var(--text-muted); font-size: 0.8rem;">-</span>
+                                <span class="badge badge-secondary" style="font-size: 0.75rem;">Pending</span>
                                 {% endif %}
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 3rem 1.5rem;">
+                            <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 2.25rem 1.5rem;">
                                 <i class="fa-solid fa-award" style="font-size: 2rem; color: var(--border-color); display: block; margin-bottom: 0.5rem;"></i>
-                                No assessments evaluated yet.
+                                <span style="font-size: 0.88rem; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">No Assessments Evaluated Yet</span>
+                                <small style="color: var(--text-muted);">Published examination results and grades will appear here.</small>
                             </td>
                         </tr>
                         {% endfor %}

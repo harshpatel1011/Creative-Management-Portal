@@ -3,7 +3,8 @@ from django.urls import reverse
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
-from Student.models import Student, Project, Exam, ExamMarks, ProjectFile, ProjectLink
+import datetime
+from Student.models import Student, Project, Exam, ExamMarks, ProjectFile, ProjectLink, Attendance
 
 class StudentManagementSystemTests(TestCase):
     def setUp(self):
@@ -457,3 +458,95 @@ class StudentManagementSystemTests(TestCase):
         self.assertTrue(any('architecture' in fn for fn in remaining_names))
         self.assertFalse(any(f.id == first_file_id for f in project.files.all()))
 
+
+
+    def test_batch_attendance_workflow(self):
+        # 1. Create students assigned to different batch time slots
+        student1 = Student.objects.create(
+            name="Alice Morning",
+            email="alice@example.com",
+            password=make_password("pass123"),
+            course="Master In Full Stack Development",
+            class_time="08:00 am to 10:00 am"
+        )
+        student2 = Student.objects.create(
+            name="Bob Morning",
+            email="bob@example.com",
+            password=make_password("pass123"),
+            course="Master In Flutter Development",
+            class_time="08:00 am to 10:00 am"
+        )
+        student3 = Student.objects.create(
+            name="Charlie Afternoon",
+            email="charlie@example.com",
+            password=make_password("pass123"),
+            course="Master In Web Design",
+            class_time="02:00 pm to 04:00 pm"
+        )
+
+        # 2. Login as Admin
+        self.client.post(reverse('admin_login'), {
+            'email': 'admin1@creative.com',
+            'password': 'admin123'
+        })
+
+        # 3. Check Attendance Hub View
+        hub_resp = self.client.get(reverse('admin_attendance_hub'))
+        self.assertEqual(hub_resp.status_code, 200)
+        self.assertContains(hub_resp, 'Batch Attendance Hub')
+        self.assertContains(hub_resp, '08:00 am to 10:00 am')
+        self.assertContains(hub_resp, '02:00 pm to 04:00 pm')
+
+        # 4. Mark attendance for morning batch
+        today_str = datetime.date.today().isoformat()
+        batch_post_resp = self.client.post(
+            f"{reverse('admin_attendance_batch')}?batch=08:00+am+to+10:00+am&date={today_str}",
+            {
+                'batch': '08:00 am to 10:00 am',
+                'date': today_str,
+                f'status_{student1.id}': 'Present',
+                f'remarks_{student1.id}': 'On time',
+                f'status_{student2.id}': 'Late',
+                f'remarks_{student2.id}': 'Traffic delay 15m',
+            }
+        )
+        self.assertEqual(batch_post_resp.status_code, 302)
+
+        # Verify Attendance records in database
+        att1 = Attendance.objects.get(student=student1, date=datetime.date.today())
+        self.assertEqual(att1.status, 'Present')
+        self.assertEqual(att1.remarks, 'On time')
+        self.assertEqual(att1.time_slot, '08:00 am to 10:00 am')
+
+        att2 = Attendance.objects.get(student=student2, date=datetime.date.today())
+        self.assertEqual(att2.status, 'Late')
+        self.assertEqual(att2.remarks, 'Traffic delay 15m')
+
+        # 5. Verify Student.attendance_stats property
+        stats1 = student1.attendance_stats
+        self.assertEqual(stats1['total'], 1)
+        self.assertEqual(stats1['present'], 1)
+        self.assertEqual(stats1['percentage'], 100.0)
+
+        # 6. Verify Attendance Monthly Report and CSV Export
+        report_resp = self.client.get(reverse('admin_attendance_report'))
+        self.assertEqual(report_resp.status_code, 200)
+        self.assertContains(report_resp, 'Monthly Attendance Register')
+        self.assertContains(report_resp, 'Alice Morning')
+
+        csv_resp = self.client.get(f"{reverse('admin_attendance_report')}?export=csv")
+        self.assertEqual(csv_resp.status_code, 200)
+        self.assertEqual(csv_resp['Content-Type'], 'text/csv')
+        self.assertIn('Alice Morning', csv_resp.content.decode())
+
+        # 7. Student Portal Attendance View
+        student_client = Client()
+        student_client.post(reverse('student_login'), {
+            'email': 'alice@example.com',
+            'password': 'pass123'
+        })
+        std_att_resp = student_client.get(reverse('student_attendance'))
+        self.assertEqual(std_att_resp.status_code, 200)
+        self.assertContains(std_att_resp, 'My Attendance Portfolio')
+        self.assertContains(std_att_resp, '08:00 am to 10:00 am')
+        self.assertContains(std_att_resp, 'On time')

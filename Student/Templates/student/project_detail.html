@@ -1,67 +1,77 @@
 {% extends 'student/base.html' %}
+{% load static %}
 
 {% block title %}{{ project.title }} - Project Dossier{% endblock %}
 
+{% block breadcrumbs %}
+<a href="{% url 'student_dashboard' %}">Dashboard</a>
+<span class="breadcrumb-separator">/</span>
+<a href="{% url 'student_projects' %}">My Projects</a>
+<span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-current">{{ project.title|truncatechars:26 }}</span>
+{% endblock %}
+
 {% block content %}
 <!-- Page Header -->
-<div class="page-header">
+<div class="page-header" style="margin-bottom: 1.5rem;">
     <div class="header-text">
-        <div class="page-breadcrumbs">
-            <a href="{% url 'student_dashboard' %}"><i class="fa-solid fa-house"></i> Home</a>
-            <span class="crumb-separator">/</span>
-            <a href="{% url 'student_projects' %}">Projects</a>
-            <span class="crumb-separator">/</span>
-            <span class="crumb-current">{{ project.title|truncatechars:28 }}</span>
-        </div>
-        <h1>Project Details</h1>
-        <p class="header-subtitle">Portfolio submission dossier and faculty evaluation details</p>
+        <h1 style="display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-folder-open" style="color: var(--primary);"></i>
+            Project Dossier
+        </h1>
+        <p>Portfolio submission details, evaluation status, and attached technical assets</p>
     </div>
-    <div class="header-actions">
+    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
         <a href="{% url 'student_projects' %}" class="btn-secondary">
-            <i class="fa-solid fa-arrow-left"></i> Back to Projects
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>Back to Projects</span>
         </a>
         <a href="{% url 'student_project_edit' project.id %}" class="btn-primary">
-            <i class="fa-solid fa-pen-to-square"></i> Edit Project
+            <i class="fa-solid fa-pen-to-square"></i>
+            <span>Edit Project</span>
         </a>
-        <a href="{% url 'student_project_delete' project.id %}" class="btn-outline" onclick="return confirm('Are you sure you want to delete project: {{ project.title|escapejs }}?');" style="color: var(--danger); border-color: var(--danger-border);" title="Delete Project">
-            <i class="fa-solid fa-trash"></i> Delete
+        <a href="{% url 'student_project_delete' project.id %}" class="btn-secondary" onclick="return confirm('Are you sure you want to delete project: {{ project.title|escapejs }}?');" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.25);" title="Delete Project">
+            <i class="fa-solid fa-trash"></i>
+            <span>Delete</span>
         </a>
     </div>
 </div>
 
 <!-- Project Hero Dossier Card -->
-<div class="dossier-card" style="margin-bottom: 2rem;">
-    <div class="dossier-header">
+<div class="student-card" style="margin-bottom: 2rem; padding: 2rem 2.25rem;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.5rem;">
         <div style="flex: 1; min-width: 280px;">
-            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem; flex-wrap: wrap;">
-                <h2 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary); margin: 0; line-height: 1.3;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.85rem; flex-wrap: wrap;">
+                <h2 style="font-size: 1.65rem; font-weight: 800; color: var(--text-primary); margin: 0; line-height: 1.3;">
                     {{ project.title }}
                 </h2>
-                {% if project.status == 'Approved' %}
-                <span class="badge badge-success" style="font-size: 0.825rem; padding: 0.35rem 0.85rem;">
-                    <i class="fa-solid fa-circle-check"></i> Approved by Faculty
-                </span>
-                {% elif project.status == 'Rejected' %}
-                <span class="badge badge-danger" style="font-size: 0.825rem; padding: 0.35rem 0.85rem;">
-                    <i class="fa-solid fa-circle-xmark"></i> Needs Revision
-                </span>
-                {% else %}
-                <span class="badge badge-warning" style="font-size: 0.825rem; padding: 0.35rem 0.85rem;">
-                    <i class="fa-solid fa-clock"></i> Submitted (Under Review)
-                </span>
-                {% endif %}
+                <div>
+                    {% if project.status == 'Approved' %}
+                    <span class="dossier-btn-dark success" style="font-size: 0.8rem; padding: 0.35rem 0.75rem;">
+                        <i class="fa-solid fa-circle-check"></i> Approved by Faculty
+                    </span>
+                    {% elif project.status == 'Rejected' %}
+                    <span class="dossier-btn-dark danger" style="font-size: 0.8rem; padding: 0.35rem 0.75rem;">
+                        <i class="fa-solid fa-circle-xmark"></i> Needs Revision
+                    </span>
+                    {% else %}
+                    <span class="dossier-btn-dark" style="font-size: 0.8rem; padding: 0.35rem 0.75rem; background: var(--warning-light); color: var(--warning-text); border-color: var(--warning-border);">
+                        <i class="fa-solid fa-clock"></i> Submitted (Under Review)
+                    </span>
+                    {% endif %}
+                </div>
             </div>
 
-            <div class="dossier-meta-row">
-                <span class="meta-chip">
+            <div style="display: flex; gap: 0.85rem; align-items: center; flex-wrap: wrap; font-size: 0.88rem; color: var(--text-secondary);">
+                <span style="display: inline-flex; align-items: center; gap: 0.35rem;">
                     <i class="fa-solid fa-user-graduate" style="color: var(--primary);"></i> {{ project.student.name }}
                 </span>
-                <span class="meta-divider">•</span>
-                <span class="meta-chip">
+                <span>&bull;</span>
+                <span style="display: inline-flex; align-items: center; gap: 0.35rem;">
                     <i class="fa-solid fa-book-open" style="color: var(--primary);"></i> {{ project.student.course }}
                 </span>
-                <span class="meta-divider">•</span>
-                <span class="meta-chip">
+                <span>&bull;</span>
+                <span style="display: inline-flex; align-items: center; gap: 0.35rem;">
                     <i class="fa-regular fa-calendar" style="color: var(--primary);"></i> Submitted on {{ project.submitted_at|date:"M d, Y - h:i A" }}
                 </span>
             </div>
@@ -71,40 +81,40 @@
 
 <!-- Project File Attachments Section -->
 {% if project.all_files %}
-<div class="dossier-card" style="margin-bottom: 2rem;">
-    <div class="dossier-section-header">
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <div class="section-icon-badge">
-                <i class="fa-solid fa-paperclip"></i>
-            </div>
-            <div>
-                <h3 class="section-title">Attached Project Files & Assets ({{ project.all_files|length }})</h3>
-                <p class="section-subtitle">Source code, archives, reports, notebooks, and design files</p>
-            </div>
+<div class="student-card" style="margin-bottom: 2rem; padding: 1.75rem 2rem;">
+    <div style="display: flex; align-items: center; gap: 0.75rem; padding-bottom: 1rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color);">
+        <div style="width: 38px; height: 38px; border-radius: 8px; background: rgba(79, 70, 229, 0.08); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.05rem;">
+            <i class="fa-solid fa-paperclip"></i>
+        </div>
+        <div>
+            <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.15rem 0;">
+                Attached Project Files & Assets ({{ project.all_files|length }})
+            </h3>
+            <small style="color: var(--text-muted); font-size: 0.8rem;">Source code, archives, reports, and design deliverables</small>
         </div>
     </div>
 
-    <div class="files-stack">
+    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
         {% for f in project.all_files %}
-        <div class="file-item-card">
-            <div class="file-item-left">
-                <div class="file-ext-icon">
-                    {% if f.file_extension %}{{ f.file_extension }}{% else %}FILE{% endif %}
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.85rem 1.15rem; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 10px; flex-wrap: wrap; gap: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.85rem; min-width: 0;">
+                <div style="width: 40px; height: 40px; border-radius: 8px; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase;">
+                    {% if f.file_extension %}{{ f.file_extension|truncatechars:4 }}{% else %}FILE{% endif %}
                 </div>
                 <div style="min-width: 0;">
-                    <strong class="file-item-name">
+                    <strong style="color: var(--text-primary); font-size: 0.92rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                         {{ f.filename }}
                     </strong>
-                    <small class="file-item-meta">
-                        {% if f.file_size_formatted %}Size: {{ f.file_size_formatted }} • {% endif %}Submitted Attachment
+                    <small style="color: var(--text-muted); font-size: 0.78rem;">
+                        {% if f.file_size_formatted %}Size: {{ f.file_size_formatted }} &bull; {% endif %}Attached Project Deliverable
                     </small>
                 </div>
             </div>
-            <div class="file-item-actions">
-                <a href="{% if f.file %}{{ f.file.url }}{% else %}{{ f.url }}{% endif %}" download class="btn-primary" style="padding: 0.4rem 0.85rem; font-size: 0.8rem;">
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <a href="{{ f.url }}" download class="btn-primary" style="padding: 0.4rem 0.85rem; font-size: 0.8rem;">
                     <i class="fa-solid fa-download"></i> Download
                 </a>
-                <a href="{% if f.file %}{{ f.file.url }}{% else %}{{ f.url }}{% endif %}" target="_blank" class="btn-outline" style="padding: 0.4rem 0.85rem; font-size: 0.8rem;">
+                <a href="{{ f.url }}" target="_blank" class="btn-secondary" style="padding: 0.4rem 0.85rem; font-size: 0.8rem;">
                     <i class="fa-solid fa-arrow-up-right-from-square"></i> Open
                 </a>
             </div>
@@ -116,31 +126,31 @@
 
 <!-- Project External Links Section -->
 {% if project.all_links %}
-<div class="dossier-card" style="margin-bottom: 2rem;">
-    <div class="dossier-section-header">
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <div class="section-icon-badge">
-                <i class="fa-solid fa-globe"></i>
-            </div>
-            <div>
-                <h3 class="section-title">Project Links & Repositories</h3>
-                <p class="section-subtitle">Live deployment URLs, repository sources, and design assets</p>
-            </div>
+<div class="student-card" style="margin-bottom: 2rem; padding: 1.75rem 2rem;">
+    <div style="display: flex; align-items: center; gap: 0.75rem; padding-bottom: 1rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color);">
+        <div style="width: 38px; height: 38px; border-radius: 8px; background: rgba(79, 70, 229, 0.08); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.05rem;">
+            <i class="fa-solid fa-globe"></i>
+        </div>
+        <div>
+            <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.15rem 0;">
+                Project Links & Repositories ({{ project.all_links|length }})
+            </h3>
+            <small style="color: var(--text-muted); font-size: 0.8rem;">Live deployment URLs, source repositories, and design links</small>
         </div>
     </div>
 
-    <div class="files-stack">
+    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
         {% for l in project.all_links %}
-        <div class="link-item-card">
-            <div class="link-item-left">
-                <span class="badge badge-primary" style="padding: 0.35rem 0.75rem; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 0.4rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.85rem 1.15rem; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 10px; flex-wrap: wrap; gap: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.85rem; min-width: 0; flex: 1;">
+                <span class="brand-badge" style="padding: 0.35rem 0.75rem; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 0.4rem; flex-shrink: 0;">
                     <i class="{{ l.icon_class }}"></i> {{ l.display_label }}
                 </span>
-                <a href="{{ l.url }}" target="_blank" rel="noopener noreferrer" class="link-item-url">
+                <a href="{{ l.url }}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: none; font-weight: 600; font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                     {{ l.url }}
                 </a>
             </div>
-            <a href="{{ l.url }}" target="_blank" rel="noopener noreferrer" class="btn-outline" style="padding: 0.4rem 0.85rem; font-size: 0.8rem;">
+            <a href="{{ l.url }}" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="padding: 0.4rem 0.85rem; font-size: 0.8rem;">
                 <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Link
             </a>
         </div>
@@ -151,221 +161,22 @@
 
 <!-- Project Description Section -->
 {% if project.description %}
-<div class="dossier-card">
-    <div class="dossier-section-header">
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <div class="section-icon-badge">
-                <i class="fa-solid fa-align-left"></i>
-            </div>
-            <div>
-                <h3 class="section-title">Project Description & Documentation</h3>
-                <p class="section-subtitle">Comprehensive description submitted for academic evaluation</p>
-            </div>
+<div class="student-card" style="margin-bottom: 2rem; padding: 1.75rem 2rem;">
+    <div style="display: flex; align-items: center; gap: 0.75rem; padding-bottom: 1rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color);">
+        <div style="width: 38px; height: 38px; border-radius: 8px; background: rgba(79, 70, 229, 0.08); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.05rem;">
+            <i class="fa-solid fa-align-left"></i>
+        </div>
+        <div>
+            <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.15rem 0;">
+                Project Description & Documentation
+            </h3>
+            <small style="color: var(--text-muted); font-size: 0.8rem;">Comprehensive project narrative submitted for academic evaluation</small>
         </div>
     </div>
 
-    <div class="project-desc-content">
-        {{ project.description|linebreaksbr }}
+    <div style="font-size: 0.92rem; color: var(--text-secondary); line-height: 1.7; white-space: pre-line;">
+        {{ project.description }}
     </div>
 </div>
 {% endif %}
-
-<style>
-.dossier-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-lg);
-    padding: 2rem;
-    box-shadow: var(--shadow-card);
-}
-
-.dossier-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    gap: 1.5rem;
-}
-
-.dossier-meta-row {
-    display: flex;
-    gap: 0.85rem;
-    align-items: center;
-    flex-wrap: wrap;
-    font-size: 0.88rem;
-    color: var(--text-secondary);
-    margin-top: 0.65rem;
-}
-
-.meta-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-}
-
-.meta-divider {
-    color: var(--border-color);
-}
-
-.dossier-section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-bottom: 1rem;
-    margin-bottom: 1.25rem;
-    border-bottom: 1px solid var(--border-color-light);
-}
-
-.section-icon-badge {
-    width: 38px;
-    height: 38px;
-    border-radius: var(--border-radius-md);
-    background: var(--primary-light);
-    color: var(--primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-    flex-shrink: 0;
-}
-
-.section-title {
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 0 0 0.15rem 0;
-}
-
-.section-subtitle {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    margin: 0;
-}
-
-.files-stack {
-    display: flex;
-    flex-direction: column;
-    gap: 0.85rem;
-}
-
-.file-item-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-    background: var(--bg-main);
-    padding: 1rem 1.25rem;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-md);
-    transition: border-color var(--transition-fast), transform var(--transition-fast);
-}
-
-.file-item-card:hover {
-    border-color: var(--primary);
-}
-
-.file-item-left {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    min-width: 0;
-    overflow: hidden;
-}
-
-.file-ext-icon {
-    width: 44px;
-    height: 44px;
-    background: var(--primary);
-    color: #ffffff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 800;
-    font-size: 0.78rem;
-    flex-shrink: 0;
-    border-radius: var(--border-radius-sm);
-    letter-spacing: 0.5px;
-}
-
-.file-item-name {
-    color: var(--text-primary);
-    font-size: 0.95rem;
-    display: block;
-    word-break: break-all;
-}
-
-.file-item-meta {
-    color: var(--text-muted);
-    font-size: 0.78rem;
-    display: block;
-    margin-top: 0.15rem;
-}
-
-.file-item-actions {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    flex-shrink: 0;
-}
-
-.link-item-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-    background: var(--bg-main);
-    padding: 0.9rem 1.25rem;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-md);
-    transition: border-color var(--transition-fast);
-}
-
-.link-item-card:hover {
-    border-color: var(--primary);
-}
-
-.link-item-left {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    overflow: hidden;
-    max-width: 75%;
-}
-
-.link-item-url {
-    color: var(--primary);
-    font-weight: 500;
-    font-size: 0.9rem;
-    word-break: break-all;
-    text-decoration: none;
-}
-
-.link-item-url:hover {
-    text-decoration: underline;
-}
-
-.project-desc-content {
-    line-height: 1.8;
-    color: var(--text-secondary);
-    font-size: 0.95rem;
-    background: var(--bg-main);
-    padding: 1.5rem;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-md);
-}
-
-@media (max-width: 768px) {
-    .dossier-card {
-        padding: 1.5rem;
-    }
-    .link-item-left {
-        max-width: 100%;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-    }
-}
-</style>
 {% endblock %}

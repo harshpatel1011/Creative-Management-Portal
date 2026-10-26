@@ -101,9 +101,6 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
 }
 
 html {
@@ -114,9 +111,59 @@ html {
 body {
     background-color: var(--bg-main);
     color: var(--text-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     line-height: 1.5;
     min-height: 100vh;
     overflow-x: hidden;
+}
+
+/* ==========================================================================
+   FONT AWESOME ICON STYLES
+   Prevent font-family resets from wiping out Font Awesome icon glyphs
+   ========================================================================== */
+.fa,
+.fa-solid,
+.fa-regular,
+.fa-brands,
+.fas,
+.far,
+.fab,
+[class*=" fa-"],
+[class^="fa-"] {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    display: inline-block;
+    font-style: normal;
+    font-variant: normal;
+    line-height: 1;
+    text-rendering: auto;
+}
+
+.fa,
+.fa-solid,
+.fas,
+.fa-solid::before,
+.fas::before {
+    font-family: "Font Awesome 6 Free" !important;
+    font-weight: 900 !important;
+}
+
+.fa-regular,
+.far,
+.fa-regular::before,
+.far::before {
+    font-family: "Font Awesome 6 Free" !important;
+    font-weight: 400 !important;
+}
+
+.fa-brands,
+.fab,
+.fa-brands::before,
+.fab::before {
+    font-family: "Font Awesome 6 Brands" !important;
+    font-weight: 400 !important;
 }
 
 a {
@@ -1725,4 +1772,120 @@ p {
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
     }
+}
+
+
+/* ==========================================================================
+   BADGE & PILL SYSTEM (GLOBAL COMPATIBILITY)
+   ========================================================================== */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.28rem 0.65rem;
+    border-radius: var(--border-radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+
+.badge-primary {
+    background-color: var(--primary-light);
+    color: var(--primary);
+    border-color: rgba(79, 70, 229, 0.2);
+}
+
+.badge-secondary {
+    background-color: var(--bg-main);
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+
+.badge-success {
+    background-color: var(--success-light);
+    color: var(--success);
+    border-color: rgba(16, 185, 129, 0.25);
+}
+
+.badge-warning {
+    background-color: var(--warning-light);
+    color: var(--warning-text);
+    border-color: var(--warning-border);
+}
+
+.badge-danger {
+    background-color: var(--danger-light);
+    color: var(--danger-text);
+    border-color: var(--danger-border);
+}
+
+.badge-info {
+    background-color: var(--info-light);
+    color: var(--info-text);
+    border-color: var(--info-border);
+}
+
+.badge-muted {
+    background-color: var(--bg-main);
+    color: var(--text-muted);
+    border-color: var(--border-color);
+}
+
+/* ==========================================================================
+   BUTTON OUTLINE & ASSET PILLS
+   ========================================================================== */
+.btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.95rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    text-decoration: none;
+    transition: all var(--transition-fast);
+}
+
+.btn-outline:hover {
+    background-color: var(--bg-main);
+    border-color: var(--primary);
+    color: var(--primary);
+    transform: translateY(-1px);
+}
+
+/* Breadcrumb nav within page */
+.page-breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+}
+
+.page-breadcrumbs a {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+.page-breadcrumbs a:hover {
+    color: var(--primary);
+}
+
+.crumb-separator {
+    color: var(--border-color);
+    font-size: 0.75rem;
+}
+
+.crumb-current {
+    color: var(--text-secondary);
+    font-weight: 600;
 }

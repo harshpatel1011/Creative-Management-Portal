@@ -1,361 +1,595 @@
 {% extends 'student/base.html' %}
+{% load static %}
 
 {% block title %}My Marks & Grades - Student Portal{% endblock %}
 
+{% block breadcrumbs %}
+<a href="{% url 'student_dashboard' %}">Dashboard</a>
+<span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-current">Marks & Grades</span>
+{% endblock %}
+
 {% block content %}
-<!-- Page Header -->
-<div class="page-header">
-    <div class="header-text">
-        <div class="page-breadcrumbs">
-            <a href="{% url 'student_dashboard' %}"><i class="fa-solid fa-house"></i> Home</a>
-            <span class="crumb-separator">/</span>
-            <span class="crumb-current">Academic Grade Sheet</span>
+<!-- Print Only Official Transcript Header -->
+<div class="print-transcript-header" style="display: none;">
+    <div style="border-bottom: 2px solid #0f172a; padding-bottom: 1rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+            <h1 style="font-size: 1.6rem; font-weight: 800; color: #0f172a; margin: 0 0 0.25rem 0; text-transform: uppercase; letter-spacing: 0.04em;">
+                Creative Design & Multimedia Academy
+            </h1>
+            <p style="font-size: 0.9rem; color: #475569; margin: 0; font-weight: 600;">
+                Official Academic Grade Sheet & Performance Transcript
+            </p>
         </div>
-        <h1>Academic Grade Sheet</h1>
-        <p class="header-subtitle">Official examination marks, grade evaluations, and academic standing</p>
+        <div style="text-align: right;">
+            <div style="font-size: 0.82rem; color: #64748b;">Date of Issue</div>
+            <div style="font-size: 0.95rem; font-weight: 700; color: #0f172a;">{% now "F d, Y" %}</div>
+        </div>
     </div>
-    <div class="header-actions">
-        <button type="button" class="btn-secondary" onclick="window.print();" title="Print Grade Sheet">
-            <i class="fa-solid fa-print"></i> Print Transcript
-        </button>
+    
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; font-size: 0.85rem;">
+        <div>
+            <div style="color: #64748b; font-size: 0.75rem; text-transform: uppercase; font-weight: 700;">Student Name</div>
+            <div style="font-weight: 700; color: #0f172a; font-size: 0.95rem;">{{ student.name }}</div>
+        </div>
+        <div>
+            <div style="color: #64748b; font-size: 0.75rem; text-transform: uppercase; font-weight: 700;">Student ID</div>
+            <div style="font-weight: 700; color: #0f172a; font-size: 0.95rem;">#{{ student.id }}</div>
+        </div>
+        <div>
+            <div style="color: #64748b; font-size: 0.75rem; text-transform: uppercase; font-weight: 700;">Enrolled Course</div>
+            <div style="font-weight: 700; color: #0f172a; font-size: 0.95rem;">{{ student.course }}</div>
+        </div>
+        <div>
+            <div style="color: #64748b; font-size: 0.75rem; text-transform: uppercase; font-weight: 700;">Cumulative Standing</div>
+            <div style="font-weight: 700; color: #0f172a; font-size: 0.95rem;">{{ overall_grade }} ({{ percentage }}%)</div>
+        </div>
     </div>
 </div>
 
-<!-- Performance Overview KPI Grid -->
-<div class="kpi-grid" style="margin-bottom: 2rem;">
-    <!-- Overall Grade Card -->
-    <div class="kpi-card">
-        <div class="kpi-header">
-            <div class="kpi-icon-wrapper" style="background: var(--primary-light); color: var(--primary);">
-                <i class="fa-solid fa-award"></i>
+<!-- Page Header (Web Screen) -->
+<div class="page-header" style="margin-bottom: 1.5rem;">
+    <div class="header-text">
+        <h1 style="display: flex; align-items: center; gap: 0.6rem;">
+            <i class="fa-solid fa-award" style="color: var(--primary);"></i>
+            Academic Marks & Grades
+        </h1>
+        <p>Official examination evaluations, module percentage scores, and cumulative academic standing</p>
+    </div>
+    <div class="header-actions" style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+        <button type="button" class="btn-secondary" onclick="window.print();" title="Print Official Academic Transcript">
+            <i class="fa-solid fa-print"></i>
+            <span>Print Transcript</span>
+        </button>
+        {% if overall_grade != "N/A" %}
+        <span class="brand-badge" style="font-size: 0.85rem; padding: 0.5rem 0.9rem; background: rgba(79, 70, 229, 0.08); color: var(--primary); border: 1px solid rgba(79, 70, 229, 0.2);">
+            <i class="fa-solid fa-shield-halved"></i> <strong>{{ standing }}</strong>
+        </span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Student Identity Dossier Strip -->
+<div class="student-dossier-strip" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 1.15rem 1.5rem; margin-bottom: 2rem; box-shadow: var(--shadow-card); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div style="display: flex; align-items: center; gap: 1.15rem; flex-wrap: wrap;">
+        <div style="width: 46px; height: 46px; border-radius: var(--border-radius-full); background: var(--primary); color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; font-weight: 800; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.25); flex-shrink: 0;">
+            {{ student.name|slice:":1"|upper }}
+        </div>
+        <div>
+            <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+                <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: var(--text-primary);">{{ student.name }}</h3>
+                <span class="badge badge-secondary" style="font-weight: 700; font-size: 0.75rem;">
+                    ID: #{{ student.id }}
+                </span>
             </div>
-            {% if overall_grade == 'A+' or overall_grade == 'A' %}
-                <span class="badge badge-success">Distinction</span>
-            {% elif overall_grade == 'B+' or overall_grade == 'B' %}
-                <span class="badge badge-primary">Merit</span>
-            {% elif overall_grade == 'C' or overall_grade == 'D' %}
-                <span class="badge badge-warning">Passing</span>
-            {% elif overall_grade == 'F' %}
-                <span class="badge badge-danger">Needs Improvement</span>
-            {% else %}
-                <span class="badge badge-secondary">Pending</span>
-            {% endif %}
+            <p style="margin: 0.2rem 0 0 0; font-size: 0.825rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <span><i class="fa-solid fa-book-open" style="color: var(--primary);"></i> {{ student.course }}</span>
+                {% if student.class_time %}
+                <span style="color: var(--border-color);">&bull;</span>
+                <span><i class="fa-regular fa-clock" style="color: var(--primary);"></i> Batch: {{ student.class_time }}</span>
+                {% endif %}
+            </p>
         </div>
-        <div class="kpi-value" style="font-size: 2.2rem; font-weight: 800; color: var(--primary);">
-            {{ overall_grade }}
+    </div>
+    <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+        <span class="badge badge-primary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
+            <i class="fa-solid fa-file-signature"></i> {{ total_exams }} Total Exam{{ total_exams|pluralize }}
+        </span>
+        <span class="badge badge-success" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
+            <i class="fa-solid fa-check-double"></i> {{ graded_count }} Evaluated
+        </span>
+        {% if pending_count > 0 %}
+        <span class="badge badge-warning" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
+            <i class="fa-solid fa-clock"></i> {{ pending_count }} Pending
+        </span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Performance Overview KPI Grid (4 Cards) -->
+<div class="stats-overview-grid" style="margin-bottom: 2rem;">
+    <!-- Overall Performance Grade Card -->
+    <div class="kpi-card" style="border-left: 4px solid {% if overall_grade == 'A+' or overall_grade == 'A' %}#10b981{% elif overall_grade == 'B+' or overall_grade == 'B' %}var(--primary){% elif overall_grade == 'C' or overall_grade == 'D' %}#f59e0b{% elif overall_grade == 'F' %}#ef4444{% else %}var(--border-color){% endif %};">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(79, 70, 229, 0.1); color: var(--primary);">
+                    <i class="fa-solid fa-award"></i>
+                </div>
+                {% if overall_grade == 'A+' or overall_grade == 'A' %}
+                    <span class="badge badge-success"><i class="fa-solid fa-star"></i> Distinction</span>
+                {% elif overall_grade == 'B+' or overall_grade == 'B' %}
+                    <span class="badge badge-primary"><i class="fa-solid fa-check"></i> Merit</span>
+                {% elif overall_grade == 'C' or overall_grade == 'D' %}
+                    <span class="badge badge-warning">Passing</span>
+                {% elif overall_grade == 'F' %}
+                    <span class="badge badge-danger">Needs Improvement</span>
+                {% else %}
+                    <span class="badge badge-secondary">Pending</span>
+                {% endif %}
+            </div>
+            <div class="kpi-value" style="color: {% if overall_grade == 'A+' or overall_grade == 'A' %}#10b981{% elif overall_grade == 'B+' or overall_grade == 'B' %}var(--primary){% elif overall_grade == 'C' or overall_grade == 'D' %}#f59e0b{% elif overall_grade == 'F' %}#ef4444{% else %}var(--text-primary){% endif %}; font-size: 2.2rem; font-weight: 800;">
+                {{ overall_grade }}
+            </div>
+            <div class="kpi-label">Overall Performance Grade</div>
         </div>
-        <div class="kpi-label">Overall Performance Grade</div>
-        <div class="kpi-trend">
-            <span style="color: var(--text-muted); font-size: 0.8rem;">
-                <i class="fa-solid fa-shield-halved"></i> Evaluated standing
-            </span>
+        <div class="kpi-footer">
+            <span><i class="fa-solid fa-shield-halved" style="color: var(--primary);"></i> {{ standing }}</span>
         </div>
     </div>
 
     <!-- Aggregate Percentage Card -->
     <div class="kpi-card">
-        <div class="kpi-header">
-            <div class="kpi-icon-wrapper" style="background: var(--success-light); color: var(--success);">
-                <i class="fa-solid fa-chart-line"></i>
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                    <i class="fa-solid fa-percent"></i>
+                </div>
+                <span class="badge badge-success">Aggregate</span>
             </div>
-            <span class="badge badge-success">Aggregate</span>
+            <div class="kpi-value" style="color: {% if percentage >= 80 %}#10b981{% elif percentage >= 60 %}var(--primary){% elif percentage >= 33 %}#f59e0b{% elif total_possible > 0 %}#ef4444{% else %}var(--text-primary){% endif %};">
+                {{ percentage }}%
+            </div>
+            <div class="kpi-label">Aggregate Percentage</div>
         </div>
-        <div class="kpi-value" style="color: var(--text-primary);">
-            {{ percentage }}%
-        </div>
-        <div class="kpi-label">Aggregate Percentage</div>
-        <div style="margin-top: 0.65rem;">
+        <div class="kpi-footer" style="display: block;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.35rem; font-size: 0.75rem;">
+                <span>Evaluation Progress</span>
+                <span style="font-weight: 600;">{{ percentage }}%</span>
+            </div>
             <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
-                <div style="width: {{ percentage }}%; height: 100%; background: var(--primary); border-radius: 999px; transition: width 0.8s ease;"></div>
+                <div style="width: {{ percentage }}%; height: 100%; background: {% if percentage >= 80 %}#10b981{% elif percentage >= 60 %}var(--primary){% elif percentage >= 33 %}#f59e0b{% elif total_possible > 0 %}#ef4444{% else %}var(--border-color){% endif %}; border-radius: 999px; transition: width 0.8s ease;"></div>
             </div>
         </div>
     </div>
 
-    <!-- Cumulative Score Card -->
+    <!-- Cumulative Score Points Card -->
     <div class="kpi-card">
-        <div class="kpi-header">
-            <div class="kpi-icon-wrapper" style="background: var(--info-light); color: var(--info);">
-                <i class="fa-solid fa-calculator"></i>
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan);">
+                    <i class="fa-solid fa-chart-simple"></i>
+                </div>
+                <span class="badge badge-info">Points</span>
             </div>
-            <span class="badge badge-info">Total Points</span>
+            <div class="kpi-value">
+                {{ total_obtained }} <span style="font-size: 1.05rem; color: var(--text-muted); font-weight: 500;">/ {{ total_possible }}</span>
+            </div>
+            <div class="kpi-label">Cumulative Score Scored</div>
         </div>
-        <div class="kpi-value">
-            {{ total_obtained }} <span style="font-size: 1.15rem; color: var(--text-muted); font-weight: 500;">/ {{ total_possible }}</span>
-        </div>
-        <div class="kpi-label">Cumulative Score Scored</div>
-        <div class="kpi-trend">
-            <span style="color: var(--text-muted); font-size: 0.8rem;">
-                Across all graded exams
-            </span>
+        <div class="kpi-footer">
+            <span>Across {{ graded_count }} evaluated assessment{{ graded_count|pluralize }}</span>
         </div>
     </div>
 
-    <!-- Total Exams Card -->
+    <!-- Total Examinations Card -->
     <div class="kpi-card">
-        <div class="kpi-header">
-            <div class="kpi-icon-wrapper" style="background: var(--warning-light); color: var(--warning);">
-                <i class="fa-solid fa-file-lines"></i>
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+                    <i class="fa-solid fa-file-lines"></i>
+                </div>
+                <span class="badge badge-warning">{{ total_exams }} Total</span>
             </div>
-            <span class="badge badge-warning">Exams</span>
+            <div class="kpi-value">
+                {{ graded_count }} <span style="font-size: 1.05rem; color: var(--text-muted); font-weight: 500;">/ {{ total_exams }}</span>
+            </div>
+            <div class="kpi-label">Assessments Graded</div>
         </div>
-        <div class="kpi-value">
-            {{ marks_records.count }}
-        </div>
-        <div class="kpi-label">Total Examinations</div>
-        <div class="kpi-trend">
-            <span style="color: var(--text-muted); font-size: 0.8rem;">
-                Official registered tests
-            </span>
+        <div class="kpi-footer">
+            {% if pending_count > 0 %}
+            <span style="color: var(--warning-text); font-weight: 600;"><i class="fa-solid fa-clock"></i> {{ pending_count }} pending grade</span>
+            {% elif absent_count > 0 %}
+            <span style="color: var(--danger-text); font-weight: 600;"><i class="fa-solid fa-user-xmark"></i> {{ absent_count }} absent record{{ absent_count|pluralize }}</span>
+            {% else %}
+            <span style="color: var(--success); font-weight: 600;"><i class="fa-solid fa-circle-check"></i> All assessments complete</span>
+            {% endif %}
         </div>
     </div>
 </div>
 
-<!-- Student Info Strip -->
-<div class="student-info-strip">
-    <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-        <div class="student-mini-avatar">
-            <i class="fa-solid fa-user-graduate"></i>
-        </div>
+<!-- Examination Results Data Card -->
+<div class="student-card" style="padding: 0; overflow: hidden; margin-bottom: 2rem;">
+    <!-- Card Toolbar Header -->
+    <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; background: linear-gradient(180deg, #ffffff 0%, var(--bg-main) 100%);">
         <div>
-            <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-primary);">{{ student.name }}</h3>
-            <p style="margin: 0.15rem 0 0 0; font-size: 0.825rem; color: var(--text-muted);">
-                <i class="fa-solid fa-book-open" style="color: var(--primary);"></i> {{ student.course }}
-                {% if student.class_time %}
-                    <span style="margin: 0 0.5rem; color: var(--border-color);">|</span>
-                    <i class="fa-regular fa-clock" style="color: var(--primary);"></i> {{ student.class_time }}
-                {% endif %}
+            <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.2rem 0; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-graduation-cap" style="color: var(--primary);"></i>
+                Detailed Examination Results
+            </h2>
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0;">
+                Module-by-module evaluation breakdown, exam dates, scored marks, and awarded grades
             </p>
         </div>
-    </div>
-    <div>
-        <span class="badge badge-secondary" style="font-size: 0.8rem; padding: 0.35rem 0.75rem;">
-            Student ID: #{{ student.id }}
-        </span>
-    </div>
-</div>
 
-<!-- Data Table Card -->
-<div class="table-card">
-    <div class="table-card-header">
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <div class="card-icon-badge">
-                <i class="fa-solid fa-graduation-cap"></i>
+        <!-- Search & Filter Controls -->
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <!-- Instant Search Input -->
+            <div style="position: relative;">
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 0.8rem; color: var(--text-muted);"></i>
+                <input type="text" id="marksTableSearch" placeholder="Search module or subject..." onkeyup="filterMarksTable()" style="height: 36px; padding: 0 0.85rem 0 2rem; font-size: 0.825rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-md); background: var(--bg-card); color: var(--text-primary); outline: none; width: 220px; transition: border-color var(--transition-fast);">
             </div>
-            <div>
-                <h2 class="table-card-title">Detailed Examination Results</h2>
-                <p class="table-card-subtitle">Complete breakdown of module evaluations, dates, marks, and grades</p>
+
+            <!-- Filter Status Dropdown / Buttons -->
+            <div class="filter-btn-group" style="display: flex; gap: 0.35rem; background: var(--bg-card); padding: 3px; border: 1px solid var(--border-color); border-radius: var(--border-radius-md);">
+                <button type="button" class="filter-pill active" onclick="setGradeFilter('all', this)">All</button>
+                <button type="button" class="filter-pill" onclick="setGradeFilter('graded', this)">Graded</button>
+                <button type="button" class="filter-pill" onclick="setGradeFilter('pending', this)">Pending</button>
+                {% if absent_count > 0 %}
+                <button type="button" class="filter-pill" onclick="setGradeFilter('absent', this)">Absent</button>
+                {% endif %}
             </div>
         </div>
     </div>
 
-    <div class="table-responsive">
-        <table class="data-table">
+    <!-- Data Table Responsive Shell -->
+    <div class="table-responsive" style="border: none; border-radius: 0;">
+        <table class="data-table" id="marksDataTable">
             <thead>
                 <tr>
-                    <th>Examination</th>
-                    <th>Subject / Module</th>
-                    <th>Date & Time</th>
-                    <th>Total Marks</th>
-                    <th>Marks Obtained</th>
-                    <th>Grade</th>
-                    <th>Status</th>
+                    <th style="min-width: 180px;">Examination & Module</th>
+                    <th style="min-width: 130px;">Subject</th>
+                    <th style="min-width: 130px;">Exam Schedule</th>
+                    <th style="min-width: 90px; text-align: center;">Max Marks</th>
+                    <th style="min-width: 110px; text-align: center;">Marks Scored</th>
+                    <th style="min-width: 110px; text-align: center;">Percentage</th>
+                    <th style="min-width: 80px; text-align: center;">Grade</th>
+                    <th style="min-width: 120px; text-align: right;">Academic Status</th>
                 </tr>
             </thead>
             <tbody>
                 {% for m in marks_records %}
-                <tr>
+                <tr class="exam-row" 
+                    data-status="{% if m.is_absent or m.grade == 'Absent' %}absent{% elif m.marks_obtained is not None %}graded{% else %}pending{% endif %}"
+                    data-grade="{{ m.grade|default:'Pending' }}">
                     <!-- Exam Title -->
                     <td>
-                        <div style="font-weight: 700; color: var(--text-primary); font-size: 0.92rem;">
-                            {{ m.exam.title }}
+                        <div style="font-weight: 700; color: var(--text-primary); font-size: 0.92rem; display: flex; align-items: center; gap: 0.45rem;">
+                            <i class="fa-solid fa-file-lines" style="color: var(--primary); font-size: 0.85rem;"></i>
+                            <span>{{ m.exam.title }}</span>
                         </div>
                     </td>
 
-                    <!-- Subject -->
+                    <!-- Subject / Course Module -->
                     <td>
-                        <span class="badge badge-secondary" style="font-weight: 600;">
+                        <span class="badge badge-secondary" style="font-weight: 600; font-size: 0.78rem;">
+                            <i class="fa-solid fa-book-open" style="color: var(--primary); font-size: 0.7rem;"></i>
                             {{ m.exam.subject }}
                         </span>
                     </td>
 
                     <!-- Date & Time -->
                     <td>
-                        <div style="color: var(--text-primary); font-size: 0.875rem;">
+                        <div style="color: var(--text-primary); font-size: 0.85rem; font-weight: 600;">
                             {{ m.exam.exam_date|date:"M d, Y" }}
                         </div>
                         {% if m.exam.exam_time %}
-                        <small style="color: var(--text-muted); font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.3rem;">
-                            <i class="fa-solid fa-clock"></i> {{ m.exam.exam_time }}
-                        </small>
+                        <div style="color: var(--text-muted); font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.3rem; margin-top: 0.15rem;">
+                            <i class="fa-regular fa-clock" style="font-size: 0.7rem;"></i> {{ m.exam.exam_time }}
+                        </div>
                         {% endif %}
                     </td>
 
                     <!-- Total Marks -->
-                    <td>
-                        <span style="font-weight: 600; color: var(--text-secondary);">
+                    <td style="text-align: center;">
+                        <span style="font-weight: 600; color: var(--text-secondary); font-size: 0.9rem;">
                             {{ m.exam.total_marks }}
                         </span>
                     </td>
 
                     <!-- Marks Obtained -->
-                    <td>
-                        {% if m.is_absent %}
-                        <span class="badge badge-danger">
+                    <td style="text-align: center;">
+                        {% if m.is_absent or m.grade == 'Absent' %}
+                        <span class="badge badge-danger" style="font-weight: 700;">
                             <i class="fa-solid fa-user-xmark"></i> Absent
                         </span>
                         {% elif m.marks_obtained is not None %}
-                        <span style="font-size: 1rem; font-weight: 700; color: var(--text-primary);">
+                        <span style="font-size: 0.98rem; font-weight: 800; color: var(--text-primary);">
                             {{ m.marks_obtained }}
                         </span>
                         {% else %}
-                        <span style="color: var(--text-muted); font-style: italic;">
-                            Pending
+                        <span class="badge badge-warning">
+                            <i class="fa-solid fa-clock"></i> Pending
                         </span>
                         {% endif %}
                     </td>
 
-                    <!-- Grade -->
-                    <td>
+                    <!-- Percentage Score -->
+                    <td style="text-align: center;">
+                        {% if m.percentage is not None %}
+                        <div style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                            <strong style="color: var(--text-primary); font-size: 0.88rem;">{{ m.percentage }}%</strong>
+                        </div>
+                        <div style="width: 60px; height: 4px; background: var(--border-color); border-radius: 999px; overflow: hidden; margin: 0.25rem auto 0 auto;">
+                            <div style="width: {{ m.percentage }}%; height: 100%; background: {% if m.percentage >= 80 %}#10b981{% elif m.percentage >= 60 %}var(--primary){% elif m.percentage >= 33 %}#f59e0b{% else %}#ef4444{% endif %}; border-radius: 999px;"></div>
+                        </div>
+                        {% else %}
+                        <span style="color: var(--text-muted); font-size: 0.82rem;">-</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Grade Badge -->
+                    <td style="text-align: center;">
                         {% if m.is_absent or m.grade == 'Absent' %}
-                        <span class="badge badge-danger" style="font-size: 0.8rem; font-weight: 700;">
+                        <span class="badge badge-danger" style="font-size: 0.8rem; font-weight: 700; min-width: 38px; justify-content: center;">
                             Absent
                         </span>
                         {% elif m.grade %}
-                        <span class="badge {% if m.grade == 'F' %}badge-danger{% elif m.grade == 'A+' or m.grade == 'A' %}badge-success{% else %}badge-primary{% endif %}" style="font-size: 0.825rem; font-weight: 700; min-width: 32px; text-align: center;">
+                        <span class="badge {% if m.grade == 'A+' or m.grade == 'A' %}badge-success{% elif m.grade == 'B+' or m.grade == 'B' %}badge-primary{% elif m.grade == 'C' or m.grade == 'D' %}badge-warning{% elif m.grade == 'F' %}badge-danger{% else %}badge-secondary{% endif %}" style="font-size: 0.85rem; font-weight: 800; min-width: 38px; justify-content: center;">
                             {{ m.grade }}
                         </span>
                         {% else %}
-                        <span class="badge badge-warning">
+                        <span class="badge badge-secondary" style="font-size: 0.75rem;">
                             Pending
                         </span>
                         {% endif %}
                     </td>
 
-                    <!-- Evaluation Status -->
-                    <td>
-                        {% if m.is_absent %}
-                        <span style="color: var(--danger); font-size: 0.825rem; font-weight: 600;">
-                            <i class="fa-solid fa-circle-xmark"></i> Not Present
+                    <!-- Academic Status -->
+                    <td style="text-align: right;">
+                        {% if m.is_absent or m.grade == 'Absent' %}
+                        <span style="color: var(--danger-text); font-size: 0.82rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.35rem;">
+                            <i class="fa-solid fa-circle-xmark"></i> Absent
+                        </span>
+                        {% elif m.grade == 'F' %}
+                        <span style="color: var(--danger-text); font-size: 0.82rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.35rem;">
+                            <i class="fa-solid fa-rotate-left"></i> Re-test
                         </span>
                         {% elif m.marks_obtained is not None %}
-                        <span style="color: var(--success); font-size: 0.825rem; font-weight: 600;">
-                            <i class="fa-solid fa-circle-check"></i> Graded
+                        <span style="color: var(--success); font-size: 0.82rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.35rem;">
+                            <i class="fa-solid fa-circle-check"></i> Passed
                         </span>
                         {% else %}
-                        <span style="color: var(--warning-text); font-size: 0.825rem; font-weight: 500;">
-                            <i class="fa-solid fa-clock"></i> Awaiting Result
+                        <span style="color: var(--warning-text); font-size: 0.82rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem;">
+                            <i class="fa-solid fa-hourglass-half"></i> Under Review
                         </span>
                         {% endif %}
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7">
-                        <div class="empty-state-table">
-                            <div class="empty-state-icon" style="width: 52px; height: 52px; font-size: 1.4rem;">
+                    <td colspan="8">
+                        <div class="empty-state-table" style="text-align: center; padding: 3.5rem 1.5rem;">
+                            <div style="width: 58px; height: 58px; border-radius: var(--border-radius-full); background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.6rem; margin: 0 auto 1rem auto;">
                                 <i class="fa-solid fa-file-circle-question"></i>
                             </div>
-                            <h4 style="margin: 0 0 0.35rem 0; font-size: 1.1rem; color: var(--text-primary);">No Examination Records</h4>
-                            <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted); max-width: 420px;">
+                            <h3 style="margin: 0 0 0.4rem 0; font-size: 1.15rem; font-weight: 700; color: var(--text-primary);">No Examination Records Available</h3>
+                            <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted); max-width: 440px; margin-left: auto; margin-right: auto; line-height: 1.5;">
                                 No examinations or marks have been published to your student profile yet. As your exams are conducted and evaluated by faculty, results will appear in this grade sheet.
                             </p>
                         </div>
                     </td>
                 </tr>
                 {% endfor %}
+
+                <!-- No Filter Match Dynamic Row -->
+                <tr id="noResultsMatchRow" style="display: none;">
+                    <td colspan="8">
+                        <div style="text-align: center; padding: 2.5rem 1.5rem; color: var(--text-muted);">
+                            <i class="fa-solid fa-magnifying-glass" style="font-size: 1.75rem; color: var(--border-color); display: block; margin-bottom: 0.5rem;"></i>
+                            <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-primary); margin-bottom: 0.25rem;">No Examinations Match Your Filter</div>
+                            <small>Try clearing your search query or switching to 'All' filter.</small>
+                        </div>
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>
 </div>
 
+<!-- Academic Grading Scale Reference Guide -->
+<div class="student-card" style="padding: 1.5rem 1.75rem; margin-bottom: 2rem;">
+    <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1rem;">
+        <i class="fa-solid fa-circle-info" style="color: var(--primary); font-size: 1.1rem;"></i>
+        <h3 style="margin: 0; font-size: 1rem; font-weight: 700; color: var(--text-primary);">Academic Grading System & Standing Guide</h3>
+    </div>
+    <div class="grade-scale-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem;">
+        <div class="grade-pill-card">
+            <span class="badge badge-success" style="font-weight: 800; font-size: 0.85rem;">A+</span>
+            <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-primary); margin-top: 0.35rem;">90% - 100%</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">Distinction Honors</div>
+        </div>
+        <div class="grade-pill-card">
+            <span class="badge badge-success" style="font-weight: 800; font-size: 0.85rem;">A</span>
+            <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-primary); margin-top: 0.35rem;">80% - 89%</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">First Class Dist.</div>
+        </div>
+        <div class="grade-pill-card">
+            <span class="badge badge-primary" style="font-weight: 800; font-size: 0.85rem;">B+</span>
+            <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-primary); margin-top: 0.35rem;">70% - 79%</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">First Class</div>
+        </div>
+        <div class="grade-pill-card">
+            <span class="badge badge-primary" style="font-weight: 800; font-size: 0.85rem;">B</span>
+            <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-primary); margin-top: 0.35rem;">60% - 69%</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">Higher Second</div>
+        </div>
+        <div class="grade-pill-card">
+            <span class="badge badge-warning" style="font-weight: 800; font-size: 0.85rem;">C</span>
+            <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-primary); margin-top: 0.35rem;">50% - 59%</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">Second Class</div>
+        </div>
+        <div class="grade-pill-card">
+            <span class="badge badge-warning" style="font-weight: 800; font-size: 0.85rem;">D</span>
+            <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-primary); margin-top: 0.35rem;">33% - 49%</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">Passing Grade</div>
+        </div>
+        <div class="grade-pill-card">
+            <span class="badge badge-danger" style="font-weight: 800; font-size: 0.85rem;">F</span>
+            <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-primary); margin-top: 0.35rem;">Below 33%</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">Needs Remedial</div>
+        </div>
+    </div>
+</div>
+
 <style>
-.student-info-strip {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-lg);
-    padding: 1.25rem 1.75rem;
-    margin-bottom: 2rem;
-    box-shadow: var(--shadow-card);
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-
-.student-mini-avatar {
-    width: 42px;
-    height: 42px;
-    border-radius: var(--border-radius-full);
-    background: var(--primary-light);
-    color: var(--primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.15rem;
-    flex-shrink: 0;
-}
-
-.table-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-lg);
-    box-shadow: var(--shadow-card);
-    overflow: hidden;
-    margin-bottom: 2.5rem;
-}
-
-.table-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem 1.75rem;
-    border-bottom: 1px solid var(--border-color-light);
-}
-
-.card-icon-badge {
-    width: 40px;
-    height: 40px;
-    border-radius: var(--border-radius-md);
-    background: var(--primary-light);
-    color: var(--primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.1rem;
-    flex-shrink: 0;
-}
-
-.table-card-title {
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 0 0 0.15rem 0;
-}
-
-.table-card-subtitle {
-    font-size: 0.8rem;
+.filter-pill {
+    background: transparent;
+    border: none;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.78rem;
+    font-weight: 600;
     color: var(--text-muted);
-    margin: 0;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
 }
 
-.empty-state-table {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+.filter-pill:hover {
+    color: var(--text-primary);
+    background: var(--bg-card-hover);
+}
+
+.filter-pill.active {
+    background: var(--primary);
+    color: #ffffff;
+}
+
+.grade-pill-card {
+    background: var(--bg-main);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    padding: 0.85rem;
     text-align: center;
-    padding: 3.5rem 1.5rem;
+    transition: transform var(--transition-fast);
 }
 
+.grade-pill-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(79, 70, 229, 0.3);
+}
+
+@media (max-width: 768px) {
+    .student-dossier-strip {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+}
+
+/* ==========================================================================
+   OFFICIAL PRINT TRANSCRIPT MEDIA STYLES
+   ========================================================================== */
 @media print {
-    .sidebar, .topbar, .page-breadcrumbs, .btn-secondary, .btn-primary {
+    body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        font-size: 10pt !important;
+    }
+    .sidebar, 
+    .top-navbar, 
+    .page-header, 
+    .filter-btn-group, 
+    #marksTableSearch, 
+    .btn-secondary, 
+    .btn-primary, 
+    .breadcrumb-nav, 
+    .workspace-pill,
+    .user-menu-wrapper,
+    .stats-overview-grid,
+    .grade-scale-grid,
+    .student-dossier-strip {
         display: none !important;
+    }
+    .print-transcript-header {
+        display: block !important;
     }
     .main-content {
         margin: 0 !important;
         padding: 0 !important;
+        max-width: 100% !important;
+    }
+    .student-card {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    .data-table {
+        border: 1px solid #94a3b8 !important;
+        width: 100% !important;
+    }
+    .data-table th, .data-table td {
+        border: 1px solid #cbd5e1 !important;
+        padding: 6pt 8pt !important;
+        color: #000000 !important;
+    }
+    .badge {
+        border: 1px solid #94a3b8 !important;
+        color: #000000 !important;
+        background: #f1f5f9 !important;
     }
 }
 </style>
+
+<script>
+let currentStatusFilter = 'all';
+
+function setGradeFilter(status, btnElement) {
+    currentStatusFilter = status;
+    document.querySelectorAll('.filter-pill').forEach(btn => btn.classList.remove('active'));
+    if (btnElement) {
+        btnElement.classList.add('active');
+    }
+    filterMarksTable();
+}
+
+function filterMarksTable() {
+    const searchInput = document.getElementById('marksTableSearch');
+    const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    const rows = document.querySelectorAll('#marksDataTable tbody tr.exam-row');
+    const noResultsRow = document.getElementById('noResultsMatchRow');
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+        const rowStatus = row.getAttribute('data-status') || '';
+        const rowText = row.innerText.toLowerCase();
+
+        // Check status filter
+        let matchesStatus = true;
+        if (currentStatusFilter !== 'all') {
+            matchesStatus = (rowStatus === currentStatusFilter);
+        }
+
+        // Check text query
+        let matchesQuery = true;
+        if (query) {
+            matchesQuery = rowText.includes(query);
+        }
+
+        if (matchesStatus && matchesQuery) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    if (noResultsRow) {
+        if (rows.length > 0 && visibleCount === 0) {
+            noResultsRow.style.display = '';
+        } else {
+            noResultsRow.style.display = 'none';
+        }
+    }
+}
+</script>
 {% endblock %}
