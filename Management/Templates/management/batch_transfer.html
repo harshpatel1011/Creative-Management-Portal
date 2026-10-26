@@ -33,61 +33,6 @@
     </div>
 </div>
 
-<!-- Modern KPI Metrics Overview Grid -->
-<div class="stats-overview-grid" style="margin-bottom: 2rem;">
-    <!-- Total Timetable Batches -->
-    <div class="kpi-card">
-        <div>
-            <div class="kpi-header">
-                <div class="kpi-icon" style="background: rgba(79, 70, 229, 0.1); color: var(--primary);">
-                    <i class="fa-solid fa-clock"></i>
-                </div>
-                <span class="dossier-btn-dark">Schedules</span>
-            </div>
-            <div class="kpi-value">{{ class_time_choices|length }}</div>
-            <div class="kpi-label">Configured Batch Timings</div>
-        </div>
-        <div class="kpi-footer">
-            <span>Morning, Afternoon & Evening</span>
-        </div>
-    </div>
-
-    <!-- Current Source Batch Enrolled -->
-    <div class="kpi-card">
-        <div>
-            <div class="kpi-header">
-                <div class="kpi-icon" style="background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan);">
-                    <i class="fa-solid fa-users-line"></i>
-                </div>
-                <span class="dossier-btn-dark primary">Source Batch</span>
-            </div>
-            <div class="kpi-value">{{ total_source_students }}</div>
-            <div class="kpi-label">{{ source_batch|default:"Select Source" }}</div>
-        </div>
-        <div class="kpi-footer">
-            <span>Enrolled students in source batch</span>
-        </div>
-    </div>
-
-    <!-- Target Batch Status -->
-    <div class="kpi-card">
-        <div>
-            <div class="kpi-header">
-                <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">
-                    <i class="fa-solid fa-arrow-right-arrow-left"></i>
-                </div>
-                <span class="dossier-btn-dark success">Destination</span>
-            </div>
-            <div class="kpi-value" style="font-size: 1.25rem; line-height: 1.5rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
-                <span id="kpi_target_preview">{% if target_batch %}{{ target_batch }}{% else %}Choose Target{% endif %}</span>
-            </div>
-            <div class="kpi-label">Destination Batch Timing</div>
-        </div>
-        <div class="kpi-footer">
-            <span>New schedule for selected students</span>
-        </div>
-    </div>
-</div>
 
 <form method="POST" action="{% url 'admin_batch_transfer' %}" id="batchTransferForm">
     {% csrf_token %}
@@ -190,7 +135,6 @@
                         <th>Enrolled Courses</th>
                         <th>Current Batch Timing</th>
                         <th>Assigned Faculty</th>
-                        <th style="text-align: right;">Transfer State</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -235,11 +179,6 @@
                             {% else %}
                             <span style="color: var(--text-muted); font-size: 0.78rem; font-style: italic;">Unassigned</span>
                             {% endif %}
-                        </td>
-                        <td style="text-align: right;">
-                            <span class="badge badge-secondary row-status-badge" style="font-size: 0.72rem;">
-                                Ready
-                            </span>
                         </td>
                     </tr>
                     {% endfor %}
