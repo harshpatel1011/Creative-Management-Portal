@@ -12,13 +12,35 @@
 {% endblock %}
 
 {% block content %}
+<style>
+.timing-chip {
+    background: var(--bg-main);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-full);
+    padding: 3px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.timing-chip:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: rgba(79, 70, 229, 0.08);
+}
+</style>
+
 <div class="page-header">
     <div class="header-text">
         <h1 style="display: flex; align-items: center; gap: 0.6rem;">
             <i class="fa-solid fa-file-pen" style="color: var(--primary);"></i>
             {% if report %}Edit Daily Work Report{% else %}Submit Daily Work Report{% endif %}
         </h1>
-        <p>Record your academic progress, current running topic, today's lecture / class work, and home practice exercises</p>
+        <p>Record your academic progress, current running topic, lecture/class work timings, and home practice exercises</p>
     </div>
     <div class="header-actions">
         <a href="{% url 'student_daily_work' %}" class="btn-secondary">
@@ -33,7 +55,7 @@
             <i class="fa-solid fa-book-journal-whills" style="color: var(--primary);"></i>
             Daily Academic Work Entry
         </h3>
-        <small style="color: var(--text-muted); font-size: 0.82rem;">Submit details of what you learned in class and what you practiced at home</small>
+        <small style="color: var(--text-muted); font-size: 0.82rem;">Submit details of what you learned in class and what you practiced at home along with timings</small>
     </div>
 
     <form method="POST" action="{% if report %}{% url 'student_daily_work_edit' report.id %}{% else %}{% url 'student_daily_work_submit' %}{% endif %}">
@@ -56,8 +78,10 @@
             <!-- Report Date -->
             <div class="form-group">
                 <label class="form-label" for="report_date_input">2. Report Date *</label>
-                <input type="date" name="date" id="report_date_input" value="{{ report_date }}" class="form-input" required>
-                <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;">Date the work was conducted</small>
+                <input type="date" name="date" id="report_date_input" value="{{ report_date }}" class="form-input" min="{{ today|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}" readonly style="background: var(--bg-main); cursor: not-allowed;" required>
+                <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;">
+                    <i class="fa-solid fa-lock" style="color: var(--primary);"></i> Reports can only be submitted for today & cannot be edited after this date.
+                </small>
             </div>
 
             <!-- Running Topic -->
@@ -84,10 +108,49 @@
                 </div>
             </div>
 
+            <!-- Class Work Timing -->
+            <div class="form-group" style="grid-column: span 2;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.35rem; flex-wrap: wrap; gap: 6px;">
+                    <label class="form-label" for="class_work_time" style="margin-bottom: 0;">
+                        <i class="fa-regular fa-clock" style="color: var(--primary);"></i> 5. Class Work Timing / Batch Hours
+                    </label>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Select standard batch timing or enter custom duration</span>
+                </div>
+                <input type="text" name="class_work_time" id="class_work_time" class="form-input" list="class_time_list" placeholder="e.g. 10:00 am to 12:00 pm, or 2 Hours" value="{% if report %}{{ report.class_work_time }}{% else %}{{ class_work_time|default:default_batch_time }}{% endif %}">
+                
+                <datalist id="class_time_list">
+                    {% for b in student_batches %}
+                    <option value="{{ b }}">{{ b }} (Enrolled Batch)</option>
+                    {% endfor %}
+                    {% for slot in class_time_choices %}
+                    <option value="{{ slot }}">{{ slot }}</option>
+                    {% endfor %}
+                    <option value="1 Hour">1 Hour</option>
+                    <option value="1.5 Hours">1.5 Hours</option>
+                    <option value="2 Hours">2 Hours</option>
+                    <option value="2.5 Hours">2.5 Hours</option>
+                    <option value="3 Hours">3 Hours</option>
+                </datalist>
+
+                <!-- Quick timing chips for class work -->
+                <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; align-items: center;">
+                    <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Quick Pick:</span>
+                    {% for b in student_batches %}
+                    <button type="button" class="timing-chip" onclick="setTime('class_work_time', '{{ b }}');">
+                        <i class="fa-solid fa-clock"></i> {{ b }}
+                    </button>
+                    {% endfor %}
+                    <button type="button" class="timing-chip" onclick="setTime('class_work_time', '1.5 Hours');">1.5h</button>
+                    <button type="button" class="timing-chip" onclick="setTime('class_work_time', '2 Hours');">2h</button>
+                    <button type="button" class="timing-chip" onclick="setTime('class_work_time', '2.5 Hours');">2.5h</button>
+                    <button type="button" class="timing-chip" onclick="setTime('class_work_time', '3 Hours');">3h</button>
+                </div>
+            </div>
+
             <!-- Class Work / Lecture Content -->
             <div class="form-group" style="grid-column: span 2;">
                 <label class="form-label" for="class_work" id="class_work_label">
-                    5. Today's Class Work (Lecture Content & Class Exercises) *
+                    6. Today's Class Work (Lecture Content & Class Exercises) *
                 </label>
                 <textarea name="class_work" id="class_work" rows="5" class="form-input" style="line-height: 1.6; resize: vertical;" placeholder="Detail the concepts explained in today's lecture, notes taken, or hands-on exercises completed in the classroom / lab..." required>{% if report %}{{ report.class_work }}{% else %}{{ class_work|default:'' }}{% endif %}</textarea>
                 <small id="class_work_help" style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;">
@@ -95,10 +158,46 @@
                 </small>
             </div>
 
+            <!-- Home Practice Timing -->
+            <div class="form-group" style="grid-column: span 2;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.35rem; flex-wrap: wrap; gap: 6px;">
+                    <label class="form-label" for="home_work_time" style="margin-bottom: 0;">
+                        <i class="fa-regular fa-clock" style="color: var(--success);"></i> 7. Home Work / Practice Timing or Duration
+                    </label>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Select practice time slot or hours spent</span>
+                </div>
+                <input type="text" name="home_work_time" id="home_work_time" class="form-input" list="home_time_list" placeholder="e.g. 2 Hours, or 07:00 pm to 09:00 pm" value="{% if report %}{{ report.home_work_time }}{% else %}{{ home_work_time|default:'2 Hours' }}{% endif %}">
+                
+                <datalist id="home_time_list">
+                    <option value="1 Hour">1 Hour</option>
+                    <option value="1.5 Hours">1.5 Hours</option>
+                    <option value="2 Hours">2 Hours</option>
+                    <option value="2.5 Hours">2.5 Hours</option>
+                    <option value="3 Hours">3 Hours</option>
+                    <option value="4 Hours">4 Hours</option>
+                    <option value="06:00 pm to 08:00 pm">06:00 pm to 08:00 pm</option>
+                    <option value="07:00 pm to 09:00 pm">07:00 pm to 09:00 pm</option>
+                    <option value="08:00 pm to 10:00 pm">08:00 pm to 10:00 pm</option>
+                    <option value="09:00 pm to 11:00 pm">09:00 pm to 11:00 pm</option>
+                </datalist>
+
+                <!-- Quick timing chips for home work -->
+                <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; align-items: center;">
+                    <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Quick Pick:</span>
+                    <button type="button" class="timing-chip" onclick="setTime('home_work_time', '1 Hour');">1 hr</button>
+                    <button type="button" class="timing-chip" onclick="setTime('home_work_time', '1.5 Hours');">1.5 hrs</button>
+                    <button type="button" class="timing-chip" onclick="setTime('home_work_time', '2 Hours');">2 hrs</button>
+                    <button type="button" class="timing-chip" onclick="setTime('home_work_time', '2.5 Hours');">2.5 hrs</button>
+                    <button type="button" class="timing-chip" onclick="setTime('home_work_time', '3 Hours');">3 hrs</button>
+                    <button type="button" class="timing-chip" onclick="setTime('home_work_time', '07:00 pm to 09:00 pm');">07-09 PM</button>
+                    <button type="button" class="timing-chip" onclick="setTime('home_work_time', '08:00 pm to 10:00 pm');">08-10 PM</button>
+                </div>
+            </div>
+
             <!-- Home Practice Work -->
             <div class="form-group" style="grid-column: span 2;">
                 <label class="form-label" for="home_work">
-                    6. Home Practice Work *
+                    8. Home Practice Work *
                 </label>
                 <textarea name="home_work" id="home_work" rows="5" class="form-input" style="line-height: 1.6; resize: vertical;" placeholder="Detail what practical tasks, coding exercises, design layouts, or homework assignments you practiced and completed at home..." required>{% if report %}{{ report.home_work }}{% else %}{{ home_work|default:'' }}{% endif %}</textarea>
                 <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;">
@@ -119,6 +218,14 @@
 </div>
 
 <script>
+function setTime(fieldId, val) {
+    const input = document.getElementById(fieldId);
+    if (input) {
+        input.value = val;
+        input.focus();
+    }
+}
+
 function updateLecturePrompt() {
     const isNoLecture = document.getElementById("status_no_lecture").checked;
     const label = document.getElementById("class_work_label");
@@ -126,11 +233,11 @@ function updateLecturePrompt() {
     const help = document.getElementById("class_work_help");
 
     if (isNoLecture) {
-        label.innerHTML = '5. Class Lab & Practical Work (No Lecture Today) *';
+        label.innerHTML = '6. Class Lab & Practical Work (No Lecture Today) *';
         textarea.placeholder = "Detail the practical lab tasks, self-revision, or project work you performed in class during today's batch timing...";
         help.textContent = "Specify the practical exercises or project modules worked on during class hours today.";
     } else {
-        label.innerHTML = "5. Today's Class Work (Lecture Content & Topics Taught) *";
+        label.innerHTML = "6. Today's Class Work (Lecture Content & Topics Taught) *";
         textarea.placeholder = "Detail the concepts explained in today's lecture, notes taken, or hands-on exercises completed in the classroom...";
         help.textContent = "Describe what was taught in class today by your instructor.";
     }

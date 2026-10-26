@@ -712,18 +712,30 @@ def student_daily_work_submit_view(request):
     if not prefill_course and courses:
         prefill_course = courses[0]
 
+    student_batches = user.batches_list or ([user.class_time] if user.class_time else [])
+    default_batch_time = student_batches[0] if student_batches else (user.class_time or "")
+
     if request.method == "POST":
         course = request.POST.get("course", "").strip()
         date_str = request.POST.get("date", "").strip()
         running_topic = request.POST.get("running_topic", "").strip()
         lecture_status = request.POST.get("lecture_status", "lecture").strip()
         class_work = request.POST.get("class_work", "").strip()
+        class_work_time = request.POST.get("class_work_time", "").strip()
         home_work = request.POST.get("home_work", "").strip()
+        home_work_time = request.POST.get("home_work_time", "").strip()
 
         try:
             report_date = datetime.date.fromisoformat(date_str) if date_str else today
         except ValueError:
             report_date = today
+
+        if report_date < today:
+            messages.error(request, "Daily work reports cannot be submitted for past dates. Work reports must be submitted on the day of work.")
+            return redirect("student_daily_work")
+
+        if not class_work_time and default_batch_time:
+            class_work_time = default_batch_time
 
         if not (course and running_topic and class_work and home_work):
             messages.error(request, "Please fill in all required fields: Course, Running Topic, Class Work, and Home Practice Work!")
@@ -736,7 +748,12 @@ def student_daily_work_submit_view(request):
                 "running_topic": running_topic,
                 "lecture_status": lecture_status,
                 "class_work": class_work,
+                "class_work_time": class_work_time,
                 "home_work": home_work,
+                "home_work_time": home_work_time,
+                "student_batches": student_batches,
+                "default_batch_time": default_batch_time,
+                "class_time_choices": [c[0] for c in Student.CLASS_TIME_CHOICES],
             })
 
         # Save or update report for (student, date, course)
@@ -748,7 +765,9 @@ def student_daily_work_submit_view(request):
                 "running_topic": running_topic,
                 "lecture_status": lecture_status,
                 "class_work": class_work,
+                "class_work_time": class_work_time,
                 "home_work": home_work,
+                "home_work_time": home_work_time,
             }
         )
 
@@ -763,6 +782,9 @@ def student_daily_work_submit_view(request):
         "selected_course": prefill_course,
         "report_date": today.isoformat(),
         "today": today,
+        "student_batches": student_batches,
+        "default_batch_time": default_batch_time,
+        "class_time_choices": [c[0] for c in Student.CLASS_TIME_CHOICES],
     })
 
 
@@ -776,15 +798,27 @@ def student_daily_work_edit_view(request, report_id):
         messages.error(request, "Daily work report not found.")
         return redirect("student_daily_work")
 
+    today = datetime.date.today()
+    if report.is_locked:
+        messages.error(request, f"This daily work report from {report.date.strftime('%b %d, %Y')} cannot be edited because the date has passed. Reports can only be edited on the day of submission.")
+        return redirect("student_daily_work")
+
     courses = user.courses_list
+    student_batches = user.batches_list or ([user.class_time] if user.class_time else [])
+    default_batch_time = student_batches[0] if student_batches else (user.class_time or "")
 
     if request.method == "POST":
+        if report.is_locked:
+            messages.error(request, "This report cannot be edited after its date has passed.")
+            return redirect("student_daily_work")
         course = request.POST.get("course", "").strip()
         date_str = request.POST.get("date", "").strip()
         running_topic = request.POST.get("running_topic", "").strip()
         lecture_status = request.POST.get("lecture_status", "lecture").strip()
         class_work = request.POST.get("class_work", "").strip()
+        class_work_time = request.POST.get("class_work_time", "").strip()
         home_work = request.POST.get("home_work", "").strip()
+        home_work_time = request.POST.get("home_work_time", "").strip()
 
         try:
             report_date = datetime.date.fromisoformat(date_str) if date_str else report.date
@@ -798,6 +832,9 @@ def student_daily_work_edit_view(request, report_id):
                 "student": user,
                 "report": report,
                 "courses": courses,
+                "student_batches": student_batches,
+                "default_batch_time": default_batch_time,
+                "class_time_choices": [c[0] for c in Student.CLASS_TIME_CHOICES],
             })
 
         report.course = course
@@ -805,7 +842,9 @@ def student_daily_work_edit_view(request, report_id):
         report.running_topic = running_topic
         report.lecture_status = lecture_status
         report.class_work = class_work
+        report.class_work_time = class_work_time
         report.home_work = home_work
+        report.home_work_time = home_work_time
         report.save()
 
         messages.success(request, f"Daily work report updated successfully!")
@@ -818,6 +857,9 @@ def student_daily_work_edit_view(request, report_id):
         "courses": courses,
         "selected_course": report.course,
         "report_date": report.date.isoformat(),
+        "student_batches": student_batches,
+        "default_batch_time": default_batch_time,
+        "class_time_choices": [c[0] for c in Student.CLASS_TIME_CHOICES],
     })
 
 
@@ -829,6 +871,10 @@ def student_daily_work_delete_view(request, report_id):
     report = DailyWorkReport.objects.filter(id=report_id, student=user).first()
     if not report:
         messages.error(request, "Daily work report not found.")
+        return redirect("student_daily_work")
+
+    if report.is_locked:
+        messages.error(request, f"This daily work report from {report.date.strftime('%b %d, %Y')} cannot be deleted because the date has passed.")
         return redirect("student_daily_work")
 
     course = report.course

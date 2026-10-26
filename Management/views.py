@@ -1564,7 +1564,9 @@ def admin_daily_work_report_view(request):
             | Q(course__icontains=q)
             | Q(running_topic__icontains=q)
             | Q(class_work__icontains=q)
+            | Q(class_work_time__icontains=q)
             | Q(home_work__icontains=q)
+            | Q(home_work_time__icontains=q)
         )
 
     reports = list(reports_qs.order_by("-created_at"))

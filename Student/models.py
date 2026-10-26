@@ -535,7 +535,9 @@ class DailyWorkReport(models.Model):
     running_topic = models.CharField(max_length=255)
     lecture_status = models.CharField(max_length=50, choices=LECTURE_CHOICES, default='lecture')
     class_work = models.TextField(help_text="Lecture topic taught or class practical work if no lecture")
+    class_work_time = models.CharField(max_length=100, blank=True, default="", help_text="Timing or duration of class work, e.g. 10:00 am to 12:00 pm or 2 hours")
     home_work = models.TextField(help_text="Home practice work / self-study assignment completed")
+    home_work_time = models.CharField(max_length=100, blank=True, default="", help_text="Timing or duration of home practice work, e.g. 07:00 pm to 09:00 pm or 1.5 hours")
     faculty = models.ForeignKey(Faculty, on_delete=models.SET_NULL, null=True, blank=True, related_name='daily_reports')
     admin_remarks = models.TextField(blank=True, default='')
     reviewed_by = models.CharField(max_length=100, blank=True, default='')
@@ -552,3 +554,11 @@ class DailyWorkReport(models.Model):
     @property
     def is_lecture(self):
         return self.lecture_status == 'lecture'
+
+    @property
+    def is_locked(self):
+        return self.date < datetime.date.today()
+
+    @property
+    def can_edit(self):
+        return self.date >= datetime.date.today()

@@ -230,13 +230,22 @@
                     </div>
                 </div>
 
-                <div style="text-align: right;">
+                <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 3px;">
                     <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">
                         <i class="fa-regular fa-clock"></i> {{ r.created_at|date:"h:i A" }}
                     </span>
                     <small style="font-size: 0.72rem; color: var(--primary); font-weight: 600;">
                         {{ r.date|date:"M d, Y" }}
                     </small>
+                    {% if r.is_locked %}
+                    <span class="badge" style="font-size: 0.65rem; padding: 2px 6px; background: rgba(100, 116, 139, 0.12); color: var(--text-muted); border: 1px solid var(--border-color);">
+                        <i class="fa-solid fa-lock"></i> Finalized
+                    </span>
+                    {% else %}
+                    <span class="badge badge-success" style="font-size: 0.65rem; padding: 2px 6px;">
+                        <i class="fa-solid fa-pen-nib"></i> Today's Active
+                    </span>
+                    {% endif %}
                 </div>
             </div>
 
@@ -254,9 +263,16 @@
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
                 <!-- Today's Class Work -->
                 <div style="background: var(--bg-main); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 1.15rem;">
-                    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.65rem;">
-                        <i class="fa-solid fa-chalkboard"></i>
-                        {% if r.lecture_status == 'lecture' %}Today's Lecture & Class Work{% else %}Class Lab & Practical Work{% endif %}
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.65rem; flex-wrap: wrap; gap: 6px;">
+                        <div style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.04em;">
+                            <i class="fa-solid fa-chalkboard"></i>
+                            {% if r.lecture_status == 'lecture' %}Today's Lecture & Class Work{% else %}Class Lab & Practical Work{% endif %}
+                        </div>
+                        {% if r.class_work_time %}
+                        <span class="badge badge-primary" style="font-size: 0.72rem; padding: 2px 8px; font-weight: 600;">
+                            <i class="fa-regular fa-clock"></i> {{ r.class_work_time }}
+                        </span>
+                        {% endif %}
                     </div>
                     <div style="font-size: 0.88rem; color: var(--text-primary); line-height: 1.6; white-space: pre-line;">
                         {{ r.class_work }}
@@ -265,8 +281,15 @@
 
                 <!-- Home Practice Work -->
                 <div style="background: var(--bg-main); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 1.15rem;">
-                    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; color: var(--success); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.65rem;">
-                        <i class="fa-solid fa-house-laptop"></i> Home Practice Work
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.65rem; flex-wrap: wrap; gap: 6px;">
+                        <div style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; color: var(--success); text-transform: uppercase; letter-spacing: 0.04em;">
+                            <i class="fa-solid fa-house-laptop"></i> Home Practice Work
+                        </div>
+                        {% if r.home_work_time %}
+                        <span class="badge badge-success" style="font-size: 0.72rem; padding: 2px 8px; font-weight: 600;">
+                            <i class="fa-regular fa-clock"></i> {{ r.home_work_time }}
+                        </span>
+                        {% endif %}
                     </div>
                     <div style="font-size: 0.88rem; color: var(--text-primary); line-height: 1.6; white-space: pre-line;">
                         {{ r.home_work }}
