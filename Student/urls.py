@@ -12,6 +12,10 @@ urlpatterns = [
     path('projects/<int:project_id>/delete/', views.student_project_delete_view, name='student_project_delete'),
     path('marks/', views.student_marks_view, name='student_marks'),
     path('attendance/', views.student_attendance_view, name='student_attendance'),
+    path('daily-work/', views.student_daily_work_view, name='student_daily_work'),
+    path('daily-work/submit/', views.student_daily_work_submit_view, name='student_daily_work_submit'),
+    path('daily-work/<int:report_id>/edit/', views.student_daily_work_edit_view, name='student_daily_work_edit'),
+    path('daily-work/<int:report_id>/delete/', views.student_daily_work_delete_view, name='student_daily_work_delete'),
     path('profile/', views.student_profile_view, name='student_profile'),
     path('change-password/', views.student_change_password_view, name='student_change_password'),
 ]

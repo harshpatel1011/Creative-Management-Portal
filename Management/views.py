@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.contrib.auth.hashers import make_password, check_password
 from django.contrib.auth.models import User
 from django.db.models import Q
-from Student.models import Student, StudentCourse, Project, Exam, ExamMarks, Attendance, Faculty, StudentBatch
+from Student.models import Student, StudentCourse, Project, Exam, ExamMarks, Attendance, Faculty, StudentBatch, DailyWorkReport
 from Management.models import Admin
 
 
@@ -1510,6 +1510,95 @@ def admin_batch_transfer_view(request):
         "q": q,
     }
     return render(request, "management/batch_transfer.html", context)
+
+# --- DAILY WORK REPORT MANAGEMENT VIEW ---
+
+
+def admin_daily_work_report_view(request):
+    user = get_current_admin(request)
+    if not user:
+        return redirect("admin_login")
+
+    today = datetime.date.today()
+    date_str = request.GET.get("date")
+    if date_str:
+        try:
+            selected_date = datetime.date.fromisoformat(date_str)
+        except ValueError:
+            selected_date = today
+    else:
+        selected_date = today
+
+    prev_date = selected_date - datetime.timedelta(days=1)
+    next_date = selected_date + datetime.timedelta(days=1)
+
+    batch_filter = request.GET.get("batch", "").strip()
+    course_filter = request.GET.get("course", "").strip()
+    q = request.GET.get("q", "").strip()
+
+    # Query all students matching optional batch filter
+    students_scope = Student.objects.all()
+    if batch_filter:
+        students_scope = students_scope.filter(
+            Q(class_time__icontains=batch_filter) | Q(enrolled_batches__batch_time=batch_filter)
+        ).distinct()
+
+    if course_filter:
+        students_scope = students_scope.filter(course__icontains=course_filter)
+
+    total_students_scoped = students_scope.count()
+
+    # Query reports for selected_date
+    reports_qs = DailyWorkReport.objects.filter(
+        date=selected_date,
+        student__in=students_scope
+    ).select_related("student", "faculty")
+
+    if course_filter:
+        reports_qs = reports_qs.filter(course=course_filter)
+
+    if q:
+        reports_qs = reports_qs.filter(
+            Q(student__name__icontains=q)
+            | Q(student__email__icontains=q)
+            | Q(course__icontains=q)
+            | Q(running_topic__icontains=q)
+            | Q(class_work__icontains=q)
+            | Q(home_work__icontains=q)
+        )
+
+    reports = list(reports_qs.order_by("-created_at"))
+
+    submitted_student_ids = set(r.student_id for r in reports)
+    submitted_count = len(submitted_student_ids)
+
+    # Pending students for this date
+    pending_students = list(students_scope.exclude(id__in=submitted_student_ids).order_by("name"))
+    pending_count = len(pending_students)
+
+    class_time_choices = [c[0] for c in Student.CLASS_TIME_CHOICES]
+    course_categories = Student.COURSE_CATEGORIES
+
+    context = {
+        "user": user,
+        "selected_date": selected_date,
+        "selected_date_str": selected_date.isoformat(),
+        "prev_date_str": prev_date.isoformat(),
+        "next_date_str": next_date.isoformat(),
+        "is_today": selected_date == today,
+        "reports": reports,
+        "total_reports": len(reports),
+        "submitted_count": submitted_count,
+        "pending_count": pending_count,
+        "pending_students": pending_students,
+        "total_students_scoped": total_students_scoped,
+        "batch_filter": batch_filter,
+        "course_filter": course_filter,
+        "class_time_choices": class_time_choices,
+        "course_categories": course_categories,
+        "q": q,
+    }
+    return render(request, "management/daily_work_report.html", context)
 
 # --- FACULTY MANAGEMENT VIEWS (ADMIN CREATED ONLY & ADMIN FACULTY TOGGLE) ---
 

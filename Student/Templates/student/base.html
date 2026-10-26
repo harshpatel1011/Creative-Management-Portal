@@ -55,6 +55,10 @@
                     <i class="fa-solid fa-calendar-check"></i>
                     <span>My Attendance</span>
                 </a>
+                <a href="{% url 'student_daily_work' %}" class="dossier-btn {% if 'daily_work' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fa-solid fa-file-pen"></i>
+                    <span>Daily Work</span>
+                </a>
 
                 <div class="nav-section-title">Account</div>
                 <a href="{% url 'student_profile' %}" class="dossier-btn {% if request.resolver_match.url_name == 'student_profile' %}active{% endif %}">

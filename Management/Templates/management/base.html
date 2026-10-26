@@ -67,6 +67,10 @@
                     <i class="fa-solid fa-people-arrows"></i>
                     <span>Batch Transfer</span>
                 </a>
+                <a href="{% url 'admin_daily_work_report' %}" class="dossier-btn {% if 'daily_work' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fa-solid fa-file-pen"></i>
+                    <span>Daily Work Reports</span>
+                </a>
 
                 <div class="nav-section-title">Administration</div>
                 <a href="{% url 'admin_list' %}" class="dossier-btn {% if 'admin_list' in request.resolver_match.url_name or 'admin_create' in request.resolver_match.url_name or 'admin_edit' in request.resolver_match.url_name %}active{% endif %}">

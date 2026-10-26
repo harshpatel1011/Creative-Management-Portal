@@ -1,3 +1,4 @@
+import datetime
 import os
 from django.db import models
 
@@ -520,3 +521,34 @@ class Attendance(models.Model):
 
     def __str__(self):
         return f"{self.student.name} - {self.date}: {self.status}"
+
+
+class DailyWorkReport(models.Model):
+    LECTURE_CHOICES = [
+        ('lecture', 'Lecture Conducted'),
+        ('no_lecture', 'No Lecture Today (Class Lab / Practical Work)'),
+    ]
+
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='daily_reports')
+    date = models.DateField(default=datetime.date.today)
+    course = models.CharField(max_length=150)
+    running_topic = models.CharField(max_length=255)
+    lecture_status = models.CharField(max_length=50, choices=LECTURE_CHOICES, default='lecture')
+    class_work = models.TextField(help_text="Lecture topic taught or class practical work if no lecture")
+    home_work = models.TextField(help_text="Home practice work / self-study assignment completed")
+    faculty = models.ForeignKey(Faculty, on_delete=models.SET_NULL, null=True, blank=True, related_name='daily_reports')
+    admin_remarks = models.TextField(blank=True, default='')
+    reviewed_by = models.CharField(max_length=100, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('student', 'date', 'course')
+        ordering = ['-date', '-created_at']
+
+    def __str__(self):
+        return f"{self.student.name} - {self.date} - {self.course}: {self.running_topic}"
+
+    @property
+    def is_lecture(self):
+        return self.lecture_status == 'lecture'

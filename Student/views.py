@@ -5,7 +5,7 @@ from django.db.models import Q
 from django.utils import timezone
 import datetime
 import calendar
-from .models import Student, Project, ProjectFile, ProjectLink, Exam, ExamMarks, Attendance
+from .models import Student, Project, ProjectFile, ProjectLink, Exam, ExamMarks, Attendance, DailyWorkReport
 
 
 def get_current_student(request):
@@ -641,3 +641,198 @@ def student_attendance_view(request):
         "all_time_stats": all_time_stats,
     }
     return render(request, "student/attendance.html", context)
+
+# --- DAILY WORK REPORT VIEWS ---
+
+
+def student_daily_work_view(request):
+    user = get_current_student(request)
+    if not user:
+        return redirect("student_login")
+
+    today = datetime.date.today()
+    course_filter = request.GET.get("course", "").strip()
+    date_filter = request.GET.get("date", "").strip()
+
+    reports_qs = DailyWorkReport.objects.filter(student=user)
+
+    if course_filter:
+        reports_qs = reports_qs.filter(course=course_filter)
+
+    if date_filter:
+        try:
+            parsed_date = datetime.date.fromisoformat(date_filter)
+            reports_qs = reports_qs.filter(date=parsed_date)
+        except ValueError:
+            pass
+
+    reports = list(reports_qs.order_by("-date", "-created_at"))
+
+    # Check today's submission status for student's enrolled courses
+    courses = user.courses_list
+    today_submissions = {
+        r.course: r for r in DailyWorkReport.objects.filter(student=user, date=today)
+    }
+
+    course_status = []
+    for c in courses:
+        rep = today_submissions.get(c)
+        course_status.append({
+            "course": c,
+            "has_submitted": rep is not None,
+            "report": rep,
+        })
+
+    has_submitted_today = len(today_submissions) > 0
+
+    context = {
+        "user": user,
+        "student": user,
+        "reports": reports,
+        "total_reports": len(reports),
+        "courses": courses,
+        "course_status": course_status,
+        "today": today,
+        "has_submitted_today": has_submitted_today,
+        "course_filter": course_filter,
+        "date_filter": date_filter,
+    }
+    return render(request, "student/daily_work.html", context)
+
+
+def student_daily_work_submit_view(request):
+    user = get_current_student(request)
+    if not user:
+        return redirect("student_login")
+
+    courses = user.courses_list
+    today = datetime.date.today()
+
+    prefill_course = request.GET.get("course", "").strip()
+    if not prefill_course and courses:
+        prefill_course = courses[0]
+
+    if request.method == "POST":
+        course = request.POST.get("course", "").strip()
+        date_str = request.POST.get("date", "").strip()
+        running_topic = request.POST.get("running_topic", "").strip()
+        lecture_status = request.POST.get("lecture_status", "lecture").strip()
+        class_work = request.POST.get("class_work", "").strip()
+        home_work = request.POST.get("home_work", "").strip()
+
+        try:
+            report_date = datetime.date.fromisoformat(date_str) if date_str else today
+        except ValueError:
+            report_date = today
+
+        if not (course and running_topic and class_work and home_work):
+            messages.error(request, "Please fill in all required fields: Course, Running Topic, Class Work, and Home Practice Work!")
+            return render(request, "student/daily_work_form.html", {
+                "user": user,
+                "student": user,
+                "courses": courses,
+                "selected_course": course,
+                "report_date": report_date.isoformat(),
+                "running_topic": running_topic,
+                "lecture_status": lecture_status,
+                "class_work": class_work,
+                "home_work": home_work,
+            })
+
+        # Save or update report for (student, date, course)
+        report, created = DailyWorkReport.objects.update_or_create(
+            student=user,
+            date=report_date,
+            course=course,
+            defaults={
+                "running_topic": running_topic,
+                "lecture_status": lecture_status,
+                "class_work": class_work,
+                "home_work": home_work,
+            }
+        )
+
+        action_msg = "submitted" if created else "updated"
+        messages.success(request, f"Daily work report for '{course}' on {report_date.strftime('%b %d, %Y')} {action_msg} successfully!")
+        return redirect("student_daily_work")
+
+    return render(request, "student/daily_work_form.html", {
+        "user": user,
+        "student": user,
+        "courses": courses,
+        "selected_course": prefill_course,
+        "report_date": today.isoformat(),
+        "today": today,
+    })
+
+
+def student_daily_work_edit_view(request, report_id):
+    user = get_current_student(request)
+    if not user:
+        return redirect("student_login")
+
+    report = DailyWorkReport.objects.filter(id=report_id, student=user).first()
+    if not report:
+        messages.error(request, "Daily work report not found.")
+        return redirect("student_daily_work")
+
+    courses = user.courses_list
+
+    if request.method == "POST":
+        course = request.POST.get("course", "").strip()
+        date_str = request.POST.get("date", "").strip()
+        running_topic = request.POST.get("running_topic", "").strip()
+        lecture_status = request.POST.get("lecture_status", "lecture").strip()
+        class_work = request.POST.get("class_work", "").strip()
+        home_work = request.POST.get("home_work", "").strip()
+
+        try:
+            report_date = datetime.date.fromisoformat(date_str) if date_str else report.date
+        except ValueError:
+            report_date = report.date
+
+        if not (course and running_topic and class_work and home_work):
+            messages.error(request, "Please fill in all required fields!")
+            return render(request, "student/daily_work_form.html", {
+                "user": user,
+                "student": user,
+                "report": report,
+                "courses": courses,
+            })
+
+        report.course = course
+        report.date = report_date
+        report.running_topic = running_topic
+        report.lecture_status = lecture_status
+        report.class_work = class_work
+        report.home_work = home_work
+        report.save()
+
+        messages.success(request, f"Daily work report updated successfully!")
+        return redirect("student_daily_work")
+
+    return render(request, "student/daily_work_form.html", {
+        "user": user,
+        "student": user,
+        "report": report,
+        "courses": courses,
+        "selected_course": report.course,
+        "report_date": report.date.isoformat(),
+    })
+
+
+def student_daily_work_delete_view(request, report_id):
+    user = get_current_student(request)
+    if not user:
+        return redirect("student_login")
+
+    report = DailyWorkReport.objects.filter(id=report_id, student=user).first()
+    if not report:
+        messages.error(request, "Daily work report not found.")
+        return redirect("student_daily_work")
+
+    course = report.course
+    date_str = report.date.strftime("%b %d, %Y")
+    report.delete()
+    messages.success(request, f"Daily work report for '{course}' ({date_str}) deleted successfully.")
+    return redirect("student_daily_work")

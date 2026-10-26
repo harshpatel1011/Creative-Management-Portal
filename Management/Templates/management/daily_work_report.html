@@ -1,0 +1,398 @@
+{% extends 'management/base.html' %}
+{% load static %}
+
+{% block title %}Daily Work Reports - Creative Management{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'admin_dashboard' %}">Dashboard</a>
+<span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-current">Daily Work Reports</span>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header" style="margin-bottom: 1.5rem;">
+    <div class="header-text">
+        <h1 style="display: flex; align-items: center; gap: 0.6rem;">
+            <i class="fa-solid fa-file-pen" style="color: var(--primary);"></i>
+            Daily Work Reports
+        </h1>
+        <p>Monitor student curriculum progression, current running topics, today's lectures, and home practical work</p>
+    </div>
+    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+        <a href="{% url 'admin_student_list' %}" class="btn-secondary">
+            <i class="fa-solid fa-users"></i>
+            <span>Students Directory</span>
+        </a>
+        <a href="{% url 'admin_attendance_hub' %}" class="btn-secondary">
+            <i class="fa-solid fa-clipboard-user"></i>
+            <span>Batch Attendance</span>
+        </a>
+    </div>
+</div>
+
+<!-- Date Navigation Bar -->
+<div class="student-card" style="padding: 1.1rem 1.5rem; margin-bottom: 1.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+        <span style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem; display: flex; align-items: center; gap: 0.4rem;">
+            <i class="fa-regular fa-calendar" style="color: var(--primary);"></i> Report Date:
+        </span>
+        <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <a href="?date={{ prev_date_str }}{% if batch_filter %}&batch={{ batch_filter|urlencode }}{% endif %}{% if course_filter %}&course={{ course_filter|urlencode }}{% endif %}" class="btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;" title="Previous Day">
+                <i class="fa-solid fa-chevron-left"></i>
+            </a>
+            <form method="GET" action="{% url 'admin_daily_work_report' %}" style="margin: 0; display: inline-flex;">
+                {% if batch_filter %}<input type="hidden" name="batch" value="{{ batch_filter }}">{% endif %}
+                {% if course_filter %}<input type="hidden" name="course" value="{{ course_filter }}">{% endif %}
+                <input type="date" name="date" value="{{ selected_date_str }}" onchange="this.form.submit()" class="form-input" style="padding: 0.4rem 0.75rem; font-size: 0.88rem; width: auto; font-weight: 600; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px;">
+            </form>
+            <a href="?date={{ next_date_str }}{% if batch_filter %}&batch={{ batch_filter|urlencode }}{% endif %}{% if course_filter %}&course={{ course_filter|urlencode }}{% endif %}" class="btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;" title="Next Day">
+                <i class="fa-solid fa-chevron-right"></i>
+            </a>
+            {% if not is_today %}
+            <a href="{% url 'admin_daily_work_report' %}{% if batch_filter %}?batch={{ batch_filter|urlencode }}{% endif %}" class="btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.82rem;">
+                <i class="fa-solid fa-clock-rotate-left"></i> Today
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    <div>
+        <span class="brand-badge" style="font-size: 0.85rem; padding: 0.4rem 0.85rem; background: rgba(79, 70, 229, 0.08); color: var(--primary); border: 1px solid rgba(79, 70, 229, 0.2);">
+            <i class="fa-solid fa-calendar-day"></i> {{ selected_date|date:"l, F d, Y" }}
+        </span>
+    </div>
+</div>
+
+<!-- Modern KPI Metrics Overview Grid -->
+<div class="stats-overview-grid" style="margin-bottom: 2rem;">
+    <!-- Total Reports Submitted -->
+    <div class="kpi-card">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(79, 70, 229, 0.1); color: var(--primary);">
+                    <i class="fa-solid fa-file-lines"></i>
+                </div>
+                <span class="dossier-btn-dark">Submissions</span>
+            </div>
+            <div class="kpi-value">{{ total_reports }}</div>
+            <div class="kpi-label">Work Reports Submitted</div>
+        </div>
+        <div class="kpi-footer">
+            <span>For {{ selected_date|date:"M d, Y" }}</span>
+        </div>
+    </div>
+
+    <!-- Students Reported -->
+    <div class="kpi-card">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">
+                    <i class="fa-solid fa-user-check"></i>
+                </div>
+                <span class="dossier-btn-dark success">Reported</span>
+            </div>
+            <div class="kpi-value">{{ submitted_count }} / {{ total_students_scoped }}</div>
+            <div class="kpi-label">Students Submitted</div>
+        </div>
+        <div class="kpi-footer">
+            <span>Enrolled in active batches</span>
+        </div>
+    </div>
+
+    <!-- Pending Submissions -->
+    <div class="kpi-card">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: {% if pending_count > 0 %}rgba(245, 158, 11, 0.1){% else %}rgba(16, 185, 129, 0.1){% endif %}; color: {% if pending_count > 0 %}var(--warning){% else %}var(--success){% endif %};">
+                    <i class="fa-solid {% if pending_count > 0 %}fa-user-clock{% else %}fa-circle-check{% endif %}"></i>
+                </div>
+                {% if pending_count > 0 %}
+                <span class="dossier-btn-dark" style="color: var(--warning); border-color: rgba(245, 158, 11, 0.3);">Pending</span>
+                {% else %}
+                <span class="dossier-btn-dark success">All Submitted</span>
+                {% endif %}
+            </div>
+            <div class="kpi-value">{{ pending_count }}</div>
+            <div class="kpi-label">Pending Students Today</div>
+        </div>
+        <div class="kpi-footer">
+            <span>Awaiting daily work report</span>
+        </div>
+    </div>
+</div>
+
+<!-- Search & Filter Toolbar -->
+<div class="student-card" style="padding: 1.25rem 1.5rem; margin-bottom: 2rem;">
+    <form method="GET" action="{% url 'admin_daily_work_report' %}" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; justify-content: space-between;">
+        <input type="hidden" name="date" value="{{ selected_date_str }}">
+
+        <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; flex: 1;">
+            <!-- Search Query Input -->
+            <div style="flex: 1; min-width: 240px;">
+                <label class="form-label" style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem;">
+                    <i class="fa-solid fa-magnifying-glass" style="color: var(--primary);"></i> Search Reports
+                </label>
+                <div class="search-form" style="width: 100%;">
+                    <input type="text" name="q" value="{{ q|default:'' }}" class="search-input" placeholder="Search by student, course, topic, or work..." style="width: 100%;">
+                    <button type="submit" class="btn-search"><i class="fa-solid fa-magnifying-glass"></i></button>
+                </div>
+            </div>
+
+            <!-- Batch Filter -->
+            <div style="flex: 1; min-width: 200px; max-width: 280px;">
+                <label class="form-label" style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem;">
+                    <i class="fa-solid fa-clock" style="color: var(--primary);"></i> Batch Schedule
+                </label>
+                <select name="batch" class="form-input" onchange="this.form.submit();" style="height: 42px;">
+                    <option value="">All Batch Schedules</option>
+                    {% for slot in class_time_choices %}
+                    <option value="{{ slot }}" {% if batch_filter == slot %}selected{% endif %}>{{ slot }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Course Filter -->
+            <div style="flex: 1; min-width: 200px; max-width: 280px;">
+                <label class="form-label" style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem;">
+                    <i class="fa-solid fa-graduation-cap" style="color: var(--primary);"></i> Course Module
+                </label>
+                <select name="course" class="form-input" onchange="this.form.submit();" style="height: 42px;">
+                    <option value="">All Courses</option>
+                    {% for category, courses in course_categories.items %}
+                    <optgroup label="{{ category }}">
+                        {% for c in courses %}
+                        <option value="{{ c }}" {% if course_filter == c %}selected{% endif %}>{{ c }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            {% if batch_filter or course_filter or q %}
+            <a href="{% url 'admin_daily_work_report' %}?date={{ selected_date_str }}" class="btn-secondary" style="height: 42px; display: inline-flex; align-items: center;">
+                <i class="fa-solid fa-xmark"></i> Clear Filters
+            </a>
+            {% endif %}
+            <span class="dossier-btn-dark" style="height: 42px; display: inline-flex; align-items: center; padding: 0 0.85rem; font-size: 0.82rem;">
+                Showing <strong>{{ total_reports }}</strong> report{{ total_reports|pluralize }}
+            </span>
+        </div>
+    </form>
+</div>
+
+<!-- Tabs: Submitted Reports vs Pending Students -->
+<div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+    <button type="button" id="tab_btn_submitted" class="btn-secondary" onclick="switchReportTab('submitted');" style="border-radius: var(--border-radius-full); font-weight: 600; padding: 0.4rem 1rem; background: var(--primary); color: #ffffff;">
+        <i class="fa-solid fa-file-circle-check"></i> Submitted Reports ({{ total_reports }})
+    </button>
+    <button type="button" id="tab_btn_pending" class="btn-secondary" onclick="switchReportTab('pending');" style="border-radius: var(--border-radius-full); font-weight: 600; padding: 0.4rem 1rem;">
+        <i class="fa-solid fa-clock"></i> Pending Students ({{ pending_count }})
+    </button>
+</div>
+
+<!-- TAB 1: Submitted Reports Grid / Roster -->
+<div id="tab_pane_submitted" style="display: block;">
+    {% if reports %}
+    <div style="display: flex; flex-direction: column; gap: 1.5rem; margin-bottom: 3rem;">
+        {% for r in reports %}
+        <div class="student-card" style="padding: 1.5rem; border-left: 4px solid var(--primary);">
+            <!-- Student Header -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.85rem; flex-wrap: wrap; gap: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 0.85rem;">
+                    <div class="card-avatar" style="width: 42px; height: 42px; font-size: 1.05rem;">
+                        {{ r.student.name|slice:":1"|upper }}
+                    </div>
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                            <strong style="color: var(--text-primary); font-size: 1rem;">
+                                <a href="{% url 'admin_student_detail' r.student.id %}" style="color: inherit; text-decoration: none;">
+                                    {{ r.student.name }}
+                                </a>
+                            </strong>
+                            <span class="badge badge-primary" style="font-size: 0.72rem;">
+                                <i class="fa-solid fa-book-open"></i> {{ r.course }}
+                            </span>
+                            {% if r.lecture_status == 'lecture' %}
+                            <span class="badge badge-success" style="font-size: 0.72rem;">
+                                <i class="fa-solid fa-chalkboard-user"></i> Lecture Conducted
+                            </span>
+                            {% else %}
+                            <span class="badge badge-secondary" style="font-size: 0.72rem; background: rgba(139, 92, 246, 0.1); color: var(--accent-violet); border: 1px solid rgba(139, 92, 246, 0.25);">
+                                <i class="fa-solid fa-laptop-code"></i> No Lecture Today (Class Lab / Practical Work)
+                            </span>
+                            {% endif %}
+                        </div>
+                        <small style="color: var(--text-muted); font-size: 0.78rem; display: block; margin-top: 2px;">
+                            {{ r.student.email }} &bull; Batch: <strong>{{ r.student.class_time|default:"Flexible" }}</strong>
+                        </small>
+                    </div>
+                </div>
+
+                <div style="text-align: right;">
+                    <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">
+                        <i class="fa-regular fa-clock"></i> {{ r.created_at|date:"h:i A" }}
+                    </span>
+                    <small style="font-size: 0.72rem; color: var(--primary); font-weight: 600;">
+                        {{ r.date|date:"M d, Y" }}
+                    </small>
+                </div>
+            </div>
+
+            <!-- Running Topic Bar -->
+            <div style="background: rgba(79, 70, 229, 0.05); border: 1px solid rgba(79, 70, 229, 0.18); border-radius: var(--border-radius-sm); padding: 0.6rem 0.95rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span style="font-size: 0.8rem; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.04em;">
+                    <i class="fa-solid fa-arrow-trend-up"></i> Running Topic:
+                </span>
+                <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary);">
+                    {{ r.running_topic }}
+                </span>
+            </div>
+
+            <!-- Work Details Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
+                <!-- Today's Class Work -->
+                <div style="background: var(--bg-main); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 1.15rem;">
+                    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.65rem;">
+                        <i class="fa-solid fa-chalkboard"></i>
+                        {% if r.lecture_status == 'lecture' %}Today's Lecture & Class Work{% else %}Class Lab & Practical Work{% endif %}
+                    </div>
+                    <div style="font-size: 0.88rem; color: var(--text-primary); line-height: 1.6; white-space: pre-line;">
+                        {{ r.class_work }}
+                    </div>
+                </div>
+
+                <!-- Home Practice Work -->
+                <div style="background: var(--bg-main); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 1.15rem;">
+                    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; color: var(--success); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.65rem;">
+                        <i class="fa-solid fa-house-laptop"></i> Home Practice Work
+                    </div>
+                    <div style="font-size: 0.88rem; color: var(--text-primary); line-height: 1.6; white-space: pre-line;">
+                        {{ r.home_work }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="student-card" style="text-align: center; padding: 3.5rem 1.5rem; margin-bottom: 2rem;">
+        <div style="width: 64px; height: 64px; border-radius: var(--border-radius-full); background: rgba(79, 70, 229, 0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.75rem; margin: 0 auto 1.25rem;">
+            <i class="fa-solid fa-file-pen"></i>
+        </div>
+        <h3 style="font-size: 1.25rem; color: var(--text-primary); margin-bottom: 0.5rem;">No Reports Submitted for {{ selected_date|date:"M d, Y" }}</h3>
+        <p style="color: var(--text-muted); font-size: 0.88rem; max-width: 520px; margin: 0 auto 1.5rem;">
+            {% if batch_filter or course_filter or q %}
+            No reports match your current filter criteria. Try clearing the filters.
+            {% else %}
+            No student work submissions have been recorded for this date yet. Check the "Pending Students" tab to see which students are scheduled for today.
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- TAB 2: Pending Students Roster -->
+<div id="tab_pane_pending" style="display: none;">
+    {% if pending_students %}
+    <div class="table-responsive" style="margin-bottom: 3rem;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Student Name</th>
+                    <th>Enrolled Courses</th>
+                    <th>Batch Schedule</th>
+                    <th>Contact Phone</th>
+                    <th>Assigned Faculty</th>
+                    <th style="text-align: right;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in pending_students %}
+                <tr>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 0.85rem;">
+                            <div class="card-avatar" style="width: 38px; height: 38px; font-size: 0.95rem;">
+                                {{ s.name|slice:":1"|upper }}
+                            </div>
+                            <div>
+                                <strong style="color: var(--text-primary); font-size: 0.92rem; display: block;">
+                                    <a href="{% url 'admin_student_detail' s.id %}" style="color: inherit; text-decoration: none;">
+                                        {{ s.name }}
+                                    </a>
+                                </strong>
+                                <small style="color: var(--text-muted); font-size: 0.78rem;">{{ s.email }}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td style="max-width: 280px;">
+                        <span style="font-weight: 500; font-size: 0.85rem; color: var(--text-primary);">{{ s.course }}</span>
+                    </td>
+                    <td>
+                        <span class="badge badge-secondary" style="font-size: 0.72rem;">
+                            <i class="fa-solid fa-clock"></i> {{ s.class_time|default:"Flexible" }}
+                        </span>
+                    </td>
+                    <td>
+                        <span style="font-size: 0.82rem; color: var(--text-secondary);">
+                            <i class="fa-solid fa-phone" style="width: 14px; color: var(--primary);"></i> {{ s.phone|default:"-" }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if s.faculty_display != "Not Assigned" %}
+                        <span class="badge badge-primary" style="font-size: 0.72rem;">
+                            {{ s.faculty_display }}
+                        </span>
+                        {% else %}
+                        <span style="color: var(--text-muted); font-size: 0.78rem;">Unassigned</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right;">
+                        <span class="badge badge-danger" style="font-size: 0.72rem;">
+                            <i class="fa-solid fa-clock"></i> Report Pending
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="student-card" style="text-align: center; padding: 3.5rem 1.5rem; margin-bottom: 2rem;">
+        <div style="width: 64px; height: 64px; border-radius: var(--border-radius-full); background: rgba(16, 185, 129, 0.1); color: var(--success); display: flex; align-items: center; justify-content: center; font-size: 1.75rem; margin: 0 auto 1.25rem;">
+            <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <h3 style="font-size: 1.25rem; color: var(--text-primary); margin-bottom: 0.5rem;">All Students Have Submitted!</h3>
+        <p style="color: var(--text-muted); font-size: 0.88rem; max-width: 480px; margin: 0 auto;">
+            Every enrolled student in the selected scope has submitted their daily work report for {{ selected_date|date:"M d, Y" }}.
+        </p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function switchReportTab(tab) {
+    const paneSubmitted = document.getElementById("tab_pane_submitted");
+    const panePending = document.getElementById("tab_pane_pending");
+    const btnSubmitted = document.getElementById("tab_btn_submitted");
+    const btnPending = document.getElementById("tab_btn_pending");
+
+    if (tab === "submitted") {
+        paneSubmitted.style.display = "block";
+        panePending.style.display = "none";
+        btnSubmitted.style.background = "var(--primary)";
+        btnSubmitted.style.color = "#ffffff";
+        btnPending.style.background = "";
+        btnPending.style.color = "";
+    } else {
+        paneSubmitted.style.display = "none";
+        panePending.style.display = "block";
+        btnPending.style.background = "var(--primary)";
+        btnPending.style.color = "#ffffff";
+        btnSubmitted.style.background = "";
+        btnSubmitted.style.color = "";
+    }
+}
+</script>
+{% endblock %}
