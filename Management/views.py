@@ -23,6 +23,26 @@ def get_current_admin(request):
     return None
 
 
+def get_admin_profile(user):
+    """
+    Returns the associated Management.Admin record for the given auth.User.
+    Creates or updates it if needed so Admin and User stay seamlessly synced.
+    """
+    admin_prof = None
+    if user.email:
+        admin_prof = Admin.objects.filter(email__iexact=user.email).first()
+    if not admin_prof:
+        full_name = f"{user.first_name} {user.last_name}".strip() or user.username
+        admin_prof, _ = Admin.objects.get_or_create(
+            email=user.email or f"{user.username}@creative.com",
+            defaults={
+                "name": full_name,
+                "password": user.password,
+            }
+        )
+    return admin_prof
+
+
 # --- ADMIN AUTH & PROFILE VIEWS ---
 
 
@@ -72,16 +92,35 @@ def admin_profile_view(request):
     if not user:
         return redirect("admin_login")
 
+    admin_prof = get_admin_profile(user)
     students_count = Student.objects.count()
+    faculties_count = Faculty.objects.count()
     projects_count = Project.objects.count()
+    approved_projects_count = Project.objects.filter(status="Approved").count()
+    submitted_projects_count = Project.objects.filter(status="Submitted").count()
     exams_count = Exam.objects.count()
+
+    today = datetime.date.today()
+    today_work_reports_count = DailyWorkReport.objects.filter(date=today).count()
+    today_attendance_count = Attendance.objects.filter(date=today).count()
+
+    faculty_courses_list = []
+    if admin_prof and admin_prof.faculty_courses:
+        faculty_courses_list = [c.strip() for c in admin_prof.faculty_courses.split(",") if c.strip()]
 
     context = {
         "user": user,
         "admin_user": user,
+        "admin_prof": admin_prof,
         "total_students": students_count,
+        "total_faculties": faculties_count,
         "total_projects": projects_count,
+        "approved_projects_count": approved_projects_count,
+        "submitted_projects_count": submitted_projects_count,
         "total_exams": exams_count,
+        "today_work_reports_count": today_work_reports_count,
+        "today_attendance_count": today_attendance_count,
+        "faculty_courses_list": faculty_courses_list,
     }
     return render(request, "management/profile.html", context)
 
@@ -91,6 +130,13 @@ def admin_change_password_view(request):
     if not user:
         return redirect("admin_login")
 
+    admin_prof = get_admin_profile(user)
+    context = {
+        "user": user,
+        "admin_user": user,
+        "admin_prof": admin_prof,
+    }
+
     if request.method == "POST":
         current_password = request.POST.get("current_password")
         new_password = request.POST.get("new_password")
@@ -98,22 +144,30 @@ def admin_change_password_view(request):
 
         if not (current_password and new_password and confirm_password):
             messages.error(request, "Please fill in all password fields!")
-            return render(request, "management/change_password.html", {"user": user})
+            return render(request, "management/change_password.html", context)
 
         if not check_password(current_password, user.password):
             messages.error(request, "Current password is incorrect!")
-            return render(request, "management/change_password.html", {"user": user})
+            return render(request, "management/change_password.html", context)
+
+        if len(new_password) < 6:
+            messages.error(request, "New password must be at least 6 characters long!")
+            return render(request, "management/change_password.html", context)
 
         if new_password != confirm_password:
             messages.error(request, "New password and Confirm password do not match!")
-            return render(request, "management/change_password.html", {"user": user})
+            return render(request, "management/change_password.html", context)
 
         user.password = make_password(new_password)
         user.save()
-        messages.success(request, "Your password has been changed successfully!")
+        if admin_prof:
+            admin_prof.password = user.password
+            admin_prof.save()
+
+        messages.success(request, "Your administrative password has been changed successfully!")
         return redirect("admin_profile")
 
-    return render(request, "management/change_password.html", {"user": user})
+    return render(request, "management/change_password.html", context)
 
 
 # --- ADMIN DASHBOARD & STUDENTS ---
@@ -1603,26 +1657,6 @@ def admin_daily_work_report_view(request):
     return render(request, "management/daily_work_report.html", context)
 
 # --- FACULTY MANAGEMENT VIEWS (ADMIN CREATED ONLY & ADMIN FACULTY TOGGLE) ---
-
-
-def get_admin_profile(user):
-    """
-    Returns the associated Management.Admin record for the given auth.User.
-    Creates or updates it if needed so Admin and User stay seamlessly synced.
-    """
-    admin_prof = None
-    if user.email:
-        admin_prof = Admin.objects.filter(email__iexact=user.email).first()
-    if not admin_prof:
-        full_name = f"{user.first_name} {user.last_name}".strip() or user.username
-        admin_prof, _ = Admin.objects.get_or_create(
-            email=user.email or f"{user.username}@creative.com",
-            defaults={
-                "name": full_name,
-                "password": user.password,
-            }
-        )
-    return admin_prof
 
 
 def faculty_list_view(request):

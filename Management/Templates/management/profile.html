@@ -1,20 +1,29 @@
 {% extends 'management/base.html' %}
 {% load static %}
 
-{% block title %}Administrator Profile - Creative Management{% endblock %}
+{% block title %}My Profile - Management Portal{% endblock %}
 
 {% block breadcrumbs %}
-<span class="breadcrumb-current">Admin Profile</span>
+<a href="{% url 'admin_dashboard' %}">Dashboard</a>
+<span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-current">My Profile</span>
 {% endblock %}
 
 {% block content %}
 <!-- Page Header -->
-<div class="page-header">
+<div class="page-header" style="margin-bottom: 1.5rem;">
     <div class="header-text">
-        <h1>Administrator Profile</h1>
-        <p>Your administrative credentials, institutional privileges, and system activity</p>
+        <h1 style="display: flex; align-items: center; gap: 0.6rem;">
+            <i class="fa-solid fa-id-card" style="color: var(--primary);"></i>
+            Management Profile & Account
+        </h1>
+        <p>Official administrative credentials, institutional privileges, system oversight, and security</p>
     </div>
-    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+    <div class="header-actions" style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+        <button type="button" class="btn-secondary" onclick="window.print();" title="Print Profile Dossier">
+            <i class="fa-solid fa-print"></i>
+            <span>Print Profile</span>
+        </button>
         <a href="{% url 'admin_change_password' %}" class="btn-primary">
             <i class="fa-solid fa-key"></i>
             <span>Change Password</span>
@@ -22,92 +31,474 @@
     </div>
 </div>
 
-<!-- Profile Hero Card -->
-<div class="student-card" style="max-width: 900px; margin: 0 auto 2rem; padding: 2.25rem 2.5rem;">
-    <div class="card-top" style="margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.5rem;">
-        <div class="card-avatar" style="width: 72px; height: 72px; font-size: 2rem;">
-            {{ admin_user.username|slice:":1"|upper }}
-        </div>
-        <div class="card-info" style="margin-left: 1.25rem;">
-            <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.35rem;">
-                <h2 style="font-size: 1.65rem; color: var(--text-primary); margin: 0;">{{ admin_user.username }}</h2>
-                <span class="dossier-btn-dark success">
-                    <i class="fa-solid fa-circle-check"></i> Active Administrator ({% if admin_user.is_superuser %}Superuser{% else %}Staff{% endif %})
-                </span>
+<!-- Profile Hero Banner Card -->
+<div class="student-card" style="padding: 2rem; margin-bottom: 2rem; position: relative; overflow: hidden; background: linear-gradient(135deg, var(--bg-card) 0%, rgba(79, 70, 229, 0.04) 100%);">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+            <!-- Profile Avatar with Initial -->
+            <div style="width: 76px; height: 76px; border-radius: var(--border-radius-full); background: var(--primary-gradient); color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 800; box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35); flex-shrink: 0;">
+                {% if admin_prof.name %}{{ admin_prof.name|slice:":1"|upper }}{% else %}{{ admin_user.username|slice:":1"|upper }}{% endif %}
             </div>
-            <p style="color: var(--text-secondary); margin: 0; font-size: 0.88rem;">
-                {{ admin_user.email|default:"No email registered" }}
-            </p>
-        </div>
-    </div>
 
-    <!-- Administrative Scope Metrics -->
-    <div class="stats-overview-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 2rem;">
-        <div class="kpi-card" style="padding: 1.25rem;">
-            <div class="kpi-header" style="margin-bottom: 0.5rem;">
-                <div class="kpi-icon" style="width: 36px; height: 36px; font-size: 1rem;"><i class="fa-solid fa-user-graduate"></i></div>
-                <span class="dossier-btn-dark" style="font-size: 0.7rem; padding: 0.15rem 0.45rem;">Roster</span>
+            <!-- Profile Primary Details -->
+            <div>
+                <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                    <h2 style="font-size: 1.6rem; font-weight: 800; color: var(--text-primary); margin: 0; line-height: 1.2;">
+                        {% if admin_prof.name %}{{ admin_prof.name }}{% else %}{{ admin_user.username }}{% endif %}
+                    </h2>
+                    <span class="badge badge-success" style="font-size: 0.8rem; padding: 0.35rem 0.75rem;">
+                        <i class="fa-solid fa-circle-check"></i> Active Administrator
+                    </span>
+                    {% if admin_prof.is_faculty %}
+                    <span class="badge" style="font-size: 0.8rem; padding: 0.35rem 0.75rem; background: rgba(139, 92, 246, 0.12); color: var(--accent-violet); border: 1px solid rgba(139, 92, 246, 0.3); font-weight: 700;">
+                        <i class="fa-solid fa-chalkboard-user"></i> Senior Faculty
+                    </span>
+                    {% endif %}
+                    <span class="badge badge-secondary" style="font-weight: 700; font-size: 0.8rem;">
+                        ADM-{{ admin_user.id|stringformat:"04d" }}
+                    </span>
+                </div>
+
+                <!-- Meta Details Chips -->
+                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 0.65rem; font-size: 0.85rem; color: var(--text-secondary);">
+                    <span>
+                        <i class="fa-solid fa-user-shield" style="color: var(--primary); margin-right: 4px;"></i> {{ admin_user.username }}
+                    </span>
+                    <span style="color: var(--border-color);">&bull;</span>
+                    <span>
+                        <i class="fa-solid fa-envelope" style="color: var(--primary); margin-right: 4px;"></i> {{ admin_user.email|default:"No email registered" }}
+                    </span>
+                    {% if admin_prof.phone %}
+                    <span style="color: var(--border-color);">&bull;</span>
+                    <span>
+                        <i class="fa-solid fa-phone" style="color: var(--primary); margin-right: 4px;"></i> {{ admin_prof.phone }}
+                    </span>
+                    {% endif %}
+                    <span style="color: var(--border-color);">&bull;</span>
+                    <span>
+                        <i class="fa-solid fa-building-columns" style="color: var(--primary); margin-right: 4px;"></i> {% if admin_prof.is_faculty %}{{ admin_prof.faculty_department }}{% else %}Academic Administration{% endif %}
+                    </span>
+                    <span style="color: var(--border-color);">&bull;</span>
+                    <span>
+                        <i class="fa-regular fa-calendar" style="color: var(--primary); margin-right: 4px;"></i> Registered: {{ admin_user.date_joined|date:"M d, Y" }}
+                    </span>
+                </div>
             </div>
-            <div class="kpi-value" style="font-size: 1.65rem;">{{ total_students }}</div>
-            <div class="kpi-label" style="font-size: 0.75rem;">Total Students</div>
         </div>
 
-        <div class="kpi-card" style="padding: 1.25rem;">
-            <div class="kpi-header" style="margin-bottom: 0.5rem;">
-                <div class="kpi-icon" style="width: 36px; height: 36px; font-size: 1rem; background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan);"><i class="fa-solid fa-diagram-project"></i></div>
-                <span class="dossier-btn-dark" style="font-size: 0.7rem; padding: 0.15rem 0.45rem;">Portfolios</span>
-            </div>
-            <div class="kpi-value" style="font-size: 1.65rem;">{{ total_projects }}</div>
-            <div class="kpi-label" style="font-size: 0.75rem;">Total Projects</div>
-        </div>
-
-        <div class="kpi-card" style="padding: 1.25rem;">
-            <div class="kpi-header" style="margin-bottom: 0.5rem;">
-                <div class="kpi-icon" style="width: 36px; height: 36px; font-size: 1rem; background: rgba(139, 92, 246, 0.1); color: var(--accent-violet);"><i class="fa-solid fa-file-signature"></i></div>
-                <span class="dossier-btn-dark" style="font-size: 0.7rem; padding: 0.15rem 0.45rem;">Assessments</span>
-            </div>
-            <div class="kpi-value" style="font-size: 1.65rem;">{{ total_exams }}</div>
-            <div class="kpi-label" style="font-size: 0.75rem;">Total Exams</div>
-        </div>
-    </div>
-
-    <!-- Key-Value Account Details -->
-    <div class="meta-details">
-        <div class="meta-item">
-            <span class="meta-label"><i class="fa-solid fa-user" style="color: var(--primary); margin-right: 6px;"></i> Username</span>
-            <span class="meta-value">{{ admin_user.username }}</span>
-        </div>
-
-        <div class="meta-item">
-            <span class="meta-label"><i class="fa-solid fa-envelope" style="color: var(--primary); margin-right: 6px;"></i> Email Address</span>
-            <span class="meta-value">{{ admin_user.email|default:"Not specified" }}</span>
-        </div>
-
-        <div class="meta-item">
-            <span class="meta-label"><i class="fa-solid fa-id-card-clip" style="color: var(--primary); margin-right: 6px;"></i> Full Name</span>
-            <span class="meta-value">{% if admin_user.first_name or admin_user.last_name %}{{ admin_user.first_name }} {{ admin_user.last_name }}{% else %}Not specified{% endif %}</span>
-        </div>
-
-        <div class="meta-item">
-            <span class="meta-label"><i class="fa-solid fa-calendar-check" style="color: var(--primary); margin-right: 6px;"></i> Account Created</span>
-            <span class="meta-value">{{ admin_user.date_joined|date:"F d, Y - h:i A" }}</span>
-        </div>
-
-        <div class="meta-item">
-            <span class="meta-label"><i class="fa-solid fa-clock" style="color: var(--primary); margin-right: 6px;"></i> Last Login</span>
-            <span class="meta-value">{{ admin_user.last_login|default:"Current Active Session"|date:"F d, Y - h:i A" }}</span>
-        </div>
-
-        <div class="meta-item">
-            <span class="meta-label"><i class="fa-solid fa-shield-halved" style="color: var(--primary); margin-right: 6px;"></i> Role & Privilege Tier</span>
-            <span class="meta-value">
-                {% if admin_user.is_superuser %}
-                <strong style="color: var(--primary);">Superuser (Full Management & Root Privileges)</strong>
-                {% else %}
-                <strong style="color: var(--text-primary);">Staff Administrator (Management Access)</strong>
-                {% endif %}
+        <!-- Administrative Clearance Status Badge -->
+        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.4rem;">
+            <span class="brand-badge" style="font-size: 0.9rem; padding: 0.5rem 1rem; background: rgba(79, 70, 229, 0.08); color: var(--primary); border: 1px solid rgba(79, 70, 229, 0.2);">
+                <i class="fa-solid fa-shield-halved"></i> Root Clearance
             </span>
+            <small style="font-size: 0.78rem; color: var(--text-muted);">Privilege: <strong>{% if admin_user.is_superuser %}Super Administrator{% else %}Staff Administrator{% endif %}</strong></small>
         </div>
     </div>
 </div>
+
+<!-- Academic & Administrative KPI Stats Grid (4 Cards) -->
+<div class="stats-overview-grid" style="margin-bottom: 2rem;">
+    <!-- Enrolled Students Card -->
+    <div class="kpi-card" onclick="window.location.href='{% url 'admin_student_list' %}';" style="cursor: pointer;">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(79, 70, 229, 0.1); color: var(--primary);">
+                    <i class="fa-solid fa-user-graduate"></i>
+                </div>
+                <span class="badge badge-primary">Roster</span>
+            </div>
+            <div class="kpi-value" style="color: var(--primary);">
+                {{ total_students }}
+            </div>
+            <div class="kpi-label">Total Enrolled Students</div>
+        </div>
+        <div class="kpi-footer">
+            <span>Active student directory</span>
+            <span class="kpi-link">Students <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i></span>
+        </div>
+    </div>
+
+    <!-- Faculty Directory Card -->
+    <div class="kpi-card" onclick="window.location.href='{% url 'admin_faculty_list' %}';" style="cursor: pointer;">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                    <i class="fa-solid fa-chalkboard-user"></i>
+                </div>
+                <span class="badge badge-success">Faculty</span>
+            </div>
+            <div class="kpi-value" style="color: #10b981;">
+                {{ total_faculties }}
+            </div>
+            <div class="kpi-label">Faculty Instructors</div>
+        </div>
+        <div class="kpi-footer">
+            <span>Academic departments</span>
+            <span class="kpi-link">Faculty <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i></span>
+        </div>
+    </div>
+
+    <!-- Project Portfolios Card -->
+    <div class="kpi-card" onclick="window.location.href='{% url 'admin_projects' %}';" style="cursor: pointer;">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan);">
+                    <i class="fa-solid fa-diagram-project"></i>
+                </div>
+                <span class="badge badge-info">Portfolios</span>
+            </div>
+            <div class="kpi-value">{{ total_projects }}</div>
+            <div class="kpi-label">Projects Submitted</div>
+        </div>
+        <div class="kpi-footer">
+            <span>{{ approved_projects_count }} approved &bull; {{ submitted_projects_count }} pending</span>
+            <span class="kpi-link">Projects <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i></span>
+        </div>
+    </div>
+
+    <!-- Security & Access State Card -->
+    <div class="kpi-card" onclick="window.location.href='{% url 'admin_change_password' %';" style="cursor: pointer;">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-violet);">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <span class="badge badge-success">Verified</span>
+            </div>
+            <div class="kpi-value" style="font-size: 1.55rem; color: #10b981; display: flex; align-items: center; gap: 0.4rem; padding-top: 0.2rem;">
+                <i class="fa-solid fa-lock" style="font-size: 1.3rem;"></i> Protected
+            </div>
+            <div class="kpi-label">Portal Security State</div>
+        </div>
+        <div class="kpi-footer">
+            <span>Password encrypted with PBKDF2</span>
+            <span class="kpi-link">Security <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i></span>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Dossier (2-Column Grid) -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.75rem; margin-bottom: 2.5rem;">
+    <!-- Left Column: Authority & Identification Details -->
+    <div style="display: flex; flex-direction: column; gap: 1.75rem;">
+        <!-- Institutional Authority & Faculty Capacity Card -->
+        <div class="student-card" style="padding: 1.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.85rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1.25rem;">
+                <div style="width: 40px; height: 40px; border-radius: var(--border-radius-md); background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.15rem; flex-shrink: 0;">
+                    <i class="fa-solid fa-building-user"></i>
+                </div>
+                <div>
+                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">Institutional Role & Faculty Capacity</h3>
+                    <p style="margin: 0.15rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);">System access privileges, faculty instructor role, and assigned courses</p>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <!-- Primary Role -->
+                <div>
+                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem;">Primary Management Role</div>
+                    <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.45rem;">
+                        <i class="fa-solid fa-shield-halved" style="color: var(--primary);"></i>
+                        <span>{% if admin_user.is_superuser %}Super Administrator (Full System Management){% else %}Staff Administrator (Academic Operations){% endif %}</span>
+                    </div>
+                </div>
+
+                <!-- Faculty Role & Teaching Capacity -->
+                <div>
+                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem;">Faculty Teaching Capacity</div>
+                    {% if admin_prof.is_faculty %}
+                    <div style="background: rgba(139, 92, 246, 0.05); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: var(--border-radius-md); padding: 1rem;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span class="badge" style="background: rgba(139, 92, 246, 0.15); color: var(--accent-violet); font-size: 0.75rem; font-weight: 700;">
+                                <i class="fa-solid fa-chalkboard-user"></i> Active Faculty Instructor
+                            </span>
+                            <a href="{% url 'admin_faculty_list' %}" style="font-size: 0.78rem; color: var(--primary); text-decoration: none; font-weight: 600;">Manage Role</a>
+                        </div>
+                        <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">
+                            Department: {{ admin_prof.faculty_department }}
+                        </div>
+                        {% if admin_prof.faculty_specialization %}
+                        <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.65rem;">
+                            Specialization: {{ admin_prof.faculty_specialization }}
+                        </div>
+                        {% endif %}
+
+                        {% if faculty_courses_list %}
+                        <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.35rem;">Qualified / Assigned Courses:</div>
+                        <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+                            {% for c in faculty_courses_list %}
+                            <span class="badge badge-primary" style="font-size: 0.75rem; padding: 0.2rem 0.55rem;">
+                                <i class="fa-solid fa-check" style="font-size: 0.65rem;"></i> {{ c }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div style="background: var(--bg-main); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 0.85rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;">
+                        <div>
+                            <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-secondary);">
+                                <i class="fa-solid fa-user-lock" style="color: var(--text-muted); margin-right: 4px;"></i> Administration Only
+                            </div>
+                            <small style="color: var(--text-muted); font-size: 0.75rem;">Faculty role is currently disabled for this admin account.</small>
+                        </div>
+                        <a href="{% url 'admin_faculty_list' %}" class="btn-outline" style="font-size: 0.75rem; padding: 0.25rem 0.65rem; white-space: nowrap;">
+                            <i class="fa-solid fa-toggle-on"></i> Enable Faculty
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Clearance Level & Platform Oversight -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding-top: 0.5rem; border-top: 1px dashed var(--border-color);">
+                    <div>
+                        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem;">Clearance Level</div>
+                        <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.45rem;">
+                            <i class="fa-solid fa-shield" style="color: #10b981;"></i>
+                            <span>{% if admin_user.is_superuser %}Level 1 (Full Access){% else %}Level 2 (Staff Access){% endif %}</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem;">Platform Scope</div>
+                        <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.45rem;">
+                            <i class="fa-solid fa-network-wired" style="color: var(--primary);"></i>
+                            <span>All Portal Modules</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Personal & Identity Card -->
+        <div class="student-card" style="padding: 1.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.85rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1.25rem;">
+                <div style="width: 40px; height: 40px; border-radius: var(--border-radius-md); background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan); display: flex; align-items: center; justify-content: center; font-size: 1.15rem; flex-shrink: 0;">
+                    <i class="fa-solid fa-address-card"></i>
+                </div>
+                <div>
+                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">Contact & Administrative Record</h3>
+                    <p style="margin: 0.15rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Verified communication channels and administrative identifiers</p>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 1.15rem;">
+                <div>
+                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Full Legal / Display Name</div>
+                    <div style="font-size: 0.98rem; font-weight: 700; color: var(--text-primary);">
+                        {% if admin_prof.name %}{{ admin_prof.name }}{% elif admin_user.first_name or admin_user.last_name %}{{ admin_user.first_name }} {{ admin_user.last_name }}{% else %}{{ admin_user.username }}{% endif %}
+                    </div>
+                </div>
+
+                <div>
+                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">System Login Username</div>
+                    <div style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); font-family: monospace;">
+                        {{ admin_user.username }}
+                    </div>
+                </div>
+
+                <div>
+                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Official Email Address</div>
+                    <div style="font-size: 0.92rem; font-weight: 600;">
+                        {% if admin_user.email %}
+                        <a href="mailto:{{ admin_user.email }}" style="color: var(--primary); text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">
+                            <i class="fa-regular fa-envelope"></i> {{ admin_user.email }}
+                        </a>
+                        {% else %}
+                        <span style="color: var(--text-muted); font-style: italic; font-size: 0.88rem;">No official email configured</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div>
+                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Phone Number / Office Contact</div>
+                    <div style="font-size: 0.92rem; font-weight: 600;">
+                        {% if admin_prof.phone %}
+                        <a href="tel:{{ admin_prof.phone }}" style="color: var(--text-primary); text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">
+                            <i class="fa-solid fa-phone" style="color: var(--success); font-size: 0.85rem;"></i> {{ admin_prof.phone }}
+                        </a>
+                        {% else %}
+                        <span style="color: var(--text-muted); font-style: italic; font-size: 0.88rem;">Available via Institutional Exchange</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding-top: 0.5rem; border-top: 1px dashed var(--border-color);">
+                    <div>
+                        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Administrator UID</div>
+                        <div style="font-size: 0.92rem; font-weight: 700; color: var(--text-secondary); font-family: monospace;">
+                            ADM-{{ admin_user.id|stringformat:"04d" }}
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Account Status</div>
+                        <div style="font-size: 0.92rem; font-weight: 700; color: #10b981; display: flex; align-items: center; gap: 4px;">
+                            <i class="fa-solid fa-circle" style="font-size: 0.55rem;"></i> Active & Verified
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Account Security & Management Shortcuts -->
+    <div style="display: flex; flex-direction: column; gap: 1.75rem;">
+        <!-- Account Security Card -->
+        <div class="student-card" style="padding: 1.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.85rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1.25rem;">
+                <div style="width: 40px; height: 40px; border-radius: var(--border-radius-md); background: rgba(16, 185, 129, 0.1); color: #10b981; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; flex-shrink: 0;">
+                    <i class="fa-solid fa-key"></i>
+                </div>
+                <div>
+                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">Account Security & Access</h3>
+                    <p style="margin: 0.15rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Manage administrator authentication credentials and session security</p>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <!-- Password Protection State -->
+                <div style="background: var(--bg-main); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 1rem 1.15rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+                    <div>
+                        <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.4rem;">
+                            <i class="fa-solid fa-shield-halved" style="color: var(--success);"></i>
+                            <span>Admin Password</span>
+                        </div>
+                        <small style="color: var(--text-muted); font-size: 0.78rem;">Encrypted using PBKDF2 with SHA-256 hash</small>
+                    </div>
+                    <a href="{% url 'admin_change_password' %}" class="btn-outline" style="padding: 0.35rem 0.85rem; font-size: 0.8rem;">
+                        <i class="fa-solid fa-key"></i> Update
+                    </a>
+                </div>
+
+                <!-- Last Login Audit Details -->
+                <div style="background: var(--bg-main); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 1rem 1.15rem;">
+                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Last Login Activity</div>
+                    <div style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary);">
+                        <i class="fa-regular fa-clock" style="color: var(--primary); margin-right: 4px;"></i>
+                        {{ admin_user.last_login|default:"Current Active Session"|date:"l, F d, Y - h:i A" }}
+                    </div>
+                </div>
+
+                <!-- Security Recommendation Box -->
+                <div style="background: rgba(79, 70, 229, 0.05); border: 1px solid rgba(79, 70, 229, 0.15); border-radius: var(--border-radius-md); padding: 1rem 1.15rem;">
+                    <strong style="color: var(--primary); font-size: 0.85rem; display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.35rem;">
+                        <i class="fa-solid fa-circle-info"></i> Security & Governance Standard
+                    </strong>
+                    <p style="margin: 0; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5;">
+                        This administrative profile holds critical institutional authority over student records, academic evaluations, and faculty operations. Always sign out when using shared workstations.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Management Activity & Quick Access Card -->
+        <div class="student-card" style="padding: 1.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.85rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1.25rem;">
+                <div style="width: 40px; height: 40px; border-radius: var(--border-radius-md); background: rgba(245, 158, 11, 0.1); color: #f59e0b; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; flex-shrink: 0;">
+                    <i class="fa-solid fa-gauge-high"></i>
+                </div>
+                <div>
+                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">Management Portal Shortcuts</h3>
+                    <p style="margin: 0.15rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Quick access to key administrative registers and monitoring hubs</p>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <!-- Student Directory Shortcut -->
+                <a href="{% url 'admin_student_list' %}" class="management-quick-link">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <i class="fa-solid fa-user-graduate" style="color: var(--primary); font-size: 1.1rem;"></i>
+                        <div>
+                            <div style="font-weight: 700; font-size: 0.88rem;">Student Directory & Enrolment</div>
+                            <small style="color: var(--text-muted); font-size: 0.75rem;">{{ total_students }} active students registered</small>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.8rem;"></i>
+                </a>
+
+                <!-- Faculty Instructors Shortcut -->
+                <a href="{% url 'admin_faculty_list' %}" class="management-quick-link">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <i class="fa-solid fa-chalkboard-user" style="color: #10b981; font-size: 1.1rem;"></i>
+                        <div>
+                            <div style="font-weight: 700; font-size: 0.88rem;">Faculty Directory & Assign</div>
+                            <small style="color: var(--text-muted); font-size: 0.75rem;">{{ total_faculties }} instructors in institutional roster</small>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.8rem;"></i>
+                </a>
+
+                <!-- Daily Work Reports Shortcut -->
+                <a href="{% url 'admin_daily_work_report' %}" class="management-quick-link">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <i class="fa-solid fa-book-journal-whills" style="color: var(--accent-violet); font-size: 1.1rem;"></i>
+                        <div>
+                            <div style="font-weight: 700; font-size: 0.88rem;">Daily Work Reports Monitor</div>
+                            <small style="color: var(--text-muted); font-size: 0.75rem;">{{ today_work_reports_count }} work reports submitted today</small>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.8rem;"></i>
+                </a>
+
+                <!-- Batch Transfer Shortcut -->
+                <a href="{% url 'admin_batch_transfer' %}" class="management-quick-link">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <i class="fa-solid fa-clock-rotate-left" style="color: #f59e0b; font-size: 1.1rem;"></i>
+                        <div>
+                            <div style="font-weight: 700; font-size: 0.88rem;">Batch Transfer Hub</div>
+                            <small style="color: var(--text-muted); font-size: 0.75rem;">Manage batch timings & student schedules</small>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.8rem;"></i>
+                </a>
+
+                <!-- Project Portfolios Shortcut -->
+                <a href="{% url 'admin_projects' %}" class="management-quick-link">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <i class="fa-solid fa-diagram-project" style="color: var(--accent-cyan); font-size: 1.1rem;"></i>
+                        <div>
+                            <div style="font-weight: 700; font-size: 0.88rem;">Project Portfolio Submissions</div>
+                            <small style="color: var(--text-muted); font-size: 0.75rem;">{{ total_projects }} student submissions recorded</small>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.8rem;"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.management-quick-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1rem;
+    background: var(--bg-main);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all var(--transition-fast);
+}
+
+.management-quick-link:hover {
+    border-color: var(--primary);
+    background: var(--bg-card-hover);
+    transform: translateX(4px);
+}
+
+@media print {
+    .sidebar, .top-navbar, .page-header, .header-actions, .kpi-card .kpi-link, .btn-outline, .management-quick-link {
+        display: none !important;
+    }
+    .main-content {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    .student-card {
+        border: 1px solid #cbd5e1 !important;
+        box-shadow: none !important;
+    }
+}
+</style>
 {% endblock %}
