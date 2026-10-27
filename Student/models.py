@@ -139,9 +139,14 @@ class Student(models.Model):
     password = models.CharField(max_length=255)
     course = models.CharField(max_length=255, blank=True, default='')
     class_time = models.CharField(max_length=255, blank=True, null=True)
+    assigned_batch = models.ForeignKey('Batch', on_delete=models.SET_NULL, null=True, blank=True, related_name='enrolled_students')
     faculty = models.CharField(max_length=255, blank=True, default='')
     faculty_member = models.ForeignKey(Faculty, on_delete=models.SET_NULL, null=True, blank=True, related_name='students')
     phone = models.CharField(max_length=20, blank=True, null=True)
+    is_on_leave = models.BooleanField(default=False)
+    leave_reason = models.CharField(max_length=255, blank=True, default='')
+    leave_start_date = models.DateField(null=True, blank=True)
+    leave_end_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     @property
@@ -161,6 +166,19 @@ class Student(models.Model):
         if self.class_time:
             return [b.strip() for b in self.class_time.split(',') if b.strip()]
         return []
+
+    @property
+    def batch_display(self):
+        if self.assigned_batch:
+            return self.assigned_batch.name
+        first_b = self.assigned_batches.first()
+        if first_b:
+            return first_b.name
+        return "Not Assigned"
+
+    @property
+    def is_batch_assigned(self):
+        return bool(self.assigned_batch or self.assigned_batches.exists())
 
     @property
     def faculty_display(self):
@@ -203,8 +221,53 @@ class Student(models.Model):
             "status": status
         }
 
+    def is_on_leave_on(self, target_date=None):
+        if target_date is None:
+            target_date = datetime.date.today()
+        if isinstance(target_date, str):
+            try:
+                target_date = datetime.date.fromisoformat(target_date)
+            except ValueError:
+                return False
+
+        if not self.is_on_leave and not (self.leave_start_date and self.leave_end_date):
+            return False
+
+        start_ok = (self.leave_start_date is None) or (self.leave_start_date <= target_date)
+        end_ok = (self.leave_end_date is None) or (target_date <= self.leave_end_date)
+        return start_ok and end_ok
+
     def __str__(self):
         return f"{self.name} ({self.email})"
+
+
+class Batch(models.Model):
+    name = models.CharField(max_length=150, help_text="Batch Identifier, e.g. WD-10AM or Python Morning A")
+    course = models.CharField(max_length=150, blank=True, default='', help_text="Field of study / Course")
+    time_slot = models.CharField(max_length=100, choices=Student.CLASS_TIME_CHOICES, help_text="Scheduled Time Slot")
+    faculty = models.ForeignKey(Faculty, on_delete=models.SET_NULL, null=True, blank=True, related_name='managed_batches')
+    students = models.ManyToManyField(Student, blank=True, related_name='assigned_batches')
+    description = models.TextField(blank=True, default='')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['time_slot', 'name']
+        verbose_name_plural = 'Batches'
+
+    def __str__(self):
+        fac = f" ({self.faculty.name})" if self.faculty else ""
+        course_str = f" [{self.course}]" if self.course else ""
+        return f"{self.name} - {self.time_slot}{course_str}{fac}"
+
+    @property
+    def student_count(self):
+        return self.students.count()
+
+    @property
+    def faculty_display(self):
+        return self.faculty.name if self.faculty else "Unassigned Faculty"
 
 
 class StudentBatch(models.Model):

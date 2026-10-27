@@ -1,14 +1,14 @@
 import csv
 import datetime
 import calendar
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth.hashers import make_password, check_password
 from django.contrib.auth.models import User
 from django.db.models import Q
-from Student.models import Student, StudentCourse, Project, Exam, ExamMarks, Attendance, Faculty, StudentBatch, DailyWorkReport
+from Student.models import Student, StudentCourse, Project, Exam, ExamMarks, Attendance, Faculty, StudentBatch, DailyWorkReport, Batch
 from Management.models import Admin
 
 
@@ -356,6 +356,22 @@ def student_list_view(request):
             | Q(faculty_member__name__icontains=faculty_filter)
         ).distinct()
 
+    status_filter = request.GET.get("status", "").strip()
+    if status_filter == "leave":
+        students = students.filter(is_on_leave=True)
+    elif status_filter == "active":
+        students = students.filter(is_on_leave=False)
+
+    batch_filter = request.GET.get("batch_status", "").strip()
+    if batch_filter == "unassigned":
+        students = students.filter(assigned_batch__isnull=True, assigned_batches__isnull=True)
+    elif batch_filter == "assigned":
+        students = students.filter(Q(assigned_batch__isnull=False) | Q(assigned_batches__isnull=False)).distinct()
+
+    batch_id_filter = request.GET.get("batch_id", "").strip()
+    if batch_id_filter and batch_id_filter.isdigit():
+        students = students.filter(Q(assigned_batch__id=int(batch_id_filter)) | Q(assigned_batches__id=int(batch_id_filter))).distinct()
+
     course_categories = Student.COURSE_CATEGORIES
     class_time_choices = [c[0] for c in Student.CLASS_TIME_CHOICES]
     faculties = Faculty.objects.filter(is_active=True).order_by("department", "name")
@@ -370,6 +386,13 @@ def student_list_view(request):
         "course_categories": course_categories,
         "class_time_choices": class_time_choices,
         "faculties": faculties,
+        "status_filter": status_filter,
+        "batch_filter": batch_filter,
+        "batch_id_filter": batch_id_filter,
+        "all_batches": Batch.objects.filter(is_active=True).select_related('faculty').order_by('time_slot', 'name'),
+        "unassigned_batch_count": Student.objects.filter(assigned_batch__isnull=True, assigned_batches__isnull=True).count(),
+        "on_leave_count": Student.objects.filter(is_on_leave=True).count(),
+        "active_students_count": Student.objects.filter(is_on_leave=False).count(),
         "total_students_count": Student.objects.count(),
     }
 
@@ -539,6 +562,118 @@ def student_delete_view(request, student_id):
     student.delete()
     messages.success(request, f"Student '{name}' and all associated records deleted.")
     return redirect("admin_student_list")
+
+
+def student_toggle_leave_view(request, student_id):
+    user = get_current_admin(request)
+    if not user:
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+        return redirect("admin_login")
+
+    student = Student.objects.filter(id=student_id).first()
+    if not student:
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"status": "error", "message": "Student not found."}, status=404)
+        messages.error(request, "Student not found.")
+        return redirect("admin_student_list")
+
+    next_url = request.POST.get("next") or request.GET.get("next") or reverse("admin_student_list")
+
+    if request.method == "POST":
+        action = request.POST.get("action", "").strip()
+        if action == "mark_active" or action == "resume":
+            today = datetime.date.today()
+            Attendance.objects.filter(
+                student=student,
+                date__gte=today,
+                status="Leave",
+                remarks__icontains="On Leave"
+            ).delete()
+            student.is_on_leave = False
+            student.leave_reason = ""
+            student.leave_start_date = None
+            student.leave_end_date = None
+            student.save()
+            messages.success(request, f"Student '{student.name}' is now marked as Active (Classes Resumed).")
+        else:
+            student.is_on_leave = True
+            leave_reason = request.POST.get("leave_reason", "").strip()
+            student.leave_reason = leave_reason
+
+            start_date_str = request.POST.get("leave_start_date", "").strip()
+            if start_date_str:
+                try:
+                    student.leave_start_date = datetime.date.fromisoformat(start_date_str)
+                except ValueError:
+                    student.leave_start_date = datetime.date.today()
+            else:
+                student.leave_start_date = datetime.date.today()
+
+            end_date_str = request.POST.get("leave_end_date", "").strip()
+            if end_date_str:
+                try:
+                    student.leave_end_date = datetime.date.fromisoformat(end_date_str)
+                except ValueError:
+                    student.leave_end_date = None
+            else:
+                student.leave_end_date = None
+
+            student.save()
+
+            # Sync attendance records as Leave for the full leave date range
+            if request.POST.get("mark_attendance_leave", "1"):
+                start_d = student.leave_start_date or datetime.date.today()
+                end_d = student.leave_end_date or start_d
+                if start_d <= end_d:
+                    day_count = (end_d - start_d).days
+                    if day_count <= 90:
+                        slot = student.class_time or (student.batches_list[0] if student.batches_list else "")
+                        for i in range(day_count + 1):
+                            cur_date = start_d + datetime.timedelta(days=i)
+                            Attendance.objects.update_or_create(
+                                student=student,
+                                date=cur_date,
+                                defaults={
+                                    "status": "Leave",
+                                    "time_slot": slot,
+                                    "remarks": f"On Leave: {leave_reason}" if leave_reason else "On Leave",
+                                    "marked_by": f"Admin ({user.username})",
+                                }
+                            )
+
+            messages.success(request, f"Student '{student.name}' has been marked On Leave.")
+
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({
+                "status": "success",
+                "is_on_leave": student.is_on_leave,
+                "student_id": student.id,
+                "student_name": student.name,
+                "leave_reason": student.leave_reason,
+                "leave_start_date": student.leave_start_date.isoformat() if student.leave_start_date else "",
+                "leave_end_date": student.leave_end_date.isoformat() if student.leave_end_date else "",
+            })
+        return redirect(next_url)
+
+    # GET request support
+    action = request.GET.get("action", "").strip()
+    if action == "toggle":
+        if student.is_on_leave:
+            student.is_on_leave = False
+            student.leave_reason = ""
+            student.leave_start_date = None
+            student.leave_end_date = None
+            student.save()
+            messages.success(request, f"Student '{student.name}' is now marked as Active.")
+        else:
+            student.is_on_leave = True
+            student.leave_start_date = datetime.date.today()
+            student.save()
+            messages.success(request, f"Student '{student.name}' is marked On Leave.")
+        return redirect(next_url)
+
+    return redirect(next_url)
 
 
 # --- STUDENT PROJECTS VIEWS ---
@@ -1221,7 +1356,21 @@ def admin_attendance_batch_view(request):
     else:
         selected_date = datetime.date.today()
 
-    students = Student.objects.filter(Q(class_time__icontains=batch_time) | Q(enrolled_batches__batch_time=batch_time)).distinct().order_by("name")
+    batch_id_filter = request.GET.get("batch_id", "").strip() or request.POST.get("batch_id", "").strip()
+    slot_batches = Batch.objects.filter(time_slot=batch_time, is_active=True).select_related('faculty').prefetch_related('students')
+    selected_batch_obj = None
+
+    if batch_id_filter and batch_id_filter.isdigit():
+        selected_batch_obj = slot_batches.filter(id=int(batch_id_filter)).first()
+
+    if selected_batch_obj:
+        students = selected_batch_obj.students.all().distinct().order_by("name")
+    else:
+        students = Student.objects.filter(
+            Q(class_time__icontains=batch_time) | 
+            Q(enrolled_batches__batch_time=batch_time) |
+            Q(assigned_batches__time_slot=batch_time)
+        ).distinct().order_by("name")
 
     if request.method == "POST":
         saved_count = 0
@@ -1279,11 +1428,31 @@ def admin_attendance_batch_view(request):
     batch_absent = 0
     batch_late = 0
     batch_leave = 0
+    batch_on_leave_count = 0
 
     for s in students:
         rec = existing_records.get(s.id)
-        current_status = rec.status if rec else "Present"
-        current_remarks = rec.remarks if rec else ""
+        is_on_leave_date = s.is_on_leave_on(selected_date)
+        if is_on_leave_date:
+            batch_on_leave_count += 1
+
+        if is_on_leave_date:
+            if rec and rec.status == "Leave":
+                current_status = "Leave"
+                current_remarks = rec.remarks or (f"On Leave: {s.leave_reason}" if s.leave_reason else "On Leave")
+            elif rec and ("On Leave" in (rec.remarks or "") or not rec.remarks or rec.status in ["Absent", "Present", "Late"]):
+                current_status = "Leave"
+                current_remarks = rec.remarks or (f"On Leave: {s.leave_reason}" if s.leave_reason else "On Leave")
+            elif rec:
+                current_status = rec.status
+                current_remarks = rec.remarks
+            else:
+                current_status = "Leave"
+                current_remarks = f"On Leave: {s.leave_reason}" if s.leave_reason else "On Leave"
+        else:
+            current_status = rec.status if rec else "Present"
+            current_remarks = rec.remarks if rec else ""
+
         has_record = rec is not None
         if has_record:
             marked_count += 1
@@ -1295,12 +1464,16 @@ def admin_attendance_batch_view(request):
                 batch_late += 1
             elif current_status == "Leave":
                 batch_leave += 1
+        elif is_on_leave_date:
+            batch_leave += 1
 
         student_rows.append({
             "student": s,
             "status": current_status,
             "remarks": current_remarks,
             "has_record": has_record,
+            "is_on_leave_date": is_on_leave_date,
+            "leave_reason": s.leave_reason,
             "stats": s.attendance_stats,
         })
 
@@ -1323,6 +1496,10 @@ def admin_attendance_batch_view(request):
         "batch_absent": batch_absent,
         "batch_late": batch_late,
         "batch_leave": batch_leave,
+        "batch_on_leave_count": batch_on_leave_count,
+        "slot_batches": slot_batches,
+        "selected_batch_id": batch_id_filter if selected_batch_obj else "",
+        "selected_batch_obj": selected_batch_obj,
     }
     return render(request, "management/attendance_batch.html", context)
 
@@ -1905,3 +2082,244 @@ def toggle_admin_faculty_view(request):
             messages.info(request, f"Faculty role disabled for Administrator '{admin_prof.name}'.")
 
     return redirect("admin_faculty_list")
+
+
+# --- BATCH MANAGEMENT VIEWS ---
+
+def admin_batch_list_view(request):
+    user = get_current_admin(request)
+    if not user:
+        return redirect("admin_login")
+
+    batches = Batch.objects.filter(is_active=True).prefetch_related('students').select_related('faculty').order_by('time_slot', 'name')
+    
+    # Filter parameters
+    slot_filter = request.GET.get('slot', '').strip()
+    faculty_filter = request.GET.get('faculty', '').strip()
+    course_filter = request.GET.get('course', '').strip()
+    q = request.GET.get('q', '').strip()
+
+    if slot_filter:
+        batches = batches.filter(time_slot=slot_filter)
+    if faculty_filter:
+        batches = batches.filter(
+            Q(faculty__id=faculty_filter if faculty_filter.isdigit() else None)
+            | Q(faculty__name__icontains=faculty_filter)
+        )
+    if course_filter:
+        batches = batches.filter(course__icontains=course_filter)
+    if q:
+        batches = batches.filter(
+            Q(name__icontains=q)
+            | Q(course__icontains=q)
+            | Q(faculty__name__icontains=q)
+        )
+
+    # Unassigned students: have time slot but no assigned batch
+    unassigned_students = Student.objects.filter(
+        assigned_batch__isnull=True,
+        assigned_batches__isnull=True
+    ).distinct().order_by('class_time', 'name')
+
+    total_batches = Batch.objects.filter(is_active=True).count()
+    total_assigned_students = Student.objects.filter(
+        Q(assigned_batch__isnull=False) | Q(assigned_batches__isnull=False)
+    ).distinct().count()
+    total_unassigned_students = unassigned_students.count()
+
+    class_time_choices = [c[0] for c in Student.CLASS_TIME_CHOICES]
+    course_categories = Student.COURSE_CATEGORIES
+    faculties = Faculty.objects.filter(is_active=True).order_by("department", "name")
+
+    context = {
+        "user": user,
+        "batches": batches,
+        "unassigned_students": unassigned_students,
+        "total_batches": total_batches,
+        "total_assigned_students": total_assigned_students,
+        "total_unassigned_students": total_unassigned_students,
+        "class_time_choices": class_time_choices,
+        "course_categories": course_categories,
+        "faculties": faculties,
+        "slot_filter": slot_filter,
+        "faculty_filter": faculty_filter,
+        "course_filter": course_filter,
+        "query": q,
+    }
+    return render(request, "management/batch_list.html", context)
+
+
+def admin_batch_create_view(request):
+    user = get_current_admin(request)
+    if not user:
+        return redirect("admin_login")
+
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+        course = request.POST.get("course", "").strip()
+        time_slot = request.POST.get("time_slot", "").strip()
+        faculty_id = request.POST.get("faculty_id", "").strip()
+        description = request.POST.get("description", "").strip()
+        student_ids = request.POST.getlist("student_ids")
+
+        if not time_slot:
+            messages.error(request, "Scheduled Time Slot is required!")
+            return redirect("admin_batch_list")
+
+        faculty_member = None
+        if faculty_id and faculty_id.isdigit():
+            faculty_member = Faculty.objects.filter(id=int(faculty_id)).first()
+
+        # Auto-generate Batch Name if not provided
+        if not name:
+            if faculty_member:
+                base_name = f"{faculty_member.name} ({time_slot})"
+            else:
+                base_name = f"Batch ({time_slot})"
+
+            name = base_name
+            suffix = 2
+            while Batch.objects.filter(name=name, is_active=True).exists():
+                name = f"{base_name} #{suffix}"
+                suffix += 1
+
+        # Auto-detect Course if not provided
+        if not course and student_ids:
+            enrolled_students_qs = Student.objects.filter(id__in=student_ids)
+            enrolled_courses = list(dict.fromkeys(s.course for s in enrolled_students_qs if s.course))
+            if enrolled_courses:
+                course = ", ".join(enrolled_courses[:2])
+        if not course and faculty_member and faculty_member.department:
+            course = faculty_member.department
+
+        batch = Batch.objects.create(
+            name=name,
+            course=course,
+            time_slot=time_slot,
+            faculty=faculty_member,
+            description=description,
+        )
+
+        if student_ids:
+            enrolled = Student.objects.filter(id__in=student_ids)
+            batch.students.add(*enrolled)
+            enrolled.update(assigned_batch=batch)
+
+        messages.success(request, f"Batch '{batch.name}' created successfully with {batch.students.count()} student(s) enrolled!")
+        return redirect("admin_batch_list")
+
+    return redirect("admin_batch_list")
+
+
+def admin_batch_edit_view(request, batch_id):
+    user = get_current_admin(request)
+    if not user:
+        return redirect("admin_login")
+
+    batch = Batch.objects.filter(id=batch_id).first()
+    if not batch:
+        messages.error(request, "Batch not found.")
+        return redirect("admin_batch_list")
+
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+        course = request.POST.get("course", "").strip()
+        time_slot = request.POST.get("time_slot", "").strip()
+        faculty_id = request.POST.get("faculty_id", "").strip()
+        description = request.POST.get("description", "").strip()
+        student_ids = request.POST.getlist("student_ids")
+
+        if not name or not time_slot:
+            messages.error(request, "Batch Name and Scheduled Time Slot are required!")
+            return redirect("admin_batch_list")
+
+        faculty_member = None
+        if faculty_id and faculty_id.isdigit():
+            faculty_member = Faculty.objects.filter(id=int(faculty_id)).first()
+
+        batch.name = name
+        batch.course = course
+        batch.time_slot = time_slot
+        batch.faculty = faculty_member
+        batch.description = description
+        batch.save()
+
+        # Sync enrolled students only if student_ids is present in request.POST
+        if "student_ids" in request.POST:
+            current_student_ids = set(batch.students.values_list('id', flat=True))
+            new_student_ids = set(int(s) for s in student_ids if s.isdigit())
+
+            to_remove = current_student_ids - new_student_ids
+            to_add = new_student_ids - current_student_ids
+
+            if to_remove:
+                removed_qs = Student.objects.filter(id__in=to_remove)
+                batch.students.remove(*removed_qs)
+                removed_qs.filter(assigned_batch=batch).update(assigned_batch=None)
+
+            if to_add:
+                added_qs = Student.objects.filter(id__in=to_add)
+                batch.students.add(*added_qs)
+                added_qs.update(assigned_batch=batch)
+
+        messages.success(request, f"Batch '{batch.name}' updated successfully.")
+        return redirect("admin_batch_list")
+
+    return redirect("admin_batch_list")
+
+
+def admin_batch_delete_view(request, batch_id):
+    user = get_current_admin(request)
+    if not user:
+        return redirect("admin_login")
+
+    batch = Batch.objects.filter(id=batch_id).first()
+    if not batch:
+        messages.error(request, "Batch not found.")
+        return redirect("admin_batch_list")
+
+    name = batch.name
+    # Unassign all students
+    batch.students.all().update(assigned_batch=None)
+    batch.delete()
+    messages.success(request, f"Batch '{name}' deleted. Enrolled students are now unassigned.")
+    return redirect("admin_batch_list")
+
+
+def admin_batch_assign_student_view(request):
+    user = get_current_admin(request)
+    if not user:
+        return redirect("admin_login")
+
+    if request.method == "POST":
+        student_id = request.POST.get("student_id")
+        batch_id = request.POST.get("batch_id")
+        next_url = request.POST.get("next") or request.GET.get("next") or reverse("admin_batch_list")
+
+        student = Student.objects.filter(id=student_id).first()
+        if not student:
+            messages.error(request, "Student not found.")
+            return redirect(next_url)
+
+        if batch_id == "unassign" or not batch_id:
+            for b in student.assigned_batches.all():
+                b.students.remove(student)
+            student.assigned_batch = None
+            student.save()
+            messages.success(request, f"Student '{student.name}' is now unassigned from any batch.")
+        else:
+            batch = Batch.objects.filter(id=batch_id).first()
+            if not batch:
+                messages.error(request, "Target batch not found.")
+                return redirect(next_url)
+
+            for b in student.assigned_batches.all():
+                b.students.remove(student)
+            batch.students.add(student)
+            student.assigned_batch = batch
+            student.save()
+            messages.success(request, f"Student '{student.name}' assigned to batch '{batch.name}' ({batch.time_slot})!")
+
+        return redirect(next_url)
+
+    return redirect("admin_batch_list")

@@ -59,35 +59,7 @@
                     <i class="fa-solid fa-file-pen"></i>
                     <span>Daily Work</span>
                 </a>
-
-                <div class="nav-section-title">Account</div>
-                <a href="{% url 'student_profile' %}" class="dossier-btn {% if request.resolver_match.url_name == 'student_profile' %}active{% endif %}">
-                    <i class="fa-solid fa-circle-user"></i>
-                    <span>My Profile</span>
-                </a>
-                <a href="{% url 'student_change_password' %}" class="dossier-btn {% if request.resolver_match.url_name == 'student_change_password' %}active{% endif %}">
-                    <i class="fa-solid fa-key"></i>
-                    <span>Change Password</span>
-                </a>
-
-                <a href="{% url 'student_logout' %}" class="dossier-btn danger">
-                    <i class="fa-solid fa-right-from-bracket"></i>
-                    <span>Sign Out</span>
-                </a>
             </nav>
-
-            <!-- Sidebar Student Card Footer -->
-            {% if user and user.name or student and student.name %}
-            <div class="sidebar-user-footer">
-                <div class="sidebar-user-avatar">
-                    {% if user.name %}{{ user.name|slice:":1"|upper }}{% elif student.name %}{{ student.name|slice:":1"|upper }}{% else %}S{% endif %}
-                </div>
-                <div class="sidebar-user-info">
-                    <div class="sidebar-user-name">{% if user.name %}{{ user.name }}{% elif student.name %}{{ student.name }}{% else %}Student{% endif %}</div>
-                    <div class="sidebar-user-role">Enrolled Student</div>
-                </div>
-            </div>
-            {% endif %}
         </aside>
         {% endblock %}
 

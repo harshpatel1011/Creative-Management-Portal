@@ -1,0 +1,893 @@
+{% extends 'management/base.html' %}
+{% load static %}
+
+{% block title %}Batches Management - Creative Portal{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'admin_batch_list' %}">Batches</a>
+<span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-current">Batches Roster</span>
+{% endblock %}
+
+{% block content %}
+<!-- Top Header & Actions -->
+<div class="page-header">
+    <div class="header-text">
+        <h1>Batches Management</h1>
+        <p>Create field-specific batches per time slot and assign faculty so each instructor manages their own cohort</p>
+    </div>
+    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+        <form method="GET" action="{% url 'admin_batch_list' %}" class="search-form">
+            <input type="text" name="q" value="{{ query|default:'' }}" class="search-input" placeholder="Search batch, course, faculty..." aria-label="Search batches">
+            {% if slot_filter %}<input type="hidden" name="slot" value="{{ slot_filter }}">{% endif %}
+            {% if faculty_filter %}<input type="hidden" name="faculty" value="{{ faculty_filter }}">{% endif %}
+            <button type="submit" class="btn-search" aria-label="Submit search"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </form>
+        <button type="button" class="btn-primary" onclick="openCreateBatchModal();">
+            <i class="fa-solid fa-layer-group"></i>
+            <span>Create Batch</span>
+        </button>
+    </div>
+</div>
+
+<!-- 3 KPI Overview Cards -->
+<div class="stats-overview-grid" style="margin-bottom: 2rem;">
+    <!-- Active Batches -->
+    <div class="kpi-card">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(79, 70, 229, 0.1); color: var(--primary);">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+                <span class="dossier-btn-dark success">Organized</span>
+            </div>
+            <div class="kpi-value">{{ total_batches }}</div>
+            <div class="kpi-label">Active Batches</div>
+        </div>
+        <div class="kpi-footer">
+            <span>Grouped by course & time slot</span>
+        </div>
+    </div>
+
+    <!-- Assigned Students -->
+    <div class="kpi-card">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                    <i class="fa-solid fa-user-check"></i>
+                </div>
+                <span class="dossier-btn-dark success">Assigned</span>
+            </div>
+            <div class="kpi-value">{{ total_assigned_students }}</div>
+            <div class="kpi-label">Assigned to Batches</div>
+        </div>
+        <div class="kpi-footer">
+            <span>Enrolled under faculty supervision</span>
+        </div>
+    </div>
+
+    <!-- Unassigned Students (Requires Attention) -->
+    <div class="kpi-card" style="{% if total_unassigned_students > 0 %}border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.02);{% endif %}">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.15); color: #d97706;">
+                    <i class="fa-solid fa-user-clock"></i>
+                </div>
+                <span class="dossier-btn-dark warning" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border-color: rgba(245, 158, 11, 0.35);">
+                    {% if total_unassigned_students > 0 %}Needs Batch{% else %}All Assigned{% endif %}
+                </span>
+            </div>
+            <div class="kpi-value" style="color: #d97706;">{{ total_unassigned_students }}</div>
+            <div class="kpi-label">Unassigned Students</div>
+        </div>
+        <div class="kpi-footer">
+            <span>Time slot selected, batch pending</span>
+        </div>
+    </div>
+</div>
+
+<!-- Unassigned Students Section (if any exist) -->
+{% if unassigned_students %}
+<div class="student-card" style="margin-bottom: 2rem; padding: 1.5rem 1.75rem; border-left: 4px solid #f59e0b;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h3 style="font-size: 1.15rem; color: var(--text-primary); margin: 0 0 0.25rem; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-triangle-exclamation" style="color: #d97706;"></i>
+                <span>Students Awaiting Batch Assignment ({{ unassigned_students|length }})</span>
+            </h3>
+            <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 0;">
+                These students have selected their preferred time slot during registration, but need to be assigned to their field-specific faculty batch.
+            </p>
+        </div>
+        <button type="button" class="btn-primary" onclick="openCreateBatchModal();" style="font-size: 0.85rem; padding: 0.4rem 0.95rem;">
+            <i class="fa-solid fa-plus"></i> Create Batch for Students
+        </button>
+    </div>
+
+    <div class="table-responsive">
+        <table class="data-table" style="font-size: 0.88rem;">
+            <thead>
+                <tr>
+                    <th>Student Details</th>
+                    <th>Course / Field</th>
+                    <th>Selected Time Slot</th>
+                    <th>Phone</th>
+                    <th style="text-align: right;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in unassigned_students %}
+                <tr>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 0.65rem;">
+                            <div class="card-avatar" style="width: 34px; height: 34px; font-size: 0.85rem;">
+                                {{ s.name|slice:":1"|upper }}
+                            </div>
+                            <div>
+                                <a href="{% url 'admin_student_detail' s.id %}" style="font-weight: 600; color: var(--text-primary); text-decoration: none;">{{ s.name }}</a>
+                                <small style="display: block; color: var(--text-muted); font-size: 0.75rem;">{{ s.email }}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span style="font-weight: 500; color: var(--text-primary);">{{ s.course|default:"-" }}</span>
+                    </td>
+                    <td>
+                        {% if s.class_time %}
+                        <span class="badge badge-secondary" style="font-size: 0.72rem;">
+                            <i class="fa-solid fa-clock" style="color: var(--primary);"></i> {{ s.class_time }}
+                        </span>
+                        {% else %}
+                        <span style="color: var(--text-muted);">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span style="color: var(--text-secondary); font-size: 0.82rem;">{{ s.phone|default:"-" }}</span>
+                    </td>
+                    <td style="text-align: right;">
+                        <button type="button" class="btn-primary" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;" onclick="openAssignModal('{{ s.id }}', '{{ s.name|escapejs }}', '{{ s.class_time|escapejs }}', '{{ s.course|escapejs }}');">
+                            <i class="fa-solid fa-user-plus"></i> Assign Batch
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Batches Filter Toolbar -->
+<div class="student-card" style="padding: 1rem 1.5rem; margin-bottom: 1.5rem;">
+    <form method="GET" action="{% url 'admin_batch_list' %}" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; justify-content: space-between;">
+        <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; flex: 1;">
+            <!-- Filter by Time Slot -->
+            <div style="min-width: 200px; flex: 1;">
+                <label class="form-label" style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem;">
+                    <i class="fa-solid fa-clock" style="color: var(--primary);"></i> Time Slot
+                </label>
+                <select name="slot" class="form-input" style="height: 40px; font-size: 0.85rem;" onchange="this.form.submit();">
+                    <option value="">All Time Slots</option>
+                    {% for slot in class_time_choices %}
+                    <option value="{{ slot }}" {% if slot == slot_filter %}selected{% endif %}>{{ slot }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Filter by Faculty -->
+            <div style="min-width: 180px; flex: 1;">
+                <label class="form-label" style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem;">
+                    <i class="fa-solid fa-chalkboard-user" style="color: var(--primary);"></i> Faculty
+                </label>
+                <select name="faculty" class="form-input" style="height: 40px; font-size: 0.85rem;" onchange="this.form.submit();">
+                    <option value="">All Faculty</option>
+                    {% for f in faculties %}
+                    <option value="{{ f.id }}" {% if faculty_filter == f.id|stringformat:"s" %}selected{% endif %}>{{ f.name }} ({{ f.department }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
+            {% if slot_filter or faculty_filter or course_filter or query %}
+            <a href="{% url 'admin_batch_list' %}" class="btn-secondary" style="height: 40px; font-size: 0.82rem; padding: 0 0.85rem;">
+                <i class="fa-solid fa-xmark"></i> Clear Filters
+            </a>
+            {% endif %}
+            <span class="dossier-btn-dark" style="height: 40px; display: inline-flex; align-items: center; padding: 0 0.85rem; font-size: 0.82rem;">
+                Showing <strong>{{ batches.count }}</strong> of <strong>{{ total_batches }}</strong> Batches
+            </span>
+        </div>
+    </form>
+</div>
+
+<!-- Batches Cards Grid -->
+{% if batches %}
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
+    {% for b in batches %}
+    <div class="student-card" style="padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid var(--primary); transition: transform 0.15s ease, box-shadow 0.15s ease;">
+        <div>
+            <!-- Batch Header -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.75rem;">
+                <div>
+                    <h3 style="font-size: 1.15rem; color: var(--text-primary); margin: 0 0 0.25rem; font-weight: 700;">
+                        {{ b.name }}
+                    </h3>
+                    {% if b.course %}
+                    <span class="badge badge-primary" style="font-size: 0.72rem; padding: 2px 7px;">
+                        <i class="fa-solid fa-graduation-cap"></i> {{ b.course }}
+                    </span>
+                    {% endif %}
+                </div>
+                <span class="badge badge-secondary" style="font-size: 0.72rem; white-space: nowrap;">
+                    <i class="fa-solid fa-clock" style="color: var(--primary);"></i> {{ b.time_slot }}
+                </span>
+            </div>
+
+            <!-- Faculty Info -->
+            <div style="padding: 0.65rem 0.85rem; border-radius: 6px; background: var(--bg-main); border: 1px solid var(--border-color); margin-bottom: 0.85rem; font-size: 0.82rem; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between;">
+                <span style="display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-chalkboard-user" style="color: var(--primary);"></i>
+                    Instructor: <strong>{{ b.faculty_display }}</strong>
+                </span>
+                <span class="badge" style="background: rgba(79, 70, 229, 0.1); color: var(--primary); font-size: 0.72rem; font-weight: 700;">
+                    {{ b.student_count }} Student{{ b.student_count|pluralize }}
+                </span>
+            </div>
+
+            <!-- Enrolled Students Avatars -->
+            <div style="margin-bottom: 1rem;">
+                <small style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.4rem; letter-spacing: 0.05em;">
+                    Enrolled Students:
+                </small>
+                {% if b.students.all %}
+                <div style="display: flex; flex-wrap: wrap; gap: 4px; max-height: 90px; overflow-y: auto;">
+                    {% for s in b.students.all %}
+                    <a href="{% url 'admin_student_detail' s.id %}" class="badge badge-secondary" style="font-size: 0.74rem; text-decoration: none; padding: 3px 7px; color: var(--text-primary); border: 1px solid var(--border-color);" title="{{ s.email }}">
+                        <i class="fa-solid fa-user" style="font-size: 0.65rem; color: var(--primary); margin-right: 3px;"></i>{{ s.name }}
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <span style="color: var(--text-muted); font-size: 0.8rem; font-style: italic;">No students assigned to this batch yet.</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Card Footer Actions -->
+        <div style="padding-top: 1rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <a href="{% url 'admin_attendance_batch' %}?batch={{ b.time_slot|urlencode }}&batch_id={{ b.id }}" class="btn-primary" style="font-size: 0.8rem; padding: 0.4rem 0.85rem; display: inline-flex; align-items: center; gap: 4px;">
+                <i class="fa-solid fa-clipboard-user"></i> Batch Attendance
+            </a>
+            <div style="display: flex; gap: 0.35rem;">
+                <button type="button" class="btn-icon" title="Edit Batch" onclick="openEditBatchModal('{{ b.id }}', '{{ b.name|escapejs }}', '{{ b.course|escapejs }}', '{{ b.time_slot|escapejs }}', '{{ b.faculty.id|default:'' }}', '{{ b.description|escapejs }}', [{% for s in b.students.all %}{{ s.id }}{% if not forloop.last %},{% endif %}{% endfor %}]);">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <a href="{% url 'admin_batch_delete' b.id %}" class="btn-icon btn-delete" onclick="return confirm('Are you sure you want to delete batch \'{{ b.name }}\'? Enrolled students will remain in the system as unassigned.');" title="Delete Batch">
+                    <i class="fa-solid fa-trash"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="student-card" style="padding: 4rem 2rem; text-align: center;">
+    <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: inline-flex; align-items: center; justify-content: center; font-size: 1.75rem; margin-bottom: 1.25rem;">
+        <i class="fa-solid fa-layer-group"></i>
+    </div>
+    <h3 style="font-size: 1.35rem; margin-bottom: 0.5rem; color: var(--text-primary);">No Batches Created Yet</h3>
+    <p style="color: var(--text-secondary); margin-bottom: 1.75rem; max-width: 440px; margin-left: auto; margin-right: auto; font-size: 0.9rem;">
+        Create batches for specific courses and time slots so instructors can independently manage attendance and instruction for their cohorts.
+    </p>
+    <button type="button" class="btn-primary" onclick="openCreateBatchModal();">
+        <i class="fa-solid fa-plus"></i> Create First Batch
+    </button>
+</div>
+{% endif %}
+
+
+<!-- ================= MODAL: CREATE BATCH ================= -->
+<div id="createBatchModal" class="modal-backdrop-custom">
+    <div class="modal-dialog-custom" style="max-width: 500px;">
+        <div class="modal-header-custom">
+            <div>
+                <h2 class="modal-title-custom"><i class="fa-solid fa-layer-group" style="color: var(--primary); margin-right: 6px;"></i> Create New Batch</h2>
+                <small style="font-size: 0.78rem; color: var(--text-muted);">Select time, faculty, and enroll students</small>
+            </div>
+            <button type="button" class="toast-close" onclick="closeCreateBatchModal();" aria-label="Close dialog">
+                <i class="fa-solid fa-xmark" style="font-size: 1.1rem;"></i>
+            </button>
+        </div>
+
+        <form method="POST" action="{% url 'admin_batch_create' %}" id="createBatchForm">
+            {% csrf_token %}
+            <div class="modal-body-custom" style="padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;">
+                
+                <!-- 1. Time Slot -->
+                <div class="form-group" style="margin: 0;">
+                    <label class="form-label" for="batch_slot" style="font-weight: 600; display: flex; align-items: center; gap: 6px; margin-bottom: 0.4rem;">
+                        <i class="fa-solid fa-clock" style="color: var(--primary);"></i> Time Slot *
+                    </label>
+                    <select id="batch_slot" name="time_slot" class="form-input" onchange="onBatchSlotChange();" required>
+                        <option value="">-- Choose Time Slot --</option>
+                        {% for slot in class_time_choices %}
+                        <option value="{{ slot }}">{{ slot }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- 2. Faculty -->
+                <div class="form-group" style="margin: 0;">
+                    <label class="form-label" for="batch_faculty" style="font-weight: 600; display: flex; align-items: center; gap: 6px; margin-bottom: 0.4rem;">
+                        <i class="fa-solid fa-chalkboard-user" style="color: var(--primary);"></i> Faculty *
+                    </label>
+                    <select id="batch_faculty" name="faculty_id" class="form-input" required>
+                        <option value="">-- Choose Faculty / Instructor --</option>
+                        {% for f in faculties %}
+                        <option value="{{ f.id }}">{{ f.name }} ({{ f.department }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- 3. Student Dropdown with Search -->
+                <div class="form-group" style="margin: 0; position: relative;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                        <label class="form-label" style="font-weight: 600; margin: 0; display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-user-graduate" style="color: var(--primary);"></i> Students
+                        </label>
+                        <span id="studentDropdownBadge" class="badge" style="font-size: 0.72rem; display: none;">0 selected</span>
+                    </div>
+
+                    <!-- Dropdown Trigger Box -->
+                    <div id="studentDropdownWrapper" style="position: relative;">
+                        <div id="studentDropdownTrigger" onclick="toggleStudentDropdown(event);" style="min-height: 42px; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.5rem 0.85rem; background: var(--bg-main); display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; transition: border-color 0.15s ease, box-shadow 0.15s ease;">
+                            <div style="display: flex; align-items: center; gap: 8px; overflow: hidden; flex: 1;">
+                                <i class="fa-solid fa-magnifying-glass" style="color: var(--text-muted); font-size: 0.8rem;"></i>
+                                <span id="studentDropdownTriggerText" style="font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    Select time slot to view students...
+                                </span>
+                            </div>
+                            <i class="fa-solid fa-chevron-down" id="studentDropdownChevron" style="font-size: 0.75rem; color: var(--text-muted); transition: transform 0.2s ease; margin-left: 8px;"></i>
+                        </div>
+
+                        <!-- Dropdown Panel (Pop-up with Search & Checklist) -->
+                        <div id="studentDropdownPanel" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--card-bg, #ffffff); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); z-index: 100; padding: 0.75rem;">
+                            <!-- Search Input -->
+                            <div style="position: relative; margin-bottom: 0.5rem;">
+                                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.8rem;"></i>
+                                <input type="text" id="studentSearchInput" class="form-input" placeholder="Search student name or course..." style="height: 36px; padding-left: 32px; font-size: 0.82rem;" oninput="filterStudentDropdownList();" autocomplete="off">
+                            </div>
+
+                            <!-- Options Toolbar -->
+                            <div id="studentDropdownToolbar" style="display: flex; justify-content: space-between; align-items: center; padding: 0.2rem 0.25rem 0.45rem; border-bottom: 1px solid var(--border-color); font-size: 0.74rem;">
+                                <span id="studentMatchCountText" style="color: var(--text-muted);">0 students</span>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button type="button" class="btn-link" onclick="selectAllVisibleStudents(true);" style="color: var(--primary); background: none; border: none; cursor: pointer; font-size: 0.74rem; font-weight: 600; padding: 0;">Select All</button>
+                                    <span style="color: var(--border-color);">&bull;</span>
+                                    <button type="button" class="btn-link" onclick="selectAllVisibleStudents(false);" style="color: var(--text-muted); background: none; border: none; cursor: pointer; font-size: 0.74rem; padding: 0;">Clear</button>
+                                </div>
+                            </div>
+
+                            <!-- Scrollable Student Options List -->
+                            <div id="studentDropdownList" style="max-height: 180px; overflow-y: auto; padding-top: 0.35rem;">
+                                {% for s in unassigned_students %}
+                                <label class="student-dropdown-item" data-id="{{ s.id }}" data-name="{{ s.name }}" data-course="{{ s.course|default:'' }}" data-slot="{{ s.class_time|default:'' }}" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.4rem 0.5rem; border-radius: 6px; cursor: pointer; transition: background 0.15s ease;">
+                                    <div style="display: flex; align-items: center; gap: 0.55rem; overflow: hidden;">
+                                        <input type="checkbox" name="student_ids" value="{{ s.id }}" class="student-item-checkbox" onchange="onStudentCheckboxChange();" style="cursor: pointer;">
+                                        <div style="overflow: hidden;">
+                                            <div class="student-name-text" style="font-size: 0.82rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                {{ s.name }}
+                                            </div>
+                                            <div class="student-course-text" style="font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                {{ s.course|default:"General" }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="badge badge-secondary" style="font-size: 0.68rem; white-space: nowrap; flex-shrink: 0;">
+                                        <i class="fa-solid fa-clock" style="font-size: 0.6rem; color: var(--primary);"></i> {{ s.class_time|default:"No Slot" }}
+                                    </span>
+                                </label>
+                                {% empty %}
+                                <div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 1rem 0;">
+                                    No unassigned students available.
+                                </div>
+                                {% endfor %}
+
+                                <!-- Helper Empty States -->
+                                <div id="noSlotPromptMsg" style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 1rem 0; display: none;">
+                                    <i class="fa-solid fa-hand-pointer" style="color: var(--primary); margin-right: 4px;"></i>
+                                    Please choose a Time Slot first.
+                                </div>
+                                <div id="noMatchingStudentsMsg" style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 1rem 0; display: none;">
+                                    <i class="fa-solid fa-user-clock" style="color: #f59e0b; margin-right: 4px;"></i>
+                                    No unassigned students for <strong id="noMatchingSlotText"></strong>.
+                                </div>
+                                <div id="noSearchMatchMsg" style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 1rem 0; display: none;">
+                                    <i class="fa-solid fa-magnifying-glass" style="color: var(--text-muted); margin-right: 4px;"></i>
+                                    No students match "<span id="searchQueryText"></span>".
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Selected Students Chips Container -->
+                    <div id="selectedStudentChipsContainer" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 0.5rem;">
+                        <!-- Chips dynamically rendered here -->
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="modal-footer-custom" style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <button type="button" class="btn-secondary" onclick="closeCreateBatchModal();">Cancel</button>
+                <button type="submit" class="btn-primary">
+                    <i class="fa-solid fa-plus"></i> Create Batch
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- ================= MODAL: EDIT BATCH ================= -->
+<div id="editBatchModal" class="modal-backdrop-custom">
+    <div class="modal-dialog-custom" style="max-width: 540px;">
+        <div class="modal-header-custom">
+            <div>
+                <h2 class="modal-title-custom"><i class="fa-solid fa-pen-to-square" style="color: var(--primary); margin-right: 6px;"></i> Edit Batch</h2>
+                <small style="font-size: 0.78rem; color: var(--text-muted);">Update batch parameters and enrolled student roster</small>
+            </div>
+            <button type="button" class="toast-close" onclick="closeEditBatchModal();" aria-label="Close dialog">
+                <i class="fa-solid fa-xmark" style="font-size: 1.1rem;"></i>
+            </button>
+        </div>
+
+        <form id="editBatchForm" method="POST" action="">
+            {% csrf_token %}
+            <div class="modal-body-custom" style="padding: 1.25rem 1.5rem;">
+                <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label class="form-label" for="edit_batch_name">Batch Name *</label>
+                        <input type="text" id="edit_batch_name" name="name" class="form-input" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="edit_batch_course">Course / Field</label>
+                        <input type="text" id="edit_batch_course" name="course" class="form-input">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="edit_batch_slot">Time Slot *</label>
+                        <select id="edit_batch_slot" name="time_slot" class="form-input" required>
+                            {% for slot in class_time_choices %}
+                            <option value="{{ slot }}">{{ slot }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label class="form-label" for="edit_batch_faculty">Assigned Faculty</label>
+                        <select id="edit_batch_faculty" name="faculty_id" class="form-input">
+                            <option value="">-- Unassigned Faculty --</option>
+                            {% for f in faculties %}
+                            <option value="{{ f.id }}">{{ f.name }} ({{ f.department }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer-custom" style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <button type="button" class="btn-secondary" onclick="closeEditBatchModal();">Cancel</button>
+                <button type="submit" class="btn-primary">
+                    <i class="fa-solid fa-floppy-disk"></i> Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- ================= MODAL: ASSIGN STUDENT TO BATCH ================= -->
+<div id="assignStudentModal" class="modal-backdrop-custom">
+    <div class="modal-dialog-custom" style="max-width: 480px;">
+        <div class="modal-header-custom">
+            <div>
+                <h2 class="modal-title-custom"><i class="fa-solid fa-user-plus" style="color: var(--primary); margin-right: 6px;"></i> Assign Student to Batch</h2>
+                <small style="font-size: 0.78rem; color: var(--text-muted);">Enroll student into a field-specific faculty batch</small>
+            </div>
+            <button type="button" class="toast-close" onclick="closeAssignModal();" aria-label="Close dialog">
+                <i class="fa-solid fa-xmark" style="font-size: 1.1rem;"></i>
+            </button>
+        </div>
+
+        <form method="POST" action="{% url 'admin_batch_assign_student' %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <input type="hidden" name="student_id" id="assign_student_id" value="">
+
+            <div class="modal-body-custom" style="padding: 1.25rem 1.5rem;">
+                <div style="padding: 0.75rem 1rem; border-radius: 8px; background: var(--bg-main); border: 1px solid var(--border-color); margin-bottom: 1.25rem;">
+                    <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.05em;">Student Details</div>
+                    <strong id="assign_student_name" style="font-size: 1rem; color: var(--text-primary); display: block; margin-top: 2px;">-</strong>
+                    <div style="display: flex; gap: 8px; margin-top: 4px; font-size: 0.78rem; color: var(--text-secondary);">
+                        <span id="assign_student_course">-</span>
+                        <span>&bull;</span>
+                        <span id="assign_student_slot">-</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="select_batch_id">Select Batch *</label>
+                    <select name="batch_id" id="select_batch_id" class="form-input" required>
+                        <option value="">-- Choose a Batch --</option>
+                        <option value="unassign" style="color: #ef4444;">-- Remove from Batch (Mark Not Assigned) --</option>
+                        {% for b in batches %}
+                        <option value="{{ b.id }}" data-slot="{{ b.time_slot }}">{{ b.name }} ({{ b.time_slot }}{% if b.course %} &bull; {{ b.course }}{% endif %}{% if b.faculty %} &bull; {{ b.faculty.name }}{% endif %})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-footer-custom" style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <button type="button" class="btn-secondary" onclick="closeAssignModal();">Cancel</button>
+                <button type="submit" class="btn-primary">
+                    <i class="fa-solid fa-check"></i> Assign Batch
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<style>
+.student-dropdown-item:hover {
+    background: rgba(79, 70, 229, 0.08) !important;
+}
+#studentDropdownTrigger:hover {
+    border-color: var(--primary) !important;
+}
+</style>
+
+<script>
+// Helper to extract digits & normalize slot formats for bulletproof matching
+function getHoursAndPeriod(s) {
+    if (!s) return { hours: [], periods: [] };
+    const clean = s.toLowerCase().trim();
+    const hourMatches = clean.match(/(\d{1,2})(?::\d{2})?/g) || [];
+    const hours = hourMatches.map(m => parseInt(m.split(':')[0], 10));
+    const periods = clean.match(/(am|pm)/g) || [];
+    return { hours, periods };
+}
+
+function slotsMatch(studentSlot, selectedSlot) {
+    if (!selectedSlot) return true;
+    if (!studentSlot) return false;
+
+    const s1 = studentSlot.trim().toLowerCase();
+    const s2 = selectedSlot.trim().toLowerCase();
+    if (s1 === s2) return true;
+
+    const d1 = getHoursAndPeriod(s1);
+    const d2 = getHoursAndPeriod(s2);
+
+    if (d1.hours.length >= 2 && d2.hours.length >= 2) {
+        if (d1.hours[0] === d2.hours[0] && d1.hours[1] === d2.hours[1]) {
+            if (d1.periods.length > 0 && d2.periods.length > 0) {
+                if (d1.periods.join('-') !== d2.periods.join('-')) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+// Student Dropdown Toggle & Close
+function toggleStudentDropdown(e) {
+    if (e) e.stopPropagation();
+    const panel = document.getElementById('studentDropdownPanel');
+    const chevron = document.getElementById('studentDropdownChevron');
+    if (!panel) return;
+    const isHidden = panel.style.display === 'none' || !panel.style.display;
+    if (isHidden) {
+        panel.style.display = 'block';
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+        const searchInput = document.getElementById('studentSearchInput');
+        if (searchInput) {
+            searchInput.focus();
+        }
+    } else {
+        closeStudentDropdown();
+    }
+}
+
+function closeStudentDropdown() {
+    const panel = document.getElementById('studentDropdownPanel');
+    const chevron = document.getElementById('studentDropdownChevron');
+    if (panel) panel.style.display = 'none';
+    if (chevron) chevron.style.transform = 'rotate(0deg)';
+}
+
+function onBatchSlotChange() {
+    const searchInput = document.getElementById('studentSearchInput');
+    if (searchInput) searchInput.value = '';
+    filterStudentDropdownList();
+    updateSelectedStudentSummary();
+}
+
+function filterStudentDropdownList() {
+    const slotSelect = document.getElementById('batch_slot');
+    const selectedSlot = slotSelect ? slotSelect.value.trim() : '';
+    const searchInput = document.getElementById('studentSearchInput');
+    const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+    const items = document.querySelectorAll('.student-dropdown-item');
+    const noSlotPrompt = document.getElementById('noSlotPromptMsg');
+    const noMatchingSlot = document.getElementById('noMatchingStudentsMsg');
+    const noMatchingSlotText = document.getElementById('noMatchingSlotText');
+    const noSearchMatch = document.getElementById('noSearchMatchMsg');
+    const searchQueryText = document.getElementById('searchQueryText');
+    const toolbar = document.getElementById('studentDropdownToolbar');
+    const countText = document.getElementById('studentMatchCountText');
+
+    if (!selectedSlot) {
+        items.forEach(function(item) {
+            item.style.display = 'none';
+            const cb = item.querySelector('.student-item-checkbox');
+            if (cb) cb.checked = false;
+        });
+        if (noSlotPrompt) noSlotPrompt.style.display = 'block';
+        if (noMatchingSlot) noMatchingSlot.style.display = 'none';
+        if (noSearchMatch) noSearchMatch.style.display = 'none';
+        if (toolbar) toolbar.style.display = 'none';
+        if (countText) countText.textContent = 'Please choose a time slot';
+        return;
+    }
+
+    if (noSlotPrompt) noSlotPrompt.style.display = 'none';
+
+    let slotMatchCount = 0;
+    let visibleCount = 0;
+
+    items.forEach(function(item) {
+        const studentSlot = item.getAttribute('data-slot') || '';
+        const sMatches = slotsMatch(studentSlot, selectedSlot);
+        const cb = item.querySelector('.student-item-checkbox');
+
+        if (!sMatches) {
+            item.style.display = 'none';
+            if (cb) cb.checked = false;
+            return;
+        }
+
+        slotMatchCount++;
+
+        const name = (item.getAttribute('data-name') || '').toLowerCase();
+        const course = (item.getAttribute('data-course') || '').toLowerCase();
+        const searchMatches = !query || name.includes(query) || course.includes(query);
+
+        if (searchMatches) {
+            item.style.display = 'flex';
+            visibleCount++;
+        } else {
+            item.style.display = 'none';
+        }
+    });
+
+    if (slotMatchCount === 0) {
+        if (noMatchingSlot) {
+            noMatchingSlot.style.display = 'block';
+            if (noMatchingSlotText) noMatchingSlotText.textContent = selectedSlot;
+        }
+        if (noSearchMatch) noSearchMatch.style.display = 'none';
+        if (toolbar) toolbar.style.display = 'none';
+        if (countText) countText.textContent = '0 students';
+    } else if (visibleCount === 0) {
+        if (noMatchingSlot) noMatchingSlot.style.display = 'none';
+        if (noSearchMatch) {
+            noSearchMatch.style.display = 'block';
+            if (searchQueryText) searchQueryText.textContent = query;
+        }
+        if (toolbar) toolbar.style.display = 'flex';
+        if (countText) countText.textContent = '0 matching search';
+    } else {
+        if (noMatchingSlot) noMatchingSlot.style.display = 'none';
+        if (noSearchMatch) noSearchMatch.style.display = 'none';
+        if (toolbar) toolbar.style.display = 'flex';
+        if (countText) countText.textContent = visibleCount + ' student' + (visibleCount > 1 ? 's' : '') + ' available';
+    }
+}
+
+function onStudentCheckboxChange() {
+    updateSelectedStudentSummary();
+}
+
+function uncheckStudent(studentId) {
+    const cb = document.querySelector('.student-item-checkbox[value="' + studentId + '"]');
+    if (cb) {
+        cb.checked = false;
+        updateSelectedStudentSummary();
+    }
+}
+
+function selectAllVisibleStudents(check) {
+    const items = document.querySelectorAll('.student-dropdown-item');
+    items.forEach(function(item) {
+        if (item.style.display !== 'none') {
+            const cb = item.querySelector('.student-item-checkbox');
+            if (cb) cb.checked = check;
+        }
+    });
+    updateSelectedStudentSummary();
+}
+
+function updateSelectedStudentSummary() {
+    const checkedCheckboxes = document.querySelectorAll('.student-item-checkbox:checked');
+    const selectedCount = checkedCheckboxes.length;
+    const triggerText = document.getElementById('studentDropdownTriggerText');
+    const badge = document.getElementById('studentDropdownBadge');
+    const chipsContainer = document.getElementById('selectedStudentChipsContainer');
+    const slotSelect = document.getElementById('batch_slot');
+    const selectedSlot = slotSelect ? slotSelect.value.trim() : '';
+
+    // Render selected chips
+    if (chipsContainer) {
+        chipsContainer.innerHTML = '';
+        checkedCheckboxes.forEach(function(cb) {
+            const item = cb.closest('.student-dropdown-item');
+            if (!item) return;
+            const name = item.getAttribute('data-name') || '';
+            const course = item.getAttribute('data-course') || '';
+            const id = cb.value;
+
+            const chip = document.createElement('span');
+            chip.className = 'badge';
+            chip.style.cssText = 'background: rgba(79, 70, 229, 0.1); color: var(--primary); border: 1px solid rgba(79, 70, 229, 0.25); padding: 4px 8px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px;';
+            chip.innerHTML = '<i class="fa-solid fa-user" style="font-size: 0.65rem;"></i>' +
+                '<strong>' + escapeHtml(name) + '</strong>' +
+                (course ? '<span style="color: var(--text-muted); font-size: 0.7rem;">(' + escapeHtml(course) + ')</span>' : '') +
+                '<i class="fa-solid fa-xmark" style="cursor: pointer; margin-left: 2px; padding: 2px; opacity: 0.7;" title="Remove student" onclick="uncheckStudent(\'' + id + '\');"></i>';
+            chipsContainer.appendChild(chip);
+        });
+    }
+
+    // Update Trigger Text & Badge
+    if (triggerText) {
+        if (selectedCount === 0) {
+            if (!selectedSlot) {
+                triggerText.textContent = 'Select time slot first to view students...';
+                triggerText.style.color = 'var(--text-muted)';
+                triggerText.style.fontWeight = 'normal';
+            } else {
+                triggerText.textContent = 'Select students from ' + selectedSlot + '...';
+                triggerText.style.color = 'var(--text-muted)';
+                triggerText.style.fontWeight = 'normal';
+            }
+        } else if (selectedCount === 1) {
+            const firstItem = checkedCheckboxes[0].closest('.student-dropdown-item');
+            const firstName = firstItem ? firstItem.getAttribute('data-name') : 'Student';
+            triggerText.textContent = '1 student selected: ' + firstName;
+            triggerText.style.color = 'var(--text-primary)';
+            triggerText.style.fontWeight = '600';
+        } else {
+            triggerText.textContent = selectedCount + ' students selected';
+            triggerText.style.color = 'var(--text-primary)';
+            triggerText.style.fontWeight = '600';
+        }
+    }
+
+    if (badge) {
+        if (selectedCount > 0) {
+            badge.style.display = 'inline-flex';
+            badge.textContent = selectedCount + ' selected';
+            badge.style.background = 'rgba(16, 185, 129, 0.15)';
+            badge.style.color = '#10b981';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+function openCreateBatchModal(defaultSlot) {
+    const slotSelect = document.getElementById('batch_slot');
+    if (slotSelect) {
+        if (defaultSlot) {
+            slotSelect.value = defaultSlot;
+        } else if (!slotSelect.value && slotSelect.options.length > 1) {
+            slotSelect.selectedIndex = 1;
+        }
+    }
+    closeStudentDropdown();
+    onBatchSlotChange();
+    document.getElementById('createBatchModal').classList.add('show');
+}
+function closeCreateBatchModal() {
+    closeStudentDropdown();
+    document.getElementById('createBatchModal').classList.remove('show');
+}
+
+function openEditBatchModal(batchId, name, course, slot, facultyId, description, studentIds) {
+    const modal = document.getElementById('editBatchModal');
+    const form = document.getElementById('editBatchForm');
+    form.action = '/management/batches/' + batchId + '/edit/';
+    document.getElementById('edit_batch_name').value = name;
+    document.getElementById('edit_batch_course').value = course || '';
+    document.getElementById('edit_batch_slot').value = slot;
+    document.getElementById('edit_batch_faculty').value = facultyId || '';
+    modal.classList.add('show');
+}
+function closeEditBatchModal() {
+    document.getElementById('editBatchModal').classList.remove('show');
+}
+
+function openAssignModal(studentId, name, slot, course) {
+    document.getElementById('assign_student_id').value = studentId;
+    document.getElementById('assign_student_name').textContent = name;
+    document.getElementById('assign_student_slot').textContent = slot || 'No Slot';
+    document.getElementById('assign_student_course').textContent = course || 'General';
+
+    // Highlight or mark batches matching the student's slot
+    const select = document.getElementById('select_batch_id');
+    if (select) {
+        select.value = '';
+        Array.from(select.options).forEach(opt => {
+            const batchSlot = opt.getAttribute('data-slot');
+            if (!batchSlot) return;
+            const originalText = opt.getAttribute('data-base-text') || opt.textContent;
+            if (!opt.getAttribute('data-base-text')) {
+                opt.setAttribute('data-base-text', originalText);
+            }
+            if (slot && slotsMatch(slot, batchSlot)) {
+                opt.textContent = '★ [Matching Slot] ' + originalText;
+                opt.style.fontWeight = '700';
+            } else {
+                opt.textContent = originalText;
+                opt.style.fontWeight = 'normal';
+            }
+        });
+    }
+
+    document.getElementById('assignStudentModal').classList.add('show');
+}
+function closeAssignModal() {
+    document.getElementById('assignStudentModal').classList.remove('show');
+}
+
+window.addEventListener('click', function(e) {
+    ['createBatchModal', 'editBatchModal', 'assignStudentModal'].forEach(id => {
+        const m = document.getElementById(id);
+        if (m && e.target === m) {
+            m.classList.remove('show');
+            closeStudentDropdown();
+        }
+    });
+
+    // Close student dropdown if clicked outside wrapper
+    const wrapper = document.getElementById('studentDropdownWrapper');
+    if (wrapper && !wrapper.contains(e.target)) {
+        closeStudentDropdown();
+    }
+});
+window.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        ['createBatchModal', 'editBatchModal', 'assignStudentModal'].forEach(id => {
+            const m = document.getElementById(id);
+            if (m) m.classList.remove('show');
+        });
+        closeStudentDropdown();
+    }
+});
+</script>
+{% endblock %}

@@ -21,6 +21,17 @@
             <i class="fa-solid fa-arrow-left"></i>
             <span>Students Roster</span>
         </a>
+        {% if student.is_on_leave %}
+        <button type="button" class="btn-warning" onclick="openLeaveModal('{{ student.id }}', '{{ student.name|escapejs }}', true, '{{ student.leave_reason|escapejs }}', '{{ student.leave_start_date|date:"Y-m-d"|default:"" }}', '{{ student.leave_end_date|date:"Y-m-d"|default:"" }}');" style="display: inline-flex; align-items: center; gap: 0.4rem; background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.4); padding: 0.55rem 1rem; border-radius: 6px; font-weight: 600; cursor: pointer;">
+            <i class="fa-solid fa-user-clock"></i>
+            <span>On Leave (Manage)</span>
+        </button>
+        {% else %}
+        <button type="button" class="btn-secondary" onclick="openLeaveModal('{{ student.id }}', '{{ student.name|escapejs }}', false, '', '', '');" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.55rem 1rem; border-radius: 6px; font-weight: 600; cursor: pointer;">
+            <i class="fa-solid fa-plane-departure"></i>
+            <span>Mark On Leave</span>
+        </button>
+        {% endif %}
         <a href="{% url 'admin_student_edit' student.id %}?next=detail" class="btn-primary">
             <i class="fa-solid fa-pen-to-square"></i>
             <span>Edit Profile</span>
@@ -42,9 +53,15 @@
             <div style="flex: 1;">
                 <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.4rem;">
                     <h2 style="font-size: 1.65rem; color: var(--text-primary); margin: 0;">{{ student.name }}</h2>
+                    {% if student.is_on_leave %}
+                    <span class="dossier-btn-dark warning" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border-color: rgba(245, 158, 11, 0.4);">
+                        <i class="fa-solid fa-plane-departure"></i> On Leave
+                    </span>
+                    {% else %}
                     <span class="dossier-btn-dark success">
                         <i class="fa-solid fa-circle-check"></i> Active Student
                     </span>
+                    {% endif %}
                 </div>
                 <div style="display: flex; gap: 0.85rem 1.25rem; align-items: center; flex-wrap: wrap; color: var(--text-secondary); font-size: 0.88rem;">
                     <span style="display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;">
@@ -65,6 +82,15 @@
                         {% endfor %}
                     </span>
                     <span>&bull;</span>
+                    <span style="display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-layer-group" style="color: var(--primary);"></i>
+                        {% if student.is_batch_assigned %}
+                        Batch: <span class="dossier-btn-dark primary" style="font-size: 0.75rem; padding: 0.15rem 0.55rem;">{{ student.batch_display }}</span>
+                        {% else %}
+                        Batch: <span class="dossier-btn-dark warning" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border-color: rgba(245, 158, 11, 0.35); font-size: 0.75rem; padding: 0.15rem 0.55rem;"><i class="fa-solid fa-triangle-exclamation"></i> Not Assigned</span>
+                        {% endif %}
+                    </span>
+                    <span>&bull;</span>
                     <span style="display: inline-flex; align-items: center; gap: 5px;">
                         <i class="fa-solid fa-chalkboard-user" style="color: var(--primary);"></i>
                         Faculty: <strong>{{ student.faculty_display }}</strong>
@@ -77,6 +103,16 @@
                     {% endif %}
                     <span>&bull;</span>
                     <span><i class="fa-solid fa-calendar-days" style="color: var(--primary); margin-right: 4px;"></i> Registered {{ student.created_at|date:"M d, Y" }}</span>
+                    {% if student.is_on_leave %}
+                    <span>&bull;</span>
+                    <span style="color: #d97706; font-weight: 600;">
+                        <i class="fa-solid fa-user-clock" style="color: #d97706; margin-right: 4px;"></i>
+                        Leave: {{ student.leave_reason|default:"On Leave" }}
+                        {% if student.leave_start_date %}
+                            ({{ student.leave_start_date|date:"M d" }}{% if student.leave_end_date %} to {{ student.leave_end_date|date:"M d, Y" }}{% else %} onwards{% endif %})
+                        {% endif %}
+                    </span>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -385,4 +421,183 @@
     </div>
     {% endif %}
 </div>
+
+<!-- ================= MODAL: STUDENT ON LEAVE ================= -->
+<div id="leaveModal" class="modal-backdrop-custom">
+    <div class="modal-dialog-custom" style="max-width: 500px;">
+        <div class="modal-header-custom">
+            <div>
+                <h2 class="modal-title-custom" id="leaveModalTitle">
+                    <i class="fa-solid fa-plane-departure" style="color: var(--primary); margin-right: 6px;"></i> Mark Student On Leave
+                </h2>
+                <small style="font-size: 0.78rem; color: var(--text-muted);" id="leaveModalSubtitle">
+                    Record leave duration and attendance status
+                </small>
+            </div>
+            <button type="button" class="toast-close" onclick="closeLeaveModal();" aria-label="Close dialog">
+                <i class="fa-solid fa-xmark" style="font-size: 1.1rem;"></i>
+            </button>
+        </div>
+
+        <form id="leaveModalForm" method="POST" action="">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            
+            <div class="modal-body-custom" style="padding: 1.25rem 1.5rem;">
+                <!-- Student Info Banner -->
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; border-radius: 8px; background: var(--bg-main); border: 1px solid var(--border-color); margin-bottom: 1.25rem;">
+                    <div>
+                        <small style="text-transform: uppercase; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); display: block; letter-spacing: 0.05em;">Student</small>
+                        <strong id="leaveStudentName" style="color: var(--text-primary); font-size: 1rem;">-</strong>
+                    </div>
+                    <span id="leaveStatusBadge" class="badge" style="display: none;"></span>
+                </div>
+
+                <!-- Existing Leave Banner (Only shown if already on leave) -->
+                <div id="existingLeaveBanner" style="display: none; padding: 0.85rem 1rem; border-radius: 8px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); margin-bottom: 1.25rem;">
+                    <div style="display: flex; align-items: flex-start; gap: 0.6rem;">
+                        <i class="fa-solid fa-circle-exclamation" style="color: #d97706; margin-top: 2px;"></i>
+                        <div style="flex: 1; font-size: 0.82rem; color: var(--text-primary);">
+                            <strong>Currently On Leave</strong>
+                            <div id="existingLeaveDetails" style="color: var(--text-secondary); margin-top: 3px; font-size: 0.78rem;"></div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed rgba(245, 158, 11, 0.3); display: flex; justify-content: flex-end;">
+                        <button type="submit" name="action" value="mark_active" class="btn-success" style="font-size: 0.82rem; padding: 0.4rem 0.85rem; display: inline-flex; align-items: center; gap: 0.4rem;">
+                            <i class="fa-solid fa-user-check"></i> Mark as Active (Resume Classes)
+                        </button>
+                    </div>
+                </div>
+
+                <div id="leaveUpdateHeader" style="display: none; margin-bottom: 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">
+                    Or Update Leave Period:
+                </div>
+
+                <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label class="form-label" for="leave_reason">Leave Reason / Notes</label>
+                        <input type="text" id="leave_reason" name="leave_reason" class="form-input" placeholder="e.g. Medical reasons, Family function, Out of town..." autocomplete="off">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="leave_start_date">Start Date *</label>
+                        <input type="date" id="leave_start_date" name="leave_start_date" class="form-input" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="leave_end_date">End Date <small style="color: var(--text-muted);">(Optional)</small></label>
+                        <input type="date" id="leave_end_date" name="leave_end_date" class="form-input">
+                    </div>
+
+                    <div class="form-group" id="attendanceCheckboxGroup" style="grid-column: span 2; margin-top: 0.25rem;">
+                        <label style="display: flex; align-items: center; gap: 0.65rem; font-size: 0.85rem; color: var(--text-primary); cursor: pointer; user-select: none;">
+                            <input type="checkbox" name="mark_attendance_leave" value="1" checked style="width: 16px; height: 16px; accent-color: var(--primary);">
+                            <span>Mark today's attendance as <strong>Leave</strong></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer-custom" style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <button type="button" class="btn-secondary" onclick="closeLeaveModal();">Cancel</button>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button type="submit" name="action" value="mark_leave" id="leaveSubmitBtn" class="btn-primary" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                        <i class="fa-solid fa-plane-departure"></i> <span>Mark On Leave</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openLeaveModal(studentId, studentName, isOnLeave, leaveReason, leaveStart, leaveEnd) {
+    const modal = document.getElementById('leaveModal');
+    const form = document.getElementById('leaveModalForm');
+    const title = document.getElementById('leaveModalTitle');
+    const subtitle = document.getElementById('leaveModalSubtitle');
+    const nameEl = document.getElementById('leaveStudentName');
+    const badgeEl = document.getElementById('leaveStatusBadge');
+    const existingBanner = document.getElementById('existingLeaveBanner');
+    const existingDetails = document.getElementById('existingLeaveDetails');
+    const updateHeader = document.getElementById('leaveUpdateHeader');
+    const reasonInput = document.getElementById('leave_reason');
+    const startInput = document.getElementById('leave_start_date');
+    const endInput = document.getElementById('leave_end_date');
+    const submitBtn = document.getElementById('leaveSubmitBtn');
+    const attGroup = document.getElementById('attendanceCheckboxGroup');
+
+    form.action = '/management/students/' + studentId + '/leave/';
+    nameEl.textContent = studentName;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    if (isOnLeave) {
+        title.innerHTML = '<i class="fa-solid fa-user-clock" style="color: #d97706; margin-right: 6px;"></i> Manage Leave Status';
+        subtitle.textContent = 'Student is currently marked On Leave';
+        badgeEl.style.display = 'inline-block';
+        badgeEl.className = 'badge';
+        badgeEl.style.background = 'rgba(245, 158, 11, 0.15)';
+        badgeEl.style.color = '#d97706';
+        badgeEl.style.border = '1px solid rgba(245, 158, 11, 0.3)';
+        badgeEl.innerHTML = '<i class="fa-solid fa-plane-departure"></i> On Leave';
+
+        existingBanner.style.display = 'block';
+        let detailText = leaveReason ? ('Reason: ' + leaveReason) : 'Reason: Not specified';
+        if (leaveStart) {
+            detailText += ' | From: ' + leaveStart;
+            if (leaveEnd) detailText += ' to ' + leaveEnd;
+        }
+        existingDetails.textContent = detailText;
+
+        updateHeader.style.display = 'block';
+        reasonInput.value = leaveReason || '';
+        startInput.value = leaveStart || todayStr;
+        endInput.value = leaveEnd || '';
+        submitBtn.className = 'btn-primary';
+        submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> <span>Update Leave Details</span>';
+        if (attGroup) attGroup.style.display = 'none';
+    } else {
+        title.innerHTML = '<i class="fa-solid fa-plane-departure" style="color: var(--primary); margin-right: 6px;"></i> Mark Student On Leave';
+        subtitle.textContent = 'Record leave period and mark attendance status';
+        badgeEl.style.display = 'inline-block';
+        badgeEl.className = 'badge';
+        badgeEl.style.background = 'rgba(16, 185, 129, 0.15)';
+        badgeEl.style.color = '#059669';
+        badgeEl.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+        badgeEl.innerHTML = '<i class="fa-solid fa-circle-check"></i> Currently Active';
+
+        existingBanner.style.display = 'none';
+        updateHeader.style.display = 'none';
+        reasonInput.value = '';
+        startInput.value = todayStr;
+        endInput.value = '';
+        submitBtn.className = 'btn-primary';
+        submitBtn.innerHTML = '<i class="fa-solid fa-plane-departure"></i> <span>Mark On Leave</span>';
+        if (attGroup) attGroup.style.display = 'block';
+    }
+
+    modal.classList.add('show');
+}
+
+function closeLeaveModal() {
+    const modal = document.getElementById('leaveModal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+window.addEventListener('click', function(e) {
+    const modal = document.getElementById('leaveModal');
+    if (e.target === modal) {
+        closeLeaveModal();
+    }
+});
+window.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeLeaveModal();
+    }
+});
+</script>
+
 {% endblock %}

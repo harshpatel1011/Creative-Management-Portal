@@ -64,6 +64,10 @@
                     <i class="fa-solid fa-user-graduate"></i>
                     <span>Students</span>
                 </a>
+                <a href="{% url 'admin_batch_list' %}" class="dossier-btn {% if 'admin_batch_list' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <span>Batches</span>
+                </a>
                 <a href="{% url 'admin_attendance_hub' %}" class="dossier-btn {% if 'attendance' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="fa-solid fa-clipboard-user"></i>
                     <span>Batch Attendance</span>
@@ -94,37 +98,7 @@
                     <i class="fa-solid fa-users-gear"></i>
                     <span>Administrators</span>
                 </a>
-
-                <div class="nav-section-title">Account</div>
-                <a href="{% url 'admin_profile' %}" class="dossier-btn {% if request.resolver_match.url_name == 'admin_profile' %}active{% endif %}">
-                    <i class="fa-solid fa-circle-user"></i>
-                    <span>Profile</span>
-                </a>
-                <a href="{% url 'admin_change_password' %}" class="dossier-btn {% if request.resolver_match.url_name == 'admin_change_password' %}active{% endif %}">
-                    <i class="fa-solid fa-key"></i>
-                    <span>Change Password</span>
-                </a>
-
-                <a href="{% url 'admin_logout' %}" class="dossier-btn danger">
-                    <i class="fa-solid fa-right-from-bracket"></i>
-                    <span>Sign Out</span>
-                </a>
             </nav>
-
-            <!-- Sidebar User Card Footer -->
-            {% if user and user.is_authenticated or user.username %}
-            <div class="sidebar-user-footer">
-                <div class="sidebar-user-avatar">
-                    {{ user.username|default:"A"|slice:":1"|upper }}
-                </div>
-                <div class="sidebar-user-info">
-                    <div class="sidebar-user-name">{{ user.username|default:"Admin" }}</div>
-                    <div class="sidebar-user-role">
-                        {% if user.is_superuser %}Super Administrator{% else %}Staff Manager{% endif %}
-                    </div>
-                </div>
-            </div>
-            {% endif %}
         </aside>
         {% endblock %}
 

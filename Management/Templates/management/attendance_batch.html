@@ -45,6 +45,18 @@
             <option value="{{ slot }}" {% if slot == batch_time %}selected{% endif %}>{{ slot }}</option>
             {% endfor %}
         </select>
+
+        {% if slot_batches %}
+        <label for="batch_id_select" style="font-weight: 600; color: var(--text-primary); font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem; margin-left: 0.5rem;">
+            <i class="fa-solid fa-layer-group" style="color: var(--primary);"></i> Faculty Batch:
+        </label>
+        <select id="batch_id_select" class="form-input" style="padding: 0.45rem 1rem; width: auto; font-weight: 600; border-radius: 8px; cursor: pointer;" onchange="location.href='?batch=' + encodeURIComponent('{{ batch_time }}') + '&batch_id=' + this.value + '&date={{ selected_date_str }}';">
+            <option value="">All Field Batches (Show All in {{ batch_time }})</option>
+            {% for sb in slot_batches %}
+            <option value="{{ sb.id }}" {% if selected_batch_id == sb.id|stringformat:"s" %}selected{% endif %}>{{ sb.name }} ({{ sb.course }} &bull; {{ sb.faculty_display }})</option>
+            {% endfor %}
+        </select>
+        {% endif %}
     </div>
 
     <!-- Date Navigator -->
@@ -85,6 +97,12 @@
             <button type="button" onclick="markAllStatus('Late')" class="btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-color: rgba(245, 158, 11, 0.25);">
                 <i class="fa-solid fa-clock"></i> All Late
             </button>
+            {% if batch_on_leave_count > 0 %}
+            <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35); font-size: 0.78rem; padding: 0.35rem 0.75rem; border-radius: 6px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px;">
+                <i class="fa-solid fa-plane-departure"></i>
+                <span>{{ batch_on_leave_count }} Student{{ batch_on_leave_count|pluralize }} On Leave</span>
+            </span>
+            {% endif %}
         </div>
 
         <!-- Real-time Counter Badge & Search Filter -->
@@ -117,7 +135,7 @@
                 </thead>
                 <tbody id="student_table_body">
                     {% for row in student_rows %}
-                    <tr class="student-row" data-name="{{ row.student.name|lower }}" style="border-bottom: 1px solid var(--border-color); transition: background 0.15s ease;">
+                    <tr class="student-row {% if row.is_on_leave_date %}row-on-leave{% endif %}" data-name="{{ row.student.name|lower }}" data-on-leave="{% if row.is_on_leave_date %}true{% else %}false{% endif %}" style="border-bottom: 1px solid var(--border-color); transition: background 0.15s ease; {% if row.is_on_leave_date %}background: rgba(245, 158, 11, 0.04);{% endif %}">
                         <!-- Counter -->
                         <td style="padding: 1rem 1.25rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
                             {{ forloop.counter }}
@@ -126,16 +144,34 @@
                         <!-- Student Avatar & Name -->
                         <td style="padding: 1rem 1.25rem;">
                             <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                <div style="width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, var(--primary) 0%, var(--accent-cyan) 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.95rem; flex-shrink: 0;">
+                                <div style="width: 38px; height: 38px; border-radius: 50%; background: {% if row.is_on_leave_date %}linear-gradient(135deg, #f59e0b 0%, #d97706 100%){% else %}linear-gradient(135deg, var(--primary) 0%, var(--accent-cyan) 100%){% endif %}; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.95rem; flex-shrink: 0; position: relative;">
                                     {{ row.student.name|slice:":1"|upper }}
+                                    {% if row.is_on_leave_date %}
+                                    <span title="On Leave" style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #f59e0b; border: 2px solid var(--bg-surface);"></span>
+                                    {% endif %}
                                 </div>
                                 <div>
-                                    <a href="{% url 'admin_student_detail' row.student.id %}" style="font-weight: 700; color: var(--text-primary); text-decoration: none; font-size: 0.92rem; display: block;" target="_blank">
-                                        {{ row.student.name }} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.65rem; color: var(--text-muted);"></i>
-                                    </a>
+                                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                        <a href="{% url 'admin_student_detail' row.student.id %}" style="font-weight: 700; color: var(--text-primary); text-decoration: none; font-size: 0.92rem;" target="_blank">
+                                            {{ row.student.name }} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.65rem; color: var(--text-muted);"></i>
+                                        </a>
+                                        {% if row.is_on_leave_date %}
+                                        <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.4); font-size: 0.7rem; padding: 2px 7px; border-radius: 9999px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px;">
+                                            <i class="fa-solid fa-plane-departure" style="font-size: 0.62rem;"></i> On Leave
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    {% if row.is_on_leave_date %}
+                                    <div style="color: #d97706; font-size: 0.75rem; font-weight: 600; margin-top: 2px;">
+                                        <i class="fa-solid fa-calendar-days" style="font-size: 0.68rem; margin-right: 3px;"></i>
+                                        Leave: {{ row.student.leave_start_date|date:"M d" }}{% if row.student.leave_end_date %} to {{ row.student.leave_end_date|date:"M d" }}{% endif %}
+                                        {% if row.student.leave_reason %} &bull; <em>{{ row.student.leave_reason }}</em>{% endif %}
+                                    </div>
+                                    {% else %}
                                     <small style="color: var(--text-muted); font-size: 0.75rem;">
                                         {{ row.student.email }}
                                     </small>
+                                    {% endif %}
                                 </div>
                             </div>
                         </td>
@@ -302,9 +338,15 @@
 
 <script>
 function markAllStatus(statusValue) {
-    const inputs = document.querySelectorAll(`input.status-input[value="${statusValue}"]`);
-    inputs.forEach(input => {
-        input.checked = true;
+    const rows = document.querySelectorAll('#student_table_body tr.student-row');
+    rows.forEach(row => {
+        if (row.getAttribute('data-on-leave') === 'true' && statusValue !== 'Leave') {
+            return; // Preserve leave status for students on leave
+        }
+        const input = row.querySelector(`input.status-input[value="${statusValue}"]`);
+        if (input) {
+            input.checked = true;
+        }
     });
 }
 
