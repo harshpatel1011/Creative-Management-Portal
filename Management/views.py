@@ -173,6 +173,16 @@ def admin_change_password_view(request):
 # --- ADMIN DASHBOARD & STUDENTS ---
 
 
+def format_slot_short(slot):
+    clean = slot.lower().replace("am", "").replace("pm", "").strip()
+    parts = clean.split("to")
+    if len(parts) == 2:
+        p1 = parts[0].strip().replace(":00", "").lstrip("0") or "0"
+        p2 = parts[1].strip().replace(":00", "").lstrip("0") or "0"
+        return f"{p1} to {p2}"
+    return slot
+
+
 def admin_dashboard_view(request):
     user = get_current_admin(request)
     if not user:
@@ -198,6 +208,65 @@ def admin_dashboard_view(request):
         else 0
     )
 
+    # Build Batches Schedule Matrix (Faculty vs Time Slots)
+    class_time_choices = [c[0] for c in Student.CLASS_TIME_CHOICES]
+    time_slots = [{"full": s, "short": format_slot_short(s)} for s in class_time_choices]
+    faculties = Faculty.objects.filter(is_active=True).order_by("department", "name")
+    active_batches = list(
+        Batch.objects.filter(is_active=True)
+        .select_related("faculty")
+        .prefetch_related("students")
+    )
+
+    faculty_batch_matrix = []
+    for f in faculties:
+        row_slots = []
+        for slot in class_time_choices:
+            slot_batches = [
+                b for b in active_batches
+                if b.faculty_id == f.id and b.time_slot.strip().lower() == slot.strip().lower()
+            ]
+            row_slots.append({
+                "slot": slot,
+                "batches": slot_batches,
+                "has_batches": len(slot_batches) > 0,
+            })
+        total_b = sum(len(s["batches"]) for s in row_slots)
+        total_s = sum(sum(b.student_count for b in s["batches"]) for s in row_slots)
+        faculty_batch_matrix.append({
+            "faculty": f,
+            "faculty_name": f.name,
+            "faculty_dept": f.department,
+            "slots": row_slots,
+            "total_batches": total_b,
+            "total_students": total_s,
+        })
+
+    # Include unassigned faculty batches if any exist
+    unassigned_faculty_batches = [b for b in active_batches if not b.faculty_id]
+    if unassigned_faculty_batches:
+        unassigned_slots = []
+        for slot in class_time_choices:
+            slot_batches = [
+                b for b in unassigned_faculty_batches
+                if b.time_slot.strip().lower() == slot.strip().lower()
+            ]
+            unassigned_slots.append({
+                "slot": slot,
+                "batches": slot_batches,
+                "has_batches": len(slot_batches) > 0,
+            })
+        total_b = sum(len(s["batches"]) for s in unassigned_slots)
+        total_s = sum(sum(b.student_count for b in s["batches"]) for s in unassigned_slots)
+        faculty_batch_matrix.append({
+            "faculty": None,
+            "faculty_name": "Unassigned Instructor",
+            "faculty_dept": "Open Batches",
+            "slots": unassigned_slots,
+            "total_batches": total_b,
+            "total_students": total_s,
+        })
+
     context = {
         "user": user,
         "total_students": students.count(),
@@ -214,6 +283,9 @@ def admin_dashboard_view(request):
         "today_absent": today_absent,
         "today_late": today_late,
         "today_attendance_pct": today_attendance_pct,
+        "time_slots": time_slots,
+        "faculty_batch_matrix": faculty_batch_matrix,
+        "total_active_batches": len(active_batches),
     }
     return render(request, "management/dashboard.html", context)
 
@@ -1635,62 +1707,80 @@ def admin_batch_transfer_view(request):
     if not user:
         return redirect("admin_login")
 
-    class_time_choices = [c[0] for c in Student.CLASS_TIME_CHOICES]
-
-    # Calculate student count per batch
-    batch_stats = []
-    for slot in class_time_choices:
-        cnt = Student.objects.filter(
-            Q(class_time__icontains=slot) | Q(enrolled_batches__batch_time=slot)
-        ).distinct().count()
-        batch_stats.append({
-            "slot": slot,
-            "count": cnt,
-        })
+    all_batches = (
+        Batch.objects.filter(is_active=True)
+        .select_related("faculty")
+        .prefetch_related("students")
+        .order_by("time_slot", "name")
+    )
+    unassigned_count = Student.objects.filter(assigned_batch__isnull=True).count()
 
     if request.method == "POST":
-        source_batch = request.POST.get("source_batch", "").strip()
-        target_batch = request.POST.get("target_batch", "").strip()
+        source_batch_param = request.POST.get("source_batch", "").strip()
+        target_batch_param = request.POST.get("target_batch", "").strip()
         selected_student_ids = request.POST.getlist("student_ids")
 
-        if not source_batch:
-            messages.error(request, "Please select the source batch timing.")
-            return redirect(f"{reverse('admin_batch_transfer')}?source_batch={source_batch}&target_batch={target_batch}")
+        if not source_batch_param:
+            messages.error(request, "Please select the source batch.")
+            return redirect(f"{reverse('admin_batch_transfer')}?source_batch={source_batch_param}&target_batch={target_batch_param}")
 
-        if not target_batch:
-            messages.error(request, "Please select the destination (target) batch timing.")
-            return redirect(f"{reverse('admin_batch_transfer')}?source_batch={source_batch}&target_batch={target_batch}")
+        if not target_batch_param:
+            messages.error(request, "Please select the destination (target) batch.")
+            return redirect(f"{reverse('admin_batch_transfer')}?source_batch={source_batch_param}&target_batch={target_batch_param}")
 
-        if source_batch == target_batch:
-            messages.error(request, "Source and destination batch timings cannot be the same.")
-            return redirect(f"{reverse('admin_batch_transfer')}?source_batch={source_batch}&target_batch={target_batch}")
+        if source_batch_param == target_batch_param:
+            messages.error(request, "Source and destination batches cannot be the same.")
+            return redirect(f"{reverse('admin_batch_transfer')}?source_batch={source_batch_param}&target_batch={target_batch_param}")
 
         if not selected_student_ids:
             messages.error(request, "Please select at least one student to transfer.")
-            return redirect(f"{reverse('admin_batch_transfer')}?source_batch={source_batch}&target_batch={target_batch}")
+            return redirect(f"{reverse('admin_batch_transfer')}?source_batch={source_batch_param}&target_batch={target_batch_param}")
+
+        # Resolve Source Batch
+        source_batch_obj = None
+        if source_batch_param != "unassigned":
+            source_batch_obj = Batch.objects.filter(id=source_batch_param).first()
+            source_display = f"{source_batch_obj.name} ({source_batch_obj.time_slot})" if source_batch_obj else "Source Batch"
+        else:
+            source_display = "Unassigned Students"
+
+        # Resolve Target Batch
+        target_batch_obj = None
+        if target_batch_param != "unassign":
+            target_batch_obj = Batch.objects.filter(id=target_batch_param).first()
+            if not target_batch_obj:
+                messages.error(request, "Destination batch not found.")
+                return redirect(f"{reverse('admin_batch_transfer')}?source_batch={source_batch_param}&target_batch={target_batch_param}")
+            target_display = f"{target_batch_obj.name} ({target_batch_obj.time_slot})"
+        else:
+            target_display = "Unassigned"
 
         students_to_transfer = Student.objects.filter(id__in=selected_student_ids)
         transferred_count = 0
         student_names = []
 
         for student in students_to_transfer:
-            # 1. Update StudentBatch relational records
-            StudentBatch.objects.filter(student=student, batch_time=source_batch).delete()
-            StudentBatch.objects.get_or_create(student=student, batch_time=target_batch)
+            # 1. Remove from all currently assigned batches
+            for b in student.assigned_batches.all():
+                b.students.remove(student)
 
-            # 2. Re-sync Student.class_time field
-            current_batches = list(student.enrolled_batches.values_list("batch_time", flat=True))
-            if not current_batches:
-                existing = [b.strip() for b in student.class_time.split(",") if b.strip()]
-                if source_batch in existing:
-                    existing.remove(source_batch)
-                if target_batch not in existing:
-                    existing.append(target_batch)
-                current_batches = existing
-                for b in current_batches:
-                    StudentBatch.objects.get_or_create(student=student, batch_time=b)
+            # 2. Assign to target batch
+            if target_batch_obj:
+                target_batch_obj.students.add(student)
+                student.assigned_batch = target_batch_obj
+                student.class_time = target_batch_obj.time_slot
 
-            student.class_time = ", ".join(current_batches)
+                # Sync StudentBatch record
+                StudentBatch.objects.filter(student=student).delete()
+                StudentBatch.objects.create(student=student, batch_time=target_batch_obj.time_slot)
+
+                # Sync faculty member if target batch has assigned instructor
+                if target_batch_obj.faculty:
+                    student.faculty_member = target_batch_obj.faculty
+                    student.faculty = target_batch_obj.faculty.name
+            else:
+                student.assigned_batch = None
+
             student.save()
             transferred_count += 1
             student_names.append(student.name)
@@ -1701,41 +1791,57 @@ def admin_batch_transfer_view(request):
 
         messages.success(
             request,
-            f"Successfully transferred {transferred_count} student(s) ({names_preview}) from '{source_batch}' to '{target_batch}'!"
+            f"Successfully transferred {transferred_count} student(s) ({names_preview}) from '{source_display}' to '{target_display}'!"
         )
-        return redirect(f"{reverse('admin_batch_transfer')}?source_batch={target_batch}")
+        redirect_source = target_batch_param if target_batch_param != "unassign" else source_batch_param
+        return redirect(f"{reverse('admin_batch_transfer')}?source_batch={redirect_source}")
 
     # GET request
-    source_batch = request.GET.get("source_batch", "").strip()
-    target_batch = request.GET.get("target_batch", "").strip()
+    source_batch_param = request.GET.get("source_batch", "").strip()
+    target_batch_param = request.GET.get("target_batch", "").strip()
     q = request.GET.get("q", "").strip()
 
-    # If no source_batch is specified in query, pick the first batch that has students, or the first choice
-    if not source_batch and batch_stats:
-        active_batch = next((b for b in batch_stats if b["count"] > 0), None)
-        if active_batch:
-            source_batch = active_batch["slot"]
+    source_batch_obj = None
+    if source_batch_param == "unassigned":
+        source_batch_id = "unassigned"
+    elif source_batch_param:
+        source_batch_obj = Batch.objects.filter(id=source_batch_param, is_active=True).first()
+        source_batch_id = str(source_batch_obj.id) if source_batch_obj else ""
+    else:
+        # Default: Pick the first batch with students, or the first available batch, or unassigned
+        batch_with_students = next((b for b in all_batches if b.student_count > 0), None)
+        if batch_with_students:
+            source_batch_obj = batch_with_students
+            source_batch_id = str(batch_with_students.id)
+        elif all_batches.exists():
+            source_batch_obj = all_batches.first()
+            source_batch_id = str(source_batch_obj.id)
+        elif unassigned_count > 0:
+            source_batch_id = "unassigned"
         else:
-            source_batch = class_time_choices[0]
+            source_batch_id = ""
 
     students = []
-    if source_batch:
-        students_qs = Student.objects.filter(
-            Q(class_time__icontains=source_batch) | Q(enrolled_batches__batch_time=source_batch)
-        ).distinct().order_by("name")
+    if source_batch_id == "unassigned":
+        students_qs = Student.objects.filter(assigned_batch__isnull=True).order_by("name")
+    elif source_batch_obj:
+        students_qs = source_batch_obj.students.all().order_by("name")
+    else:
+        students_qs = Student.objects.none()
 
-        if q:
-            students_qs = students_qs.filter(
-                Q(name__icontains=q) | Q(email__icontains=q) | Q(phone__icontains=q) | Q(course__icontains=q)
-            )
-        students = list(students_qs)
+    if q:
+        students_qs = students_qs.filter(
+            Q(name__icontains=q) | Q(email__icontains=q) | Q(phone__icontains=q) | Q(course__icontains=q)
+        )
+    students = list(students_qs)
 
     context = {
         "user": user,
-        "class_time_choices": class_time_choices,
-        "batch_stats": batch_stats,
-        "source_batch": source_batch,
-        "target_batch": target_batch,
+        "all_batches": all_batches,
+        "unassigned_count": unassigned_count,
+        "source_batch_id": source_batch_id,
+        "source_batch_obj": source_batch_obj,
+        "target_batch_id": target_batch_param,
         "students": students,
         "total_source_students": len(students),
         "q": q,
@@ -2091,7 +2197,8 @@ def admin_batch_list_view(request):
     if not user:
         return redirect("admin_login")
 
-    batches = Batch.objects.filter(is_active=True).prefetch_related('students').select_related('faculty').order_by('time_slot', 'name')
+    all_batches = Batch.objects.filter(is_active=True).prefetch_related('students').select_related('faculty').order_by('time_slot', 'name')
+    batches = all_batches
     
     # Filter parameters
     slot_filter = request.GET.get('slot', '').strip()
@@ -2115,17 +2222,27 @@ def admin_batch_list_view(request):
             | Q(faculty__name__icontains=q)
         )
 
-    # Unassigned students: have time slot but no assigned batch
-    unassigned_students = Student.objects.filter(
+    # All unassigned students who have a time slot (batch assignment is based on time)
+    all_unassigned_students = Student.objects.filter(
         assigned_batch__isnull=True,
         assigned_batches__isnull=True
+    ).exclude(
+        Q(class_time__isnull=True) | Q(class_time__exact='')
     ).distinct().order_by('class_time', 'name')
+
+    # Unassigned students for batch list page: based on time
+    if slot_filter:
+        unassigned_students = all_unassigned_students.filter(
+            Q(class_time__iexact=slot_filter) | Q(class_time__icontains=slot_filter)
+        )
+    else:
+        unassigned_students = all_unassigned_students
 
     total_batches = Batch.objects.filter(is_active=True).count()
     total_assigned_students = Student.objects.filter(
         Q(assigned_batch__isnull=False) | Q(assigned_batches__isnull=False)
     ).distinct().count()
-    total_unassigned_students = unassigned_students.count()
+    total_unassigned_students = all_unassigned_students.count()
 
     class_time_choices = [c[0] for c in Student.CLASS_TIME_CHOICES]
     course_categories = Student.COURSE_CATEGORIES
@@ -2134,7 +2251,9 @@ def admin_batch_list_view(request):
     context = {
         "user": user,
         "batches": batches,
+        "all_batches": all_batches,
         "unassigned_students": unassigned_students,
+        "all_unassigned_students": all_unassigned_students,
         "total_batches": total_batches,
         "total_assigned_students": total_assigned_students,
         "total_unassigned_students": total_unassigned_students,
@@ -2155,8 +2274,6 @@ def admin_batch_create_view(request):
         return redirect("admin_login")
 
     if request.method == "POST":
-        name = request.POST.get("name", "").strip()
-        course = request.POST.get("course", "").strip()
         time_slot = request.POST.get("time_slot", "").strip()
         faculty_id = request.POST.get("faculty_id", "").strip()
         description = request.POST.get("description", "").strip()
@@ -2170,42 +2287,23 @@ def admin_batch_create_view(request):
         if faculty_id and faculty_id.isdigit():
             faculty_member = Faculty.objects.filter(id=int(faculty_id)).first()
 
-        # Auto-generate Batch Name if not provided
-        if not name:
-            if faculty_member:
-                base_name = f"{faculty_member.name} ({time_slot})"
-            else:
-                base_name = f"Batch ({time_slot})"
-
-            name = base_name
-            suffix = 2
-            while Batch.objects.filter(name=name, is_active=True).exists():
-                name = f"{base_name} #{suffix}"
-                suffix += 1
-
-        # Auto-detect Course if not provided
-        if not course and student_ids:
-            enrolled_students_qs = Student.objects.filter(id__in=student_ids)
-            enrolled_courses = list(dict.fromkeys(s.course for s in enrolled_students_qs if s.course))
-            if enrolled_courses:
-                course = ", ".join(enrolled_courses[:2])
-        if not course and faculty_member and faculty_member.department:
-            course = faculty_member.department
-
+        # Batch Name is auto-assigned from its unique Batch ID (e.g. Batch 9, Batch 14)
         batch = Batch.objects.create(
-            name=name,
-            course=course,
+            name="Temporary Batch",
+            course="",
             time_slot=time_slot,
             faculty=faculty_member,
             description=description,
         )
+        batch.name = f"Batch {batch.id}"
+        batch.save(update_fields=["name"])
 
         if student_ids:
             enrolled = Student.objects.filter(id__in=student_ids)
             batch.students.add(*enrolled)
             enrolled.update(assigned_batch=batch)
 
-        messages.success(request, f"Batch '{batch.name}' created successfully with {batch.students.count()} student(s) enrolled!")
+        messages.success(request, f"{batch.name} created successfully with {batch.students.count()} student(s) enrolled!")
         return redirect("admin_batch_list")
 
     return redirect("admin_batch_list")
@@ -2222,23 +2320,22 @@ def admin_batch_edit_view(request, batch_id):
         return redirect("admin_batch_list")
 
     if request.method == "POST":
-        name = request.POST.get("name", "").strip()
-        course = request.POST.get("course", "").strip()
         time_slot = request.POST.get("time_slot", "").strip()
         faculty_id = request.POST.get("faculty_id", "").strip()
         description = request.POST.get("description", "").strip()
         student_ids = request.POST.getlist("student_ids")
 
-        if not name or not time_slot:
-            messages.error(request, "Batch Name and Scheduled Time Slot are required!")
+        if not time_slot:
+            messages.error(request, "Scheduled Time Slot is required!")
             return redirect("admin_batch_list")
 
         faculty_member = None
         if faculty_id and faculty_id.isdigit():
             faculty_member = Faculty.objects.filter(id=int(faculty_id)).first()
 
-        batch.name = name
-        batch.course = course
+        # Batch Name is permanently tied to Batch ID
+        batch.name = f"Batch {batch.id}"
+        batch.course = ""
         batch.time_slot = time_slot
         batch.faculty = faculty_member
         batch.description = description
@@ -2262,7 +2359,7 @@ def admin_batch_edit_view(request, batch_id):
                 batch.students.add(*added_qs)
                 added_qs.update(assigned_batch=batch)
 
-        messages.success(request, f"Batch '{batch.name}' updated successfully.")
+        messages.success(request, f"{batch.name} updated successfully.")
         return redirect("admin_batch_list")
 
     return redirect("admin_batch_list")

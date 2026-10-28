@@ -112,27 +112,53 @@
             </div>
 
             <!-- Filter by Status -->
-            <div style="min-width: 140px; max-width: 180px;">
+            <div style="flex: 1; min-width: 170px; max-width: 220px;">
                 <label class="form-label" style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem;">
                     <i class="fa-solid fa-user-clock" style="color: var(--primary);"></i> Leave Status
                 </label>
-                <select name="status" class="form-input" style="height: 40px; font-size: 0.85rem;" onchange="document.getElementById('student-filter-form').submit();">
-                    <option value="">All</option>
-                    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
-                    <option value="leave" {% if status_filter == 'leave' %}selected{% endif %}>On Leave ({{ on_leave_count }})</option>
-                </select>
+                <div class="searchable-select-container">
+                    <input type="text" id="status-filter-input" class="searchable-select-input" placeholder="All Status..." autocomplete="off" readonly style="cursor: pointer;" value="{% if status_filter == 'active' %}Active{% elif status_filter == 'leave' %}On Leave ({{ on_leave_count }}){% else %}All Status{% endif %}">
+                    <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
+                    <ul id="status-filter-list" class="searchable-list custom-scrollbar" style="max-height: 200px;">
+                        <li data-value="" class="all-option" style="padding: 9px 14px; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border-color);">
+                            <span><i class="fa-solid fa-users" style="margin-right: 6px;"></i> All Status (Show All)</span>
+                        </li>
+                        <li data-value="active" class="status-filter-item" style="padding: 9px 14px; font-size: 0.85rem;">
+                            <strong><i class="fa-solid fa-circle-check" style="color: #10b981; margin-right: 6px; font-size: 0.75rem;"></i>Active</strong>
+                            <small style="color: var(--text-muted); font-size: 0.72rem;">Currently attending sessions</small>
+                        </li>
+                        <li data-value="leave" class="status-filter-item" style="padding: 9px 14px; font-size: 0.85rem;">
+                            <strong><i class="fa-solid fa-plane-departure" style="color: #f59e0b; margin-right: 6px; font-size: 0.75rem;"></i>On Leave ({{ on_leave_count }})</strong>
+                            <small style="color: var(--text-muted); font-size: 0.72rem;">Approved leave period</small>
+                        </li>
+                    </ul>
+                    <input type="hidden" name="status" id="hidden-status-filter" value="{{ status_filter }}">
+                </div>
             </div>
 
             <!-- Filter by Batch Assignment -->
-            <div style="min-width: 150px; max-width: 190px;">
+            <div style="flex: 1; min-width: 180px; max-width: 230px;">
                 <label class="form-label" style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem;">
                     <i class="fa-solid fa-layer-group" style="color: var(--primary);"></i> Batch Assignment
                 </label>
-                <select name="batch_status" class="form-input" style="height: 40px; font-size: 0.85rem;" onchange="document.getElementById('student-filter-form').submit();">
-                    <option value="">All Batches</option>
-                    <option value="unassigned" {% if batch_filter == 'unassigned' %}selected{% endif %}>Not Assigned ({{ unassigned_batch_count }})</option>
-                    <option value="assigned" {% if batch_filter == 'assigned' %}selected{% endif %}>Assigned</option>
-                </select>
+                <div class="searchable-select-container">
+                    <input type="text" id="batch-filter-input" class="searchable-select-input" placeholder="All Batches..." autocomplete="off" readonly style="cursor: pointer;" value="{% if batch_filter == 'unassigned' %}Not Assigned ({{ unassigned_batch_count }}){% elif batch_filter == 'assigned' %}Assigned{% else %}All Batches{% endif %}">
+                    <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
+                    <ul id="batch-filter-list" class="searchable-list custom-scrollbar" style="max-height: 200px;">
+                        <li data-value="" class="all-option" style="padding: 9px 14px; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border-color);">
+                            <span><i class="fa-solid fa-layer-group" style="margin-right: 6px;"></i> All Batches (Show All)</span>
+                        </li>
+                        <li data-value="unassigned" class="batch-filter-item" style="padding: 9px 14px; font-size: 0.85rem;">
+                            <strong><i class="fa-solid fa-user-clock" style="color: #d97706; margin-right: 6px; font-size: 0.75rem;"></i>Not Assigned ({{ unassigned_batch_count }})</strong>
+                            <small style="color: var(--text-muted); font-size: 0.72rem;">Needs faculty batch assignment</small>
+                        </li>
+                        <li data-value="assigned" class="batch-filter-item" style="padding: 9px 14px; font-size: 0.85rem;">
+                            <strong><i class="fa-solid fa-user-check" style="color: #10b981; margin-right: 6px; font-size: 0.75rem;"></i>Assigned</strong>
+                            <small style="color: var(--text-muted); font-size: 0.72rem;">Enrolled in faculty cohort</small>
+                        </li>
+                    </ul>
+                    <input type="hidden" name="batch_status" id="hidden-batch-filter" value="{{ batch_filter }}">
+                </div>
             </div>
         </div>
 
@@ -361,7 +387,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
             const val = item.getAttribute("data-value") || "";
             hidden.value = val;
-            input.value = val;
+            const textEl = item.querySelector("strong") || item.querySelector("span");
+            input.value = textEl ? textEl.textContent.trim() : (val || item.textContent.trim());
             hide();
             form.submit();
         });
@@ -375,6 +402,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
     setupFilterDropdown("course-filter-input", "course-filter-list", "hidden-course-filter", ".course-filter-item, .all-option", true);
     setupFilterDropdown("time-filter-input", "time-filter-list", "hidden-time-filter", ".time-filter-item, .all-option", false);
+    setupFilterDropdown("status-filter-input", "status-filter-list", "hidden-status-filter", ".status-filter-item, .all-option", false);
+    setupFilterDropdown("batch-filter-input", "batch-filter-list", "hidden-batch-filter", ".batch-filter-item, .all-option", false);
 });
 
     // Faculty Search Filter Logic
@@ -595,8 +624,8 @@ window.addEventListener('keydown', function(e) {
 
 <!-- ================= MODAL: ASSIGN STUDENT TO BATCH ================= -->
 <div id="assignStudentModal" class="modal-backdrop-custom">
-    <div class="modal-dialog-custom" style="max-width: 480px;">
-        <div class="modal-header-custom">
+    <div class="modal-dialog-custom" style="max-width: 480px; overflow: visible;">
+        <div class="modal-header-custom" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
             <div>
                 <h2 class="modal-title-custom"><i class="fa-solid fa-user-plus" style="color: var(--primary); margin-right: 6px;"></i> Assign Student to Batch</h2>
                 <small style="font-size: 0.78rem; color: var(--text-muted);">Assign student to a faculty-managed course batch</small>
@@ -611,7 +640,7 @@ window.addEventListener('keydown', function(e) {
             <input type="hidden" name="next" value="{{ request.get_full_path }}">
             <input type="hidden" name="student_id" id="assign_student_id" value="">
 
-            <div class="modal-body-custom" style="padding: 1.25rem 1.5rem;">
+            <div class="modal-body-custom" style="padding: 1.25rem 1.5rem; overflow: visible;">
                 <div style="padding: 0.75rem 1rem; border-radius: 8px; background: var(--bg-main); border: 1px solid var(--border-color); margin-bottom: 1.25rem;">
                     <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.05em;">Student Details</div>
                     <strong id="assign_student_name" style="font-size: 1rem; color: var(--text-primary); display: block; margin-top: 2px;">-</strong>
@@ -622,19 +651,36 @@ window.addEventListener('keydown', function(e) {
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="select_batch_id">Select Batch *</label>
-                    <select name="batch_id" id="select_batch_id" class="form-input" required>
-                        <option value="">-- Choose a Batch --</option>
-                        <option value="unassign" style="color: #ef4444;">-- Remove from Batch (Mark Not Assigned) --</option>
-                        {% for b in all_batches %}
-                        <option value="{{ b.id }}">{{ b.name }} ({{ b.time_slot }}{% if b.course %} &bull; {{ b.course }}{% endif %}{% if b.faculty %} &bull; {{ b.faculty.name }}{% endif %})</option>
-                        {% endfor %}
-                    </select>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" for="select_batch_id" style="font-weight: 600; margin-bottom: 0.4rem; display: block;">Select Batch *</label>
+                    <div class="searchable-select-container">
+                        <input type="text" id="assign_batch_input" class="searchable-select-input" placeholder="Choose a Batch (Select or Search)..." autocomplete="off">
+                        <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
+                        <ul id="assign_batch_list" class="searchable-list custom-scrollbar" style="max-height: 240px;">
+                            <li data-value="unassign" data-text="-- Not Assigned to Any Batch --" class="assign-batch-item" style="padding: 9px 14px; font-size: 0.85rem; color: #ef4444; border-bottom: 1px solid var(--border-color);">
+                                <strong><i class="fa-solid fa-user-xmark" style="margin-right: 6px;"></i>Remove from Batch (Mark Not Assigned)</strong>
+                            </li>
+                            {% for b in all_batches %}
+                            <li data-value="{{ b.id }}" data-slot="{{ b.time_slot }}" data-text="{{ b.name }} ({{ b.time_slot }}{% if b.faculty %} &bull; {{ b.faculty.name }}{% endif %})" class="assign-batch-item" style="padding: 9px 14px; font-size: 0.85rem;">
+                                <strong>{{ b.name }}</strong>
+                                <small style="display: block; color: var(--text-muted); font-size: 0.72rem;">{{ b.time_slot }}{% if b.faculty %} &bull; {{ b.faculty.name }}{% endif %}</small>
+                            </li>
+                            {% empty %}
+                            <li style="padding: 12px 14px; font-size: 0.82rem; color: var(--text-muted); text-align: center;">
+                                No active batches available.
+                            </li>
+                            {% endfor %}
+                            <li id="assign_no_slot_batches_msg" style="display: none; padding: 14px; font-size: 0.83rem; color: var(--text-muted); text-align: center; line-height: 1.4;">
+                                <i class="fa-solid fa-calendar-xmark" style="font-size: 1.2rem; color: #d97706; display: block; margin-bottom: 4px;"></i>
+                                <span>No batches available for this student's time slot (<strong id="assign_no_slot_name">-</strong>).</span>
+                            </li>
+                        </ul>
+                        <input type="hidden" name="batch_id" id="select_batch_id" required>
+                    </div>
                 </div>
             </div>
 
-            <div class="modal-footer-custom" style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+            <div class="modal-footer-custom" style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
                 <button type="button" class="btn-secondary" onclick="closeAssignModal();">Cancel</button>
                 <button type="submit" class="btn-primary">
                     <i class="fa-solid fa-check"></i> Assign Batch
@@ -645,16 +691,155 @@ window.addEventListener('keydown', function(e) {
 </div>
 
 <script>
+// Helper to extract digits & normalize slot formats for bulletproof matching
+function getHoursAndPeriod(s) {
+    if (!s) return { hours: [], periods: [] };
+    const clean = s.toLowerCase().trim();
+    const hourMatches = clean.match(/(\d{1,2})(?::\d{2})?/g) || [];
+    const hours = hourMatches.map(m => parseInt(m.split(':')[0], 10));
+    const periods = clean.match(/(am|pm)/g) || [];
+    return { hours, periods };
+}
+
+function slotsMatch(studentSlot, selectedSlot) {
+    if (!selectedSlot || !studentSlot) return false;
+
+    const s1 = studentSlot.trim().toLowerCase();
+    const s2 = selectedSlot.trim().toLowerCase();
+    if (s1 === s2) return true;
+
+    const d1 = getHoursAndPeriod(s1);
+    const d2 = getHoursAndPeriod(s2);
+
+    if (d1.hours.length >= 2 && d2.hours.length >= 2) {
+        if (d1.hours[0] === d2.hours[0] && d1.hours[1] === d2.hours[1]) {
+            if (d1.periods.length > 0 && d2.periods.length > 0) {
+                if (d1.periods.join('-') !== d2.periods.join('-')) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
 function openAssignModal(studentId, name, slot, course) {
     document.getElementById('assign_student_id').value = studentId;
     document.getElementById('assign_student_name').textContent = name;
     document.getElementById('assign_student_slot').textContent = slot || 'No Slot';
     document.getElementById('assign_student_course').textContent = course || 'General';
+
+    const hidden = document.getElementById('select_batch_id');
+    const input = document.getElementById('assign_batch_input');
+    const list = document.getElementById('assign_batch_list');
+    const noBatchMsg = document.getElementById('assign_no_slot_batches_msg');
+    const noSlotName = document.getElementById('assign_no_slot_name');
+
+    hidden.value = '';
+    input.value = '';
+    if (input && input.parentElement) input.parentElement.classList.remove('open');
+    if (list) list.style.display = 'none';
+
+    let matchingCount = 0;
+    const items = list.querySelectorAll('.assign-batch-item');
+    items.forEach(item => {
+        const val = item.getAttribute('data-value');
+        if (val === 'unassign') {
+            item.style.display = 'flex';
+            item.setAttribute('data-matches-slot', 'true');
+            return;
+        }
+        const batchSlot = item.getAttribute('data-slot');
+        const strong = item.querySelector('strong');
+        if (!strong) return;
+        if (!item.hasAttribute('data-orig-text')) {
+            item.setAttribute('data-orig-text', strong.textContent);
+        }
+        strong.textContent = item.getAttribute('data-orig-text');
+
+        // ONLY show batches matching the student's selected time slot
+        const isMatch = Boolean(slot && batchSlot && slotsMatch(slot, batchSlot));
+        if (isMatch) {
+            item.style.display = 'flex';
+            item.setAttribute('data-matches-slot', 'true');
+            matchingCount++;
+        } else {
+            item.style.display = 'none';
+            item.setAttribute('data-matches-slot', 'false');
+        }
+    });
+
+    if (noBatchMsg) {
+        if (matchingCount === 0) {
+            noBatchMsg.style.display = 'block';
+            if (noSlotName) noSlotName.textContent = slot || 'No Slot';
+        } else {
+            noBatchMsg.style.display = 'none';
+        }
+    }
+
     document.getElementById('assignStudentModal').classList.add('show');
 }
+
 function closeAssignModal() {
-    document.getElementById('assignStudentModal').classList.remove('show');
+    const m = document.getElementById('assignStudentModal');
+    if (m) m.classList.remove('show');
+    const list = document.getElementById('assign_batch_list');
+    if (list) list.style.display = 'none';
+    const input = document.getElementById('assign_batch_input');
+    if (input && input.parentElement) input.parentElement.classList.remove('open');
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('assign_batch_input');
+    const list = document.getElementById('assign_batch_list');
+    const hidden = document.getElementById('select_batch_id');
+    if (!input || !list || !hidden) return;
+
+    function showList() {
+        list.style.display = 'block';
+        if (input.parentElement) input.parentElement.classList.add('open');
+    }
+    function hideList() {
+        list.style.display = 'none';
+        if (input.parentElement) input.parentElement.classList.remove('open');
+    }
+
+    input.addEventListener('focus', showList);
+    input.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showList();
+    });
+    input.addEventListener('input', function() {
+        const q = input.value.toLowerCase().trim();
+        showList();
+        list.querySelectorAll('.assign-batch-item').forEach(item => {
+            if (item.getAttribute('data-matches-slot') === 'false') {
+                item.style.display = 'none';
+                return;
+            }
+            item.style.display = item.textContent.toLowerCase().includes(q) ? 'flex' : 'none';
+        });
+    });
+
+    list.addEventListener('click', function(e) {
+        const item = e.target.closest('.assign-batch-item');
+        if (!item) return;
+        const val = item.getAttribute('data-value');
+        hidden.value = val;
+        const text = item.getAttribute('data-text') || (item.querySelector('strong') ? item.querySelector('strong').textContent.trim() : item.textContent.trim());
+        input.value = text;
+        hideList();
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !list.contains(e.target)) {
+            hideList();
+        }
+    });
+});
+
 window.addEventListener('click', function(e) {
     const m = document.getElementById('assignStudentModal');
     if (m && e.target === m) closeAssignModal();

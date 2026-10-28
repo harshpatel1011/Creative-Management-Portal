@@ -493,7 +493,7 @@ class StudentManagementSystemTests(TestCase):
         # 3. Check Attendance Hub View
         hub_resp = self.client.get(reverse('admin_attendance_hub'))
         self.assertEqual(hub_resp.status_code, 200)
-        self.assertContains(hub_resp, 'Batch Attendance Hub')
+        self.assertContains(hub_resp, 'Attendance Hub')
         self.assertContains(hub_resp, '08:00 am to 10:00 am')
         self.assertContains(hub_resp, '02:00 pm to 04:00 pm')
 

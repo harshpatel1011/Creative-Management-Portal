@@ -70,7 +70,7 @@
                 </a>
                 <a href="{% url 'admin_attendance_hub' %}" class="dossier-btn {% if 'attendance' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="fa-solid fa-clipboard-user"></i>
-                    <span>Batch Attendance</span>
+                    <span>Attendance</span>
                 </a>
                 <a href="{% url 'admin_projects' %}" class="dossier-btn {% if 'project' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="fa-solid fa-diagram-project"></i>
@@ -80,23 +80,19 @@
                     <i class="fa-solid fa-file-signature"></i>
                     <span>Exams & Marks</span>
                 </a>
-                <a href="{% url 'admin_faculty_list' %}" class="dossier-btn {% if 'faculty' in request.resolver_match.url_name %}active{% endif %}">
-                    <i class="fa-solid fa-chalkboard-user"></i>
-                    <span>Faculty</span>
-                </a>
-                <a href="{% url 'admin_batch_transfer' %}" class="dossier-btn {% if 'transfer' in request.resolver_match.url_name %}active{% endif %}">
-                    <i class="fa-solid fa-people-arrows"></i>
-                    <span>Batch Transfer</span>
-                </a>
                 <a href="{% url 'admin_daily_work_report' %}" class="dossier-btn {% if 'daily_work' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="fa-solid fa-file-pen"></i>
                     <span>Daily Work Reports</span>
                 </a>
-
+                
                 <div class="nav-section-title">Administration</div>
                 <a href="{% url 'admin_list' %}" class="dossier-btn {% if 'admin_list' in request.resolver_match.url_name or 'admin_create' in request.resolver_match.url_name or 'admin_edit' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="fa-solid fa-users-gear"></i>
                     <span>Administrators</span>
+                </a>
+                <a href="{% url 'admin_faculty_list' %}" class="dossier-btn {% if 'faculty' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fa-solid fa-chalkboard-user"></i>
+                    <span>Faculty</span>
                 </a>
             </nav>
         </aside>

@@ -1,12 +1,12 @@
 {% extends 'management/base.html' %}
 {% load static %}
 
-{% block title %}Batch Attendance Hub - Creative Management{% endblock %}
+{% block title %}Attendance Hub - Creative Management{% endblock %}
 
 {% block breadcrumbs %}
 <a href="{% url 'admin_dashboard' %}">Dashboard</a>
 <span class="breadcrumb-separator">/</span>
-<span class="breadcrumb-current">Batch Attendance</span>
+<span class="breadcrumb-current">Attendance</span>
 {% endblock %}
 
 {% block content %}
@@ -15,9 +15,9 @@
     <div class="header-text">
         <h1 style="display: flex; align-items: center; gap: 0.5rem;">
             <i class="fa-solid fa-clipboard-user" style="color: var(--primary);"></i>
-            Batch Attendance Hub
+            Attendance Hub
         </h1>
-        <p>Monitor daily class timings, take real-time batch attendance, and track student presence</p>
+        <p>Monitor daily class timings, take real-time attendance, and track student presence</p>
     </div>
     <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
         <a href="{% url 'admin_batch_transfer' %}" class="btn-primary">

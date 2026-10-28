@@ -258,8 +258,7 @@ class Batch(models.Model):
 
     def __str__(self):
         fac = f" ({self.faculty.name})" if self.faculty else ""
-        course_str = f" [{self.course}]" if self.course else ""
-        return f"{self.name} - {self.time_slot}{course_str}{fac}"
+        return f"{self.name} - {self.time_slot}{fac}"
 
     @property
     def student_count(self):
@@ -268,6 +267,17 @@ class Batch(models.Model):
     @property
     def faculty_display(self):
         return self.faculty.name if self.faculty else "Unassigned Faculty"
+
+    @property
+    def batch_number(self):
+        clean = (self.name or "").strip()
+        if clean.lower().startswith('batch'):
+            rest = clean[5:].strip().lstrip('#').strip()
+            if rest:
+                return rest
+        if clean:
+            return clean
+        return str(self.id) if self.id else ""
 
 
 class StudentBatch(models.Model):

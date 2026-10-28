@@ -1,12 +1,12 @@
 {% extends 'management/base.html' %}
 {% load static %}
 
-{% block title %}Batch Attendance - {{ batch_time }} - Creative Management{% endblock %}
+{% block title %}Attendance - {{ batch_time }} - Creative Management{% endblock %}
 
 {% block breadcrumbs %}
 <a href="{% url 'admin_dashboard' %}">Dashboard</a>
 <span class="breadcrumb-separator">/</span>
-<a href="{% url 'admin_attendance_hub' %}?date={{ selected_date_str }}">Batch Attendance</a>
+<a href="{% url 'admin_attendance_hub' %}?date={{ selected_date_str }}">Attendance</a>
 <span class="breadcrumb-separator">/</span>
 <span class="breadcrumb-current">{{ batch_time }}</span>
 {% endblock %}
@@ -17,7 +17,7 @@
     <div class="header-text">
         <h1 style="display: flex; align-items: center; gap: 0.5rem;">
             <i class="fa-solid fa-clipboard-check" style="color: var(--primary);"></i>
-            Batch Attendance Sheet
+            Attendance Sheet
         </h1>
         <p>Record daily student presence for batch <strong>{{ batch_time }}</strong> on <strong>{{ selected_date|date:"F d, Y" }}</strong></p>
     </div>
@@ -35,27 +35,48 @@
 
 <!-- Controls & Selector Toolbar -->
 <div class="student-card" style="padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-    <!-- Batch Selector Dropdown -->
-    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-        <label for="batch_select" style="font-weight: 600; color: var(--text-primary); font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem;">
-            <i class="fa-solid fa-clock" style="color: var(--primary);"></i> Batch Timing:
-        </label>
-        <select id="batch_select" class="form-input" style="padding: 0.45rem 1rem; width: auto; font-weight: 600; border-radius: 8px; cursor: pointer;" onchange="location.href='?batch=' + encodeURIComponent(this.value) + '&date={{ selected_date_str }}';">
-            {% for slot in valid_slots %}
-            <option value="{{ slot }}" {% if slot == batch_time %}selected{% endif %}>{{ slot }}</option>
-            {% endfor %}
-        </select>
+    <!-- Batch Selector Dropdowns -->
+    <div style="display: flex; align-items: flex-end; gap: 1rem; flex-wrap: wrap;">
+        <!-- Batch Timing -->
+        <div style="min-width: 220px;">
+            <label class="form-label" style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem; font-weight: 600;">
+                <i class="fa-solid fa-clock" style="color: var(--primary);"></i> Batch Timing
+            </label>
+            <div class="searchable-select-container">
+                <input type="text" id="att_timing_input" class="searchable-select-input" value="{{ batch_time }}" readonly style="cursor: pointer;">
+                <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
+                <ul id="att_timing_list" class="searchable-list custom-scrollbar" style="max-height: 240px;">
+                    {% for slot in valid_slots %}
+                    <li onclick="location.href='?batch=' + encodeURIComponent('{{ slot }}') + '&date={{ selected_date_str }}';" style="padding: 9px 14px; font-size: 0.85rem;">
+                        <strong><i class="fa-solid fa-clock" style="color: var(--primary); margin-right: 6px; font-size: 0.75rem;"></i>{{ slot }}</strong>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
 
         {% if slot_batches %}
-        <label for="batch_id_select" style="font-weight: 600; color: var(--text-primary); font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem; margin-left: 0.5rem;">
-            <i class="fa-solid fa-layer-group" style="color: var(--primary);"></i> Faculty Batch:
-        </label>
-        <select id="batch_id_select" class="form-input" style="padding: 0.45rem 1rem; width: auto; font-weight: 600; border-radius: 8px; cursor: pointer;" onchange="location.href='?batch=' + encodeURIComponent('{{ batch_time }}') + '&batch_id=' + this.value + '&date={{ selected_date_str }}';">
-            <option value="">All Field Batches (Show All in {{ batch_time }})</option>
-            {% for sb in slot_batches %}
-            <option value="{{ sb.id }}" {% if selected_batch_id == sb.id|stringformat:"s" %}selected{% endif %}>{{ sb.name }} ({{ sb.course }} &bull; {{ sb.faculty_display }})</option>
-            {% endfor %}
-        </select>
+        <!-- Faculty Batch -->
+        <div style="min-width: 260px;">
+            <label class="form-label" style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem; font-weight: 600;">
+                <i class="fa-solid fa-layer-group" style="color: var(--primary);"></i> Faculty Batch
+            </label>
+            <div class="searchable-select-container">
+                <input type="text" id="att_batch_input" class="searchable-select-input" value="{% for sb in slot_batches %}{% if selected_batch_id == sb.id|stringformat:'s' %}{{ sb.name }}{% endif %}{% endfor %}{% if not selected_batch_id %}All Batches (Show All){% endif %}" readonly style="cursor: pointer;">
+                <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
+                <ul id="att_batch_list" class="searchable-list custom-scrollbar" style="max-height: 240px;">
+                    <li onclick="location.href='?batch=' + encodeURIComponent('{{ batch_time }}') + '&date={{ selected_date_str }}';" class="all-option" style="padding: 9px 14px; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border-color);">
+                        <span><i class="fa-solid fa-layer-group" style="margin-right: 6px;"></i> All Batches (Show All in {{ batch_time }})</span>
+                    </li>
+                    {% for sb in slot_batches %}
+                    <li onclick="location.href='?batch=' + encodeURIComponent('{{ batch_time }}') + '&batch_id={{ sb.id }}&date={{ selected_date_str }}';" style="padding: 9px 14px; font-size: 0.85rem;">
+                        <strong>{{ sb.name }}</strong>
+                        <small style="display: block; color: var(--text-muted); font-size: 0.72rem;">Instructor: {{ sb.faculty_display }}</small>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
         {% endif %}
     </div>
 
@@ -253,7 +274,7 @@
                 </a>
                 <button type="submit" class="btn-primary" style="padding: 0.55rem 1.75rem; font-size: 0.95rem;">
                     <i class="fa-solid fa-floppy-disk"></i>
-                    <span>Save Batch Attendance</span>
+                    <span>Save Attendance</span>
                 </button>
             </div>
         </div>
@@ -362,5 +383,34 @@ function filterStudentList() {
         }
     });
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    ['att_timing_input', 'att_batch_input'].forEach(inputId => {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        const list = input.nextElementSibling.nextElementSibling;
+        if (!list) return;
+
+        function show() {
+            document.querySelectorAll('.searchable-list').forEach(l => { if (l !== list) l.style.display = 'none'; });
+            list.style.display = 'block';
+        }
+        function hide() {
+            list.style.display = 'none';
+        }
+
+        input.addEventListener('focus', show);
+        input.addEventListener('click', (e) => {
+            e.stopPropagation();
+            show();
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!input.contains(e.target) && !list.contains(e.target)) {
+                hide();
+            }
+        });
+    });
+});
 </script>
 {% endblock %}

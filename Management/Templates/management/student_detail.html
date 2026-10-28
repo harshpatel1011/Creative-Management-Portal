@@ -181,7 +181,7 @@
             <div class="kpi-value" style="color: {% if attendance_stats.percentage >= 85 %}#10b981{% elif attendance_stats.percentage >= 75 %}#3b82f6{% elif attendance_stats.percentage >= 60 %}#f59e0b{% elif attendance_stats.total > 0 %}#ef4444{% else %}var(--text-primary){% endif %};">
                 {% if attendance_stats.total > 0 %}{{ attendance_stats.percentage }}%{% else %}N/A{% endif %}
             </div>
-            <div class="kpi-label">Batch Attendance</div>
+            <div class="kpi-label">Attendance</div>
         </div>
         <div class="kpi-footer">
             <span>{{ attendance_stats.present }} Present / {{ attendance_stats.total }} Sessions</span>
@@ -355,7 +355,7 @@
             </small>
         </div>
         <a href="{% url 'admin_attendance_batch' %}?batch={{ student.class_time|urlencode }}" class="btn-secondary" style="height: 32px; padding: 0 0.85rem; font-size: 0.78rem;">
-            <i class="fa-solid fa-clock" style="margin-right: 4px;"></i> Open Batch Attendance
+            <i class="fa-solid fa-clock" style="margin-right: 4px;"></i> Open Attendance
         </a>
     </div>
 

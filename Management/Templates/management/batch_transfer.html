@@ -6,7 +6,7 @@
 {% block breadcrumbs %}
 <a href="{% url 'admin_dashboard' %}">Dashboard</a>
 <span class="breadcrumb-separator">/</span>
-<a href="{% url 'admin_attendance_hub' %}">Batches</a>
+<a href="{% url 'admin_batch_list' %}">Batches</a>
 <span class="breadcrumb-separator">/</span>
 <span class="breadcrumb-current">Batch Transfer</span>
 {% endblock %}
@@ -19,12 +19,16 @@
             <i class="fa-solid fa-people-arrows" style="color: var(--primary);"></i>
             Batch Transfer
         </h1>
-        <p>Transfer multiple students from one class timing to another and reassign schedule batches seamlessly</p>
+        <p>Transfer students between batches and sync instructors & scheduled class timings seamlessly</p>
     </div>
     <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+        <a href="{% url 'admin_batch_list' %}" class="btn-secondary">
+            <i class="fa-solid fa-layer-group"></i>
+            <span>Batches Management</span>
+        </a>
         <a href="{% url 'admin_attendance_hub' %}" class="btn-secondary">
             <i class="fa-solid fa-clipboard-user"></i>
-            <span>Batch Attendance</span>
+            <span>Attendance</span>
         </a>
         <a href="{% url 'admin_student_list' %}" class="btn-secondary">
             <i class="fa-solid fa-user-graduate"></i>
@@ -33,10 +37,24 @@
     </div>
 </div>
 
+{% if not all_batches and unassigned_count == 0 %}
+<div class="student-card" style="padding: 3.5rem 2rem; text-align: center; margin-bottom: 2rem;">
+    <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: inline-flex; align-items: center; justify-content: center; font-size: 1.75rem; margin-bottom: 1.25rem;">
+        <i class="fa-solid fa-layer-group"></i>
+    </div>
+    <h3 style="font-size: 1.35rem; color: var(--text-primary); margin-bottom: 0.5rem;">No Batches Created Yet</h3>
+    <p style="color: var(--text-secondary); max-width: 480px; margin: 0 auto 1.5rem; font-size: 0.9rem;">
+        Please create at least two batches first in the Batches management page before transferring students between batches.
+    </p>
+    <a href="{% url 'admin_batch_list' %}" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
+        <i class="fa-solid fa-plus"></i> Go to Batches & Create
+    </a>
+</div>
+{% else %}
 
 <form method="POST" action="{% url 'admin_batch_transfer' %}" id="batchTransferForm">
     {% csrf_token %}
-    <input type="hidden" name="source_batch" id="hidden_source_batch" value="{{ source_batch }}">
+    <input type="hidden" name="source_batch" id="hidden_source_batch" value="{{ source_batch_id }}">
 
     <!-- Interactive Batch Selector Card (Transfer Control Center) -->
     <div class="student-card" style="padding: 1.5rem; margin-bottom: 2rem;">
@@ -46,11 +64,11 @@
                     <i class="fa-solid fa-arrow-right-arrow-left"></i>
                 </div>
                 <h3 style="margin: 0; font-size: 1.05rem; color: var(--text-primary);">
-                    Select Source & Destination Batch Timings
+                    Select Source & Destination Batches
                 </h3>
             </div>
             <span style="font-size: 0.78rem; color: var(--text-muted);">
-                Step 1: Pick timings &bull; Step 2: Select students &bull; Step 3: Transfer
+                Step 1: Pick batches &bull; Step 2: Select students &bull; Step 3: Transfer
             </span>
         </div>
 
@@ -60,16 +78,34 @@
                 <label class="form-label" for="source_batch_select" style="display: flex; align-items: center; gap: 0.4rem; color: var(--primary); font-weight: 700; margin-bottom: 0.5rem;">
                     <i class="fa-solid fa-right-from-bracket"></i> 1. Current Batch (Source) *
                 </label>
-                <select id="source_batch_select" class="form-input" style="font-weight: 600; height: 44px; background: var(--bg-card);" onchange="onSourceBatchChange(this.value);">
-                    {% for b in batch_stats %}
-                    <option value="{{ b.slot }}" {% if source_batch == b.slot %}selected{% endif %}>
-                        {{ b.slot }} ({{ b.count }} student{{ b.count|pluralize }})
-                    </option>
-                    {% endfor %}
+                <select id="source_batch_select" class="form-input" style="font-weight: 600; height: 44px; background: var(--bg-card); cursor: pointer;" onchange="onSourceBatchChange(this.value);">
+                    {% if all_batches %}
+                        <optgroup label="Active Batches">
+                        {% for b in all_batches %}
+                        <option value="{{ b.id }}" {% if source_batch_id == b.id|stringformat:'s' %}selected{% endif %}>
+                            {{ b.name }} ({{ b.time_slot }}{% if b.faculty %} &bull; {{ b.faculty.name }}{% endif %}) - {{ b.student_count }} student{{ b.student_count|pluralize }}
+                        </option>
+                        {% endfor %}
+                        </optgroup>
+                    {% endif %}
+                    <optgroup label="Other">
+                        <option value="unassigned" {% if source_batch_id == 'unassigned' %}selected{% endif %}>
+                            Unassigned Students (No Batch Assigned) - {{ unassigned_count }} student{{ unassigned_count|pluralize }}
+                        </option>
+                    </optgroup>
                 </select>
+                {% if source_batch_obj %}
                 <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 6px;">
-                    <i class="fa-solid fa-users"></i> Showing students currently enrolled in this batch
+                    <i class="fa-solid fa-chalkboard-user" style="color: var(--primary);"></i>
+                    Instructor: <strong>{{ source_batch_obj.faculty_display }}</strong> &bull;
+                    <i class="fa-solid fa-clock" style="color: var(--primary); margin-left: 4px;"></i>
+                    Slot: <strong>{{ source_batch_obj.time_slot }}</strong>
                 </small>
+                {% else %}
+                <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 6px;">
+                    <i class="fa-solid fa-user-xmark" style="color: #f59e0b;"></i> Showing students who are not assigned to any batch
+                </small>
+                {% endif %}
             </div>
 
             <!-- Transfer Arrow Bridge -->
@@ -84,16 +120,25 @@
                 <label class="form-label" for="target_batch_select" style="display: flex; align-items: center; gap: 0.4rem; color: var(--success); font-weight: 700; margin-bottom: 0.5rem;">
                     <i class="fa-solid fa-right-to-bracket"></i> 2. Destination Batch (Target) *
                 </label>
-                <select name="target_batch" id="target_batch_select" class="form-input" style="font-weight: 600; height: 44px; background: var(--bg-card);" required onchange="onTargetBatchChange(this.value);">
-                    <option value="">-- Choose Target Batch Timing --</option>
-                    {% for slot in class_time_choices %}
-                    <option value="{{ slot }}" {% if target_batch == slot %}selected{% endif %} {% if source_batch == slot %}disabled{% endif %}>
-                        {{ slot }} {% if source_batch == slot %}(Current Source){% endif %}
-                    </option>
-                    {% endfor %}
+                <select name="target_batch" id="target_batch_select" class="form-input" style="font-weight: 600; height: 44px; background: var(--bg-card); cursor: pointer;" required onchange="onTargetBatchChange(this.value);">
+                    <option value="">-- Choose Destination Batch --</option>
+                    {% if all_batches %}
+                        <optgroup label="Active Batches">
+                        {% for b in all_batches %}
+                        <option value="{{ b.id }}" {% if target_batch_id == b.id|stringformat:'s' %}selected{% endif %} {% if source_batch_id == b.id|stringformat:'s' %}disabled{% endif %}>
+                            {{ b.name }} ({{ b.time_slot }}{% if b.faculty %} &bull; {{ b.faculty.name }}{% endif %}) {% if source_batch_id == b.id|stringformat:'s' %}(Current Source){% endif %}
+                        </option>
+                        {% endfor %}
+                        </optgroup>
+                    {% endif %}
+                    <optgroup label="Other Actions">
+                        <option value="unassign" {% if target_batch_id == 'unassign' %}selected{% endif %} style="color: #ef4444;">
+                            Unassign from Batch (Remove from any Batch)
+                        </option>
+                    </optgroup>
                 </select>
                 <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 6px;">
-                    <i class="fa-solid fa-calendar-check"></i> Selected students will be reassigned to this timing
+                    <i class="fa-solid fa-calendar-check"></i> Selected students will be transferred into this batch
                 </small>
             </div>
         </div>
@@ -132,9 +177,10 @@
                             <input type="checkbox" id="master_checkbox" style="width: 17px; height: 17px; accent-color: var(--primary); cursor: pointer;" title="Select/Deselect All">
                         </th>
                         <th>Student Details</th>
-                        <th>Enrolled Courses</th>
-                        <th>Current Batch Timing</th>
+                        <th>Enrolled Course(s)</th>
+                        <th>Current Batch</th>
                         <th>Assigned Faculty</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -155,21 +201,26 @@
                             </div>
                         </td>
                         <td style="max-width: 260px;">
-                            <span style="font-weight: 500; font-size: 0.85rem; color: var(--text-primary);">{{ s.course }}</span>
+                            <span style="font-weight: 500; font-size: 0.85rem; color: var(--text-primary);">{{ s.course|default:"-" }}</span>
                         </td>
                         <td>
-                            <div style="display: flex; gap: 4px; flex-wrap: wrap;">
-                                <span class="badge badge-primary" style="font-size: 0.72rem; padding: 0.18rem 0.5rem;">
-                                    <i class="fa-solid fa-clock"></i> {{ source_batch }}
-                                </span>
-                                {% for b in s.batches_list %}
-                                    {% if b != source_batch %}
-                                    <span class="badge badge-secondary" style="font-size: 0.7rem; padding: 0.15rem 0.45rem;" title="Other batch">
-                                        {{ b }}
-                                    </span>
-                                    {% endif %}
-                                {% endfor %}
-                            </div>
+                            {% if s.assigned_batch %}
+                            <span class="badge badge-primary" style="font-size: 0.74rem; padding: 0.2rem 0.55rem;">
+                                <i class="fa-solid fa-layer-group"></i> {{ s.assigned_batch.name }}
+                            </span>
+                            <small style="display: block; color: var(--text-muted); font-size: 0.72rem; margin-top: 3px;">
+                                <i class="fa-solid fa-clock" style="font-size: 0.65rem;"></i> {{ s.assigned_batch.time_slot }}
+                            </small>
+                            {% else %}
+                            <span class="badge badge-secondary" style="font-size: 0.72rem; padding: 0.18rem 0.5rem; color: var(--text-muted);">
+                                Not Assigned
+                            </span>
+                            {% if s.class_time %}
+                            <small style="display: block; color: var(--text-muted); font-size: 0.72rem; margin-top: 3px;">
+                                {{ s.class_time }}
+                            </small>
+                            {% endif %}
+                            {% endif %}
                         </td>
                         <td>
                             {% if s.faculty_display != "Not Assigned" %}
@@ -180,6 +231,17 @@
                             <span style="color: var(--text-muted); font-size: 0.78rem; font-style: italic;">Unassigned</span>
                             {% endif %}
                         </td>
+                        <td>
+                            {% if s.is_on_leave %}
+                            <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #d97706; font-size: 0.72rem; border: 1px solid rgba(245, 158, 11, 0.3);">
+                                <i class="fa-solid fa-plane-departure"></i> On Leave
+                            </span>
+                            {% else %}
+                            <span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #10b981; font-size: 0.72rem; border: 1px solid rgba(16, 185, 129, 0.25);">
+                                <i class="fa-solid fa-circle-check"></i> Active
+                            </span>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -188,11 +250,17 @@
         {% else %}
         <div style="text-align: center; padding: 3rem 1.5rem;">
             <div style="width: 60px; height: 60px; border-radius: var(--border-radius-full); background: rgba(79, 70, 229, 0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 1rem;">
-                <i class="fa-solid fa-clock-rotate-left"></i>
+                <i class="fa-solid fa-user-slash"></i>
             </div>
-            <h3 style="font-size: 1.15rem; color: var(--text-primary); margin-bottom: 0.4rem;">No Students in {{ source_batch }}</h3>
+            <h3 style="font-size: 1.15rem; color: var(--text-primary); margin-bottom: 0.4rem;">
+                {% if source_batch_obj %}No Students in {{ source_batch_obj.name }}{% else %}No Unassigned Students{% endif %}
+            </h3>
             <p style="color: var(--text-muted); font-size: 0.85rem; max-width: 480px; margin: 0 auto 1.25rem;">
-                There are currently no students enrolled in the <strong>{{ source_batch }}</strong> timing. Choose a different source batch from the dropdown above to view and transfer students.
+                {% if source_batch_obj %}
+                There are currently no students enrolled in <strong>{{ source_batch_obj.name }} ({{ source_batch_obj.time_slot }})</strong>. Choose a different source batch from the dropdown above to view and transfer students.
+                {% else %}
+                All students in the system are currently enrolled in batches.
+                {% endif %}
             </p>
         </div>
         {% endif %}
@@ -201,7 +269,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 1rem;">
             <div id="transfer_status_message" style="font-weight: 500; font-size: 0.88rem; color: var(--text-muted); display: flex; align-items: center; gap: 8px;">
                 <i class="fa-solid fa-circle-info" style="color: var(--primary);"></i>
-                <span id="transfer_helper_text">Select students above and choose a target batch to activate the transfer.</span>
+                <span id="transfer_helper_text">Select students above and choose a destination batch to activate the transfer.</span>
             </div>
 
             <button type="submit" id="execute_transfer_btn" class="btn-primary" disabled style="height: 44px; padding: 0 1.5rem; font-size: 0.92rem; display: inline-flex; align-items: center; gap: 8px;">
@@ -211,25 +279,27 @@
         </div>
     </div>
 </form>
+{% endif %}
 
 <script>
 function onSourceBatchChange(val) {
     if (val) {
-        window.location.href = "{% url 'admin_batch_transfer' %}?source_batch=" + encodeURIComponent(val);
+        const targetSelect = document.getElementById("target_batch_select");
+        const targetVal = targetSelect ? targetSelect.value.trim() : "";
+        let url = "{% url 'admin_batch_transfer' %}?source_batch=" + encodeURIComponent(val);
+        if (targetVal && targetVal !== val) {
+            url += "&target_batch=" + encodeURIComponent(targetVal);
+        }
+        window.location.href = url;
     }
 }
 
 function onTargetBatchChange(val) {
-    const kpiPreview = document.getElementById("kpi_target_preview");
-    if (kpiPreview) {
-        kpiPreview.textContent = val || "Choose Target";
-    }
     updateSelectionUI();
 }
 
 function toggleRowCheckbox(event, chkId) {
-    // Avoid double toggle if user clicked directly on the input checkbox
-    if (event.target.tagName.toLowerCase() === 'input') return;
+    if (event.target.tagName && event.target.tagName.toLowerCase() === 'input') return;
     const chk = document.getElementById(chkId);
     if (chk) {
         chk.checked = !chk.checked;
@@ -246,24 +316,16 @@ function updateSelectionUI() {
     const helperText = document.getElementById("transfer_helper_text");
     const targetSelect = document.getElementById("target_batch_select");
     const targetVal = targetSelect ? targetSelect.value.trim() : "";
+    const targetText = targetSelect && targetSelect.selectedIndex >= 0 ? targetSelect.options[targetSelect.selectedIndex].text.trim() : "";
 
     let selectedCount = 0;
     checkboxes.forEach(chk => {
         const row = chk.closest("tr");
-        const statusBadge = row.querySelector(".row-status-badge");
         if (chk.checked) {
             selectedCount++;
             row.style.backgroundColor = "rgba(79, 70, 229, 0.05)";
-            if (statusBadge) {
-                statusBadge.className = "badge badge-primary row-status-badge";
-                statusBadge.textContent = "Selected";
-            }
         } else {
             row.style.backgroundColor = "";
-            if (statusBadge) {
-                statusBadge.className = "badge badge-secondary row-status-badge";
-                statusBadge.textContent = "Ready";
-            }
         }
     });
 
@@ -283,20 +345,20 @@ function updateSelectionUI() {
         if (canSubmit) {
             executeBtn.style.opacity = "1";
             executeBtn.style.cursor = "pointer";
-            btnText.textContent = `Transfer ${selectedCount} Student${selectedCount > 1 ? 's' : ''} to ${targetVal}`;
-            helperText.innerHTML = `Ready to transfer <strong style="color: var(--primary);">${selectedCount} student(s)</strong> to <strong style="color: var(--success);">${targetVal}</strong>.`;
+            btnText.textContent = `Transfer ${selectedCount} Student${selectedCount > 1 ? 's' : ''}`;
+            helperText.innerHTML = `Ready to transfer <strong style="color: var(--primary);">${selectedCount} student(s)</strong> to <strong style="color: var(--success);">${targetText}</strong>.`;
         } else {
             executeBtn.style.opacity = "0.55";
             executeBtn.style.cursor = "not-allowed";
             if (selectedCount === 0 && !targetVal) {
                 btnText.textContent = "Transfer Selected Students";
-                helperText.textContent = "Select students above and choose a target batch to activate the transfer.";
+                helperText.textContent = "Select students above and choose a destination batch to activate the transfer.";
             } else if (selectedCount === 0) {
                 btnText.textContent = "Select Students to Transfer";
                 helperText.textContent = "Please select at least one student from the table above.";
             } else {
-                btnText.textContent = "Choose Target Batch";
-                helperText.textContent = "Please select a destination batch timing above.";
+                btnText.textContent = "Choose Destination Batch";
+                helperText.textContent = "Please select a destination batch above.";
             }
         }
     }
@@ -354,14 +416,13 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // Confirmation on form submit
     const form = document.getElementById("batchTransferForm");
     if (form) {
         form.addEventListener("submit", function(e) {
             const count = document.querySelectorAll(".student-checkbox:checked").length;
-            const targetVal = document.getElementById("target_batch_select").value;
-            const sourceVal = document.getElementById("hidden_source_batch").value;
-            if (!confirm(`Are you sure you want to transfer ${count} student(s) from "${sourceVal}" to "${targetVal}"?`)) {
+            const targetSelect = document.getElementById("target_batch_select");
+            const targetText = targetSelect && targetSelect.selectedIndex >= 0 ? targetSelect.options[targetSelect.selectedIndex].text.trim() : "";
+            if (!confirm(`Are you sure you want to transfer ${count} student(s) to "${targetText}"?`)) {
                 e.preventDefault();
                 return false;
             }
