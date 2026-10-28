@@ -4,9 +4,9 @@
 {% block title %}Batches Management - Creative Portal{% endblock %}
 
 {% block breadcrumbs %}
-<a href="{% url 'admin_batch_list' %}">Batches</a>
+<a href="{% url 'admin_dashboard' %}">Dashboard</a>
 <span class="breadcrumb-separator">/</span>
-<span class="breadcrumb-current">Batches Roster</span>
+<span class="breadcrumb-current">Batches</span>
 {% endblock %}
 
 {% block content %}
@@ -433,7 +433,7 @@
         <div class="modal-header-custom">
             <div>
                 <h2 class="modal-title-custom"><i class="fa-solid fa-pen-to-square" style="color: var(--primary); margin-right: 6px;"></i> Edit Batch</h2>
-                <small style="font-size: 0.78rem; color: var(--text-muted);">Update batch parameters and enrolled student roster</small>
+                <small style="font-size: 0.78rem; color: var(--text-muted);">Update batch parameters and enrolled student</small>
             </div>
             <button type="button" class="toast-close" onclick="closeEditBatchModal();" aria-label="Close dialog">
                 <i class="fa-solid fa-xmark" style="font-size: 1.1rem;"></i>

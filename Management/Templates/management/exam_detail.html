@@ -1,7 +1,7 @@
 {% extends 'management/base.html' %}
 {% load static %}
 
-{% block title %}{{ exam.title }} - Evaluation Roster{% endblock %}
+{% block title %}{{ exam.title }} - Evaluation{% endblock %}
 
 {% block breadcrumbs %}
 <a href="{% url 'admin_exam_list' %}">Exams</a>
@@ -85,7 +85,7 @@
             <h3 style="margin: 0 0 0.2rem 0; font-size: 1rem; color: var(--text-primary);">
                 <i class="fa-solid fa-user-plus" style="color: var(--primary); margin-right: 6px;"></i> Enroll Student in this Assessment
             </h3>
-            <small style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Quickly append another registered student to this assessment evaluation roster</small>
+            <small style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Quickly append another registered student to this assessment evaluation</small>
         </div>
         <form method="POST" action="{% url 'admin_exam_add_student' exam.id %}" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
             {% csrf_token %}
@@ -121,7 +121,7 @@
 <div class="student-card" style="padding: 0; overflow: hidden; margin-bottom: 2rem;">
     <div style="padding: 1.25rem 1.75rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; background: linear-gradient(180deg, #ffffff 0%, var(--bg-main) 100%);">
         <div>
-            <h3 style="font-size: 1.15rem; color: var(--text-primary); margin: 0 0 0.2rem 0;">Marks Entry & Assessment Roster</h3>
+            <h3 style="font-size: 1.15rem; color: var(--text-primary); margin: 0 0 0.2rem 0;">Marks Entry & Assessment</h3>
             <small style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">Enter marks obtained out of <strong>{{ exam.total_marks }}</strong> or record student attendance status</small>
         </div>
         <span class="dossier-btn-dark">

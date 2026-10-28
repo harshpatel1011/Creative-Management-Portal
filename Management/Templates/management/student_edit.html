@@ -24,7 +24,7 @@
     {% if next_url == 'list' %}
     <a href="{% url 'admin_student_list' %}" class="btn-secondary">
         <i class="fa-solid fa-arrow-left"></i>
-        <span>Back to Roster</span>
+        <span>Back to Students</span>
     </a>
     {% else %}
     <a href="{% url 'admin_student_detail' student.id %}" class="btn-secondary">

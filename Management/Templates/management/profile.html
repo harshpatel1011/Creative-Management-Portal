@@ -20,10 +20,6 @@
         <p>Official administrative credentials, institutional privileges, system oversight, and security</p>
     </div>
     <div class="header-actions" style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-        <button type="button" class="btn-secondary" onclick="window.print();" title="Print Profile Dossier">
-            <i class="fa-solid fa-print"></i>
-            <span>Print Profile</span>
-        </button>
         <a href="{% url 'admin_change_password' %}" class="btn-primary">
             <i class="fa-solid fa-key"></i>
             <span>Change Password</span>
@@ -105,7 +101,7 @@
                 <div class="kpi-icon" style="background: rgba(79, 70, 229, 0.1); color: var(--primary);">
                     <i class="fa-solid fa-user-graduate"></i>
                 </div>
-                <span class="badge badge-primary">Roster</span>
+                <span class="badge badge-primary">Active</span>
             </div>
             <div class="kpi-value" style="color: var(--primary);">
                 {{ total_students }}
@@ -421,7 +417,7 @@
                         <i class="fa-solid fa-chalkboard-user" style="color: #10b981; font-size: 1.1rem;"></i>
                         <div>
                             <div style="font-weight: 700; font-size: 0.88rem;">Faculty Directory & Assign</div>
-                            <small style="color: var(--text-muted); font-size: 0.75rem;">{{ total_faculties }} instructors in institutional roster</small>
+                            <small style="color: var(--text-muted); font-size: 0.75rem;">{{ total_faculties }} instructors in institutional</small>
                         </div>
                     </div>
                     <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.8rem;"></i>

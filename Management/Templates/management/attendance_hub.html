@@ -20,17 +20,13 @@
         <p>Monitor daily class timings, take real-time attendance, and track student presence</p>
     </div>
     <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
-        <a href="{% url 'admin_batch_transfer' %}" class="btn-primary">
-            <i class="fa-solid fa-people-arrows"></i>
-            <span>Batch Transfer</span>
-        </a>
-        <a href="{% url 'admin_attendance_report' %}" class="btn-secondary">
+        <a href="{% url 'admin_attendance_report' %}" class="btn-primary">
             <i class="fa-solid fa-chart-column"></i>
             <span>Monthly Reports & Matrix</span>
         </a>
         <a href="{% url 'admin_student_list' %}" class="btn-secondary">
             <i class="fa-solid fa-users"></i>
-            <span>Student Roster</span>
+            <span>Students</span>
         </a>
     </div>
 </div>
@@ -224,7 +220,7 @@
         <!-- Card Action Buttons -->
         <div style="display: flex; gap: 0.5rem; align-items: center; justify-content: space-between; padding-top: 0.75rem; border-top: 1px solid var(--border-color);">
             <a href="{% url 'admin_student_list' %}?class_time={{ b.slot|urlencode }}" class="btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.75rem;" title="View all students in this batch">
-                <i class="fa-solid fa-user-group"></i> Roster
+                <i class="fa-solid fa-user-group"></i> Students
             </a>
 
             {% if b.total_students > 0 %}

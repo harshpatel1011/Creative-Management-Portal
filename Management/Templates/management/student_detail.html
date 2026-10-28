@@ -19,7 +19,7 @@
     <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
         <a href="{% url 'admin_student_list' %}" class="back-btn">
             <i class="fa-solid fa-arrow-left"></i>
-            <span>Students Roster</span>
+            <span>Students</span>
         </a>
         {% if student.is_on_leave %}
         <button type="button" class="btn-warning" onclick="openLeaveModal('{{ student.id }}', '{{ student.name|escapejs }}', true, '{{ student.leave_reason|escapejs }}', '{{ student.leave_start_date|date:"Y-m-d"|default:"" }}', '{{ student.leave_end_date|date:"Y-m-d"|default:"" }}');" style="display: inline-flex; align-items: center; gap: 0.4rem; background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.4); padding: 0.55rem 1rem; border-radius: 6px; font-weight: 600; cursor: pointer;">
