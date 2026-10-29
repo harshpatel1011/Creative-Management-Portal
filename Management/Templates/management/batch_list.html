@@ -75,7 +75,9 @@
                         {% for f in faculties %}
                         <li data-value="{{ f.id }}" data-text="{{ f.name }}" class="filter-faculty-item" style="padding: 9px 14px; font-size: 0.85rem;">
                             <strong>{{ f.name }}</strong>
-                            <small style="display: block; color: var(--text-muted); font-size: 0.72rem;">{{ f.department }}</small>
+                            {% if f.courses %}
+                            <small style="display: block; color: var(--text-muted); font-size: 0.72rem; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ f.courses }}</small>
+                            {% endif %}
                         </li>
                         {% endfor %}
                     </ul>
@@ -319,7 +321,9 @@
                             {% for f in faculties %}
                             <li data-value="{{ f.id }}" data-text="{{ f.name }}" class="create-faculty-item" style="padding: 9px 14px; font-size: 0.85rem;">
                                 <strong>{{ f.name }}</strong>
-                                <small style="display: block; color: var(--text-muted); font-size: 0.72rem;">{{ f.department }}</small>
+                                {% if f.courses %}
+                                <small style="display: block; color: var(--text-muted); font-size: 0.72rem; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ f.courses }}</small>
+                                {% endif %}
                             </li>
                             {% endfor %}
                         </ul>
@@ -489,7 +493,9 @@
                                 {% for f in faculties %}
                                 <li data-value="{{ f.id }}" data-text="{{ f.name }}" class="edit-faculty-item" style="padding: 9px 14px; font-size: 0.85rem;">
                                     <strong>{{ f.name }}</strong>
-                                    <small style="display: block; color: var(--text-muted); font-size: 0.72rem;">{{ f.department }}</small>
+                                    {% if f.courses %}
+                                    <small style="display: block; color: var(--text-muted); font-size: 0.72rem; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ f.courses }}</small>
+                                    {% endif %}
                                 </li>
                                 {% endfor %}
                             </ul>

@@ -3,21 +3,10 @@ import os
 from django.db import models
 
 class Faculty(models.Model):
-    DEPARTMENT_CHOICES = [
-        ('Development Courses', 'Development Courses'),
-        ('Design Courses', 'Design Courses'),
-        ('Programming IT', 'Programming IT'),
-        ('Trendy Courses', 'Trendy Courses'),
-        ('Civil-Mech. Engineering', 'Civil-Mech. Engineering'),
-        ('Business Development', 'Business Development'),
-        ('Short Term Courses', 'Short Term Courses'),
-        ('Diploma Courses', 'Diploma Courses'),
-    ]
-
     name = models.CharField(max_length=150)
     email = models.EmailField(max_length=150, blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
-    department = models.CharField(max_length=100, choices=DEPARTMENT_CHOICES, default='Development Courses')
+    department = models.CharField(max_length=100, blank=True, default='')
     specialization = models.CharField(max_length=255, blank=True, default='')
     courses = models.TextField(blank=True, default='')
     is_admin = models.BooleanField(default=False)
@@ -25,14 +14,14 @@ class Faculty(models.Model):
     created_by = models.CharField(max_length=100, blank=True, default='Admin')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    password = models.CharField(max_length=255, blank=True, default='')
 
     class Meta:
         ordering = ['name']
         verbose_name_plural = 'Faculties'
 
     def __str__(self):
-        dept_str = f" ({self.department})" if self.department else ""
-        return f"{self.name}{dept_str}"
+        return self.name
 
 
     @property
@@ -134,6 +123,17 @@ class Student(models.Model):
         ],
     }
 
+    STUDENT_STATUS_CHOICES = [
+        ('Running', 'Running'),
+        ('Completed', 'Completed'),
+        ('Dropped', 'Dropped'),
+        ('On Leave', 'On Leave'),
+        ('Suspend', 'Suspend'),
+        ('In Job', 'In Job'),
+        ('In Project', 'In Project'),
+        ('Branch Transfer', 'Branch Transfer'),
+    ]
+
     name = models.CharField(max_length=100)
     email = models.EmailField(max_length=100, unique=True)
     password = models.CharField(max_length=255)
@@ -143,6 +143,7 @@ class Student(models.Model):
     faculty = models.CharField(max_length=255, blank=True, default='')
     faculty_member = models.ForeignKey(Faculty, on_delete=models.SET_NULL, null=True, blank=True, related_name='students')
     phone = models.CharField(max_length=20, blank=True, null=True)
+    status = models.CharField(max_length=50, choices=STUDENT_STATUS_CHOICES, default='Running')
     is_on_leave = models.BooleanField(default=False)
     leave_reason = models.CharField(max_length=255, blank=True, default='')
     leave_start_date = models.DateField(null=True, blank=True)
@@ -179,6 +180,22 @@ class Student(models.Model):
     @property
     def is_batch_assigned(self):
         return bool(self.assigned_batch or self.assigned_batches.exists())
+
+    @property
+    def whatsapp_number(self):
+        if not self.phone:
+            return ""
+        digits = "".join(ch for ch in str(self.phone) if ch.isdigit())
+        if len(digits) == 10:
+            return f"91{digits}"
+        return digits
+
+    @property
+    def whatsapp_url(self):
+        num = self.whatsapp_number
+        if num:
+            return f"https://wa.me/{num}"
+        return ""
 
     @property
     def faculty_display(self):
@@ -221,6 +238,15 @@ class Student(models.Model):
             "status": status
         }
 
+    @property
+    def is_currently_on_leave(self):
+        today = datetime.date.today()
+        if not self.is_on_leave:
+            return False
+        if self.leave_end_date and self.leave_end_date < today:
+            return False
+        return True
+
     def is_on_leave_on(self, target_date=None):
         if target_date is None:
             target_date = datetime.date.today()
@@ -236,6 +262,58 @@ class Student(models.Model):
         start_ok = (self.leave_start_date is None) or (self.leave_start_date <= target_date)
         end_ok = (self.leave_end_date is None) or (target_date <= self.leave_end_date)
         return start_ok and end_ok
+
+    @property
+    def status_display(self):
+        return self.status or ("On Leave" if self.is_on_leave else "Running")
+
+    def save(self, *args, **kwargs):
+        today = datetime.date.today()
+        # Automatically clear expired leave upon save
+        if self.leave_end_date and self.leave_end_date < today:
+            if self.status == "On Leave":
+                self.status = "Running"
+            self.is_on_leave = False
+            self.leave_reason = ""
+            self.leave_start_date = None
+            self.leave_end_date = None
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def sync_expired_leaves(cls):
+        """
+        Automatically expires any leaves where leave_end_date < today.
+        Sets is_on_leave = False and status = 'Running'.
+        Also activates scheduled leaves whose start date has arrived.
+        """
+        from django.db.models import Q
+        today = datetime.date.today()
+
+        # 1. Expire past leaves
+        expired = cls.objects.filter(
+            is_on_leave=True,
+            leave_end_date__isnull=False,
+            leave_end_date__lt=today
+        )
+        if expired.exists():
+            expired.update(
+                status="Running",
+                is_on_leave=False,
+                leave_reason="",
+                leave_start_date=None,
+                leave_end_date=None,
+            )
+
+        # 2. Activate scheduled leaves where leave_start_date has arrived and leave hasn't ended
+        to_activate = cls.objects.filter(
+            is_on_leave=False,
+            leave_start_date__isnull=False,
+            leave_start_date__lte=today
+        ).filter(
+            Q(leave_end_date__isnull=True) | Q(leave_end_date__gte=today)
+        )
+        if to_activate.exists():
+            to_activate.update(is_on_leave=True, status="On Leave")
 
     def __str__(self):
         return f"{self.name} ({self.email})"

@@ -64,7 +64,7 @@
                     <i class="fa-solid fa-user-graduate"></i>
                     <span>Students</span>
                 </a>
-                <a href="{% url 'admin_batch_list' %}" class="dossier-btn {% if 'admin_batch_list' in request.resolver_match.url_name %}active{% endif %}">
+                <a href="{% url 'admin_batch_list' %}" class="dossier-btn {% if 'batch' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="fa-solid fa-layer-group"></i>
                     <span>Batches</span>
                 </a>
@@ -86,13 +86,9 @@
                 </a>
                 
                 <div class="nav-section-title">Administration</div>
-                <a href="{% url 'admin_list' %}" class="dossier-btn {% if 'admin_list' in request.resolver_match.url_name or 'admin_create' in request.resolver_match.url_name or 'admin_edit' in request.resolver_match.url_name %}active{% endif %}">
+                <a href="{% url 'admin_list' %}" class="dossier-btn {% if request.resolver_match.url_name == 'admin_list' or request.resolver_match.url_name == 'admin_faculty_courses_update' %}active{% endif %}">
                     <i class="fa-solid fa-users-gear"></i>
                     <span>Administrators</span>
-                </a>
-                <a href="{% url 'admin_faculty_list' %}" class="dossier-btn {% if 'faculty' in request.resolver_match.url_name %}active{% endif %}">
-                    <i class="fa-solid fa-chalkboard-user"></i>
-                    <span>Faculty</span>
                 </a>
             </nav>
         </aside>

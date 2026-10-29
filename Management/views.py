@@ -422,17 +422,30 @@ def student_list_view(request):
 
     faculty_filter = request.GET.get("faculty", "").strip()
     if faculty_filter:
-        students = students.filter(
+        fac_q = (
             Q(faculty__icontains=faculty_filter)
             | Q(faculty_member__id=faculty_filter if faculty_filter.isdigit() else None)
             | Q(faculty_member__name__icontains=faculty_filter)
-        ).distinct()
+            | Q(enrolled_courses__faculty__icontains=faculty_filter)
+            | Q(enrolled_courses__faculty_member__name__icontains=faculty_filter)
+            | Q(assigned_batch__faculty__name__icontains=faculty_filter)
+            | Q(assigned_batches__faculty__name__icontains=faculty_filter)
+        )
+        first_token = faculty_filter.split()[0] if " " in faculty_filter else ""
+        if first_token and len(first_token) >= 3:
+            fac_q |= Q(faculty__icontains=first_token) | Q(faculty_member__name__icontains=first_token)
+        students = students.filter(fac_q).distinct()
+
+    # Automatically sync expired leave status
+    Student.sync_expired_leaves()
 
     status_filter = request.GET.get("status", "").strip()
-    if status_filter == "leave":
-        students = students.filter(is_on_leave=True)
+    if status_filter == "leave" or status_filter == "On Leave":
+        students = students.filter(Q(status="On Leave") | Q(is_on_leave=True))
     elif status_filter == "active":
         students = students.filter(is_on_leave=False)
+    elif status_filter in [c[0] for c in Student.STUDENT_STATUS_CHOICES]:
+        students = students.filter(status=status_filter)
 
     batch_filter = request.GET.get("batch_status", "").strip()
     if batch_filter == "unassigned":
@@ -466,6 +479,7 @@ def student_list_view(request):
         "on_leave_count": Student.objects.filter(is_on_leave=True).count(),
         "active_students_count": Student.objects.filter(is_on_leave=False).count(),
         "total_students_count": Student.objects.count(),
+        "status_choices": [c[0] for c in Student.STUDENT_STATUS_CHOICES],
     }
 
     return render(request, "management/student_list.html", context)
@@ -663,63 +677,87 @@ def student_toggle_leave_view(request, student_id):
                 remarks__icontains="On Leave"
             ).delete()
             student.is_on_leave = False
+            student.status = "Running"
             student.leave_reason = ""
             student.leave_start_date = None
             student.leave_end_date = None
             student.save()
             messages.success(request, f"Student '{student.name}' is now marked as Active (Classes Resumed).")
         else:
-            student.is_on_leave = True
             leave_reason = request.POST.get("leave_reason", "").strip()
             student.leave_reason = leave_reason
 
             start_date_str = request.POST.get("leave_start_date", "").strip()
-            if start_date_str:
-                try:
-                    student.leave_start_date = datetime.date.fromisoformat(start_date_str)
-                except ValueError:
-                    student.leave_start_date = datetime.date.today()
-            else:
-                student.leave_start_date = datetime.date.today()
-
             end_date_str = request.POST.get("leave_end_date", "").strip()
-            if end_date_str:
-                try:
-                    student.leave_end_date = datetime.date.fromisoformat(end_date_str)
-                except ValueError:
-                    student.leave_end_date = None
-            else:
+
+            if not start_date_str or not end_date_str:
+                messages.error(request, "Both Start Date and End Date are mandatory.")
+                return redirect(next_url)
+
+            try:
+                start_date = datetime.date.fromisoformat(start_date_str)
+            except ValueError:
+                messages.error(request, "Invalid Start Date format.")
+                return redirect(next_url)
+
+            try:
+                end_date = datetime.date.fromisoformat(end_date_str)
+            except ValueError:
+                messages.error(request, "Invalid End Date format.")
+                return redirect(next_url)
+
+            if end_date < start_date:
+                messages.error(request, "Leave End Date cannot be earlier than Start Date.")
+                return redirect(next_url)
+
+            student.leave_start_date = start_date
+            student.leave_end_date = end_date
+
+            today = datetime.date.today()
+            if student.leave_end_date < today:
+                student.status = "Running"
+                student.is_on_leave = False
+                student.leave_reason = ""
+                student.leave_start_date = None
                 student.leave_end_date = None
+            elif student.leave_start_date > today:
+                student.status = "Running"
+                student.is_on_leave = False
+            else:
+                student.status = "On Leave"
+                student.is_on_leave = True
 
             student.save()
 
-            # Sync attendance records as Leave for the full leave date range
-            if request.POST.get("mark_attendance_leave", "1"):
-                start_d = student.leave_start_date or datetime.date.today()
-                end_d = student.leave_end_date or start_d
-                if start_d <= end_d:
-                    day_count = (end_d - start_d).days
-                    if day_count <= 90:
-                        slot = student.class_time or (student.batches_list[0] if student.batches_list else "")
-                        for i in range(day_count + 1):
-                            cur_date = start_d + datetime.timedelta(days=i)
-                            Attendance.objects.update_or_create(
-                                student=student,
-                                date=cur_date,
-                                defaults={
-                                    "status": "Leave",
-                                    "time_slot": slot,
-                                    "remarks": f"On Leave: {leave_reason}" if leave_reason else "On Leave",
-                                    "marked_by": f"Admin ({user.username})",
-                                }
-                            )
+            # Automatically sync attendance records as Leave for the full leave date range
+            day_count = (end_date - start_date).days
+            if day_count <= 90:
+                slot = student.class_time or (student.batches_list[0] if student.batches_list else "")
+                for i in range(day_count + 1):
+                    cur_date = start_date + datetime.timedelta(days=i)
+                    Attendance.objects.update_or_create(
+                        student=student,
+                        date=cur_date,
+                        defaults={
+                            "status": "Leave",
+                            "time_slot": slot,
+                            "remarks": f"On Leave: {leave_reason}" if leave_reason else "On Leave",
+                            "marked_by": f"Admin ({user.username})",
+                        }
+                    )
 
-            messages.success(request, f"Student '{student.name}' has been marked On Leave.")
+            if end_date < today:
+                messages.info(request, f"Leave dates for '{student.name}' have already ended. Attendance was recorded, and student remains Active.")
+            elif start_date > today:
+                messages.success(request, f"Leave scheduled for '{student.name}' from {start_date} to {end_date}.")
+            else:
+                messages.success(request, f"Student '{student.name}' has been marked On Leave until {end_date}.")
 
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
             return JsonResponse({
                 "status": "success",
                 "is_on_leave": student.is_on_leave,
+                "status_display": student.status_display,
                 "student_id": student.id,
                 "student_name": student.name,
                 "leave_reason": student.leave_reason,
@@ -733,6 +771,7 @@ def student_toggle_leave_view(request, student_id):
     if action == "toggle":
         if student.is_on_leave:
             student.is_on_leave = False
+            student.status = "Running"
             student.leave_reason = ""
             student.leave_start_date = None
             student.leave_end_date = None
@@ -740,9 +779,134 @@ def student_toggle_leave_view(request, student_id):
             messages.success(request, f"Student '{student.name}' is now marked as Active.")
         else:
             student.is_on_leave = True
+            student.status = "On Leave"
             student.leave_start_date = datetime.date.today()
             student.save()
             messages.success(request, f"Student '{student.name}' is marked On Leave.")
+        return redirect(next_url)
+
+    return redirect(next_url)
+
+
+def admin_student_status_update_view(request, student_id):
+    user = get_current_admin(request)
+    if not user:
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+        return redirect("admin_login")
+
+    student = Student.objects.filter(id=student_id).first()
+    if not student:
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"status": "error", "message": "Student not found."}, status=404)
+        messages.error(request, "Student not found.")
+        return redirect("admin_student_list")
+
+    next_url = request.POST.get("next") or request.GET.get("next") or request.META.get("HTTP_REFERER") or reverse("admin_student_list")
+
+    if request.method == "POST":
+        new_status = request.POST.get("status", "").strip()
+        valid_statuses = [c[0] for c in Student.STUDENT_STATUS_CHOICES]
+        if new_status not in valid_statuses:
+            messages.error(request, f"Invalid status '{new_status}' selected.")
+            return redirect(next_url)
+
+        today = datetime.date.today()
+
+        if new_status == "On Leave":
+            leave_reason = request.POST.get("leave_reason", "").strip()
+            start_date_str = request.POST.get("leave_start_date", "").strip()
+            end_date_str = request.POST.get("leave_end_date", "").strip()
+
+            if not start_date_str or not end_date_str:
+                messages.error(request, "Both Start Date and End Date are mandatory when marking student On Leave.")
+                return redirect(next_url)
+
+            try:
+                start_date = datetime.date.fromisoformat(start_date_str)
+            except ValueError:
+                messages.error(request, "Invalid Start Date format.")
+                return redirect(next_url)
+
+            try:
+                end_date = datetime.date.fromisoformat(end_date_str)
+            except ValueError:
+                messages.error(request, "Invalid End Date format.")
+                return redirect(next_url)
+
+            if end_date < start_date:
+                messages.error(request, "Leave End Date cannot be earlier than Start Date.")
+                return redirect(next_url)
+
+            student.leave_reason = leave_reason
+            student.leave_start_date = start_date
+            student.leave_end_date = end_date
+
+            # Automatically sync attendance records as Leave for the full date range
+            day_count = (end_date - start_date).days
+            if day_count <= 90:
+                slot = student.class_time or (student.batches_list[0] if student.batches_list else "")
+                for i in range(day_count + 1):
+                    cur_date = start_date + datetime.timedelta(days=i)
+                    Attendance.objects.update_or_create(
+                        student=student,
+                        date=cur_date,
+                        defaults={
+                            "status": "Leave",
+                            "time_slot": slot,
+                            "remarks": f"On Leave: {leave_reason}" if leave_reason else "On Leave",
+                            "marked_by": f"Admin ({user.username})",
+                        }
+                    )
+
+            if end_date < today:
+                student.status = "Running"
+                student.is_on_leave = False
+                student.leave_reason = ""
+                student.leave_start_date = None
+                student.leave_end_date = None
+                student.save()
+                messages.info(request, f"Leave dates for '{student.name}' have already ended. Attendance was recorded, and student remains Running.")
+            elif start_date > today:
+                student.status = "Running"
+                student.is_on_leave = False
+                student.save()
+                messages.success(request, f"Leave scheduled for '{student.name}' from {start_date} to {end_date}.")
+            else:
+                student.status = "On Leave"
+                student.is_on_leave = True
+                student.save()
+                messages.success(request, f"Student '{student.name}' status updated to On Leave until {end_date}.")
+
+        else:
+            # If changing from On Leave to another status, clear future Leave attendance records
+            if student.is_on_leave or student.status == "On Leave":
+                Attendance.objects.filter(
+                    student=student,
+                    date__gte=today,
+                    status="Leave",
+                    remarks__icontains="On Leave"
+                ).delete()
+
+            student.status = new_status
+            student.is_on_leave = False
+            student.leave_reason = ""
+            student.leave_start_date = None
+            student.leave_end_date = None
+            student.save()
+
+            messages.success(request, f"Student '{student.name}' status updated to {new_status} successfully.")
+
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({
+                "status": "success",
+                "student_id": student.id,
+                "student_name": student.name,
+                "student_status": student.status,
+                "status_display": student.status_display,
+                "is_on_leave": student.is_on_leave,
+            })
+
         return redirect(next_url)
 
     return redirect(next_url)
@@ -1109,6 +1273,58 @@ def exam_delete_view(request, exam_id):
     return redirect("admin_exam_list")
 
 
+def admin_faculty_courses_update_view(request, admin_id):
+    user = get_current_admin(request)
+    if not user:
+        return redirect("admin_login")
+
+    target_user = User.objects.filter(id=admin_id).first()
+    if not target_user:
+        messages.error(request, "User account not found.")
+        return redirect("admin_list")
+
+    # Only superusers or the faculty member themselves can update their courses
+    if not (user.is_superuser or user.id == target_user.id):
+        messages.error(request, "Permission denied: Only Administrators can update faculty teaching courses.")
+        return redirect("admin_list")
+
+    admin_prof = get_admin_profile(target_user)
+
+    if request.method == "POST":
+        selected_courses = request.POST.getlist("courses")
+        courses_str = ", ".join(c.strip() for c in selected_courses if c.strip())
+
+        admin_prof.faculty_courses = courses_str
+        admin_prof.is_faculty = True
+        admin_prof.save()
+
+        full_name = f"{target_user.first_name} {target_user.last_name}".strip() or target_user.username
+        fac, _ = Faculty.objects.get_or_create(
+            admin_account=admin_prof,
+            defaults={
+                "name": full_name,
+                "email": target_user.email,
+                "phone": admin_prof.phone or "",
+                "is_admin": target_user.is_superuser,
+                "is_active": True,
+                "courses": courses_str,
+                "password": admin_prof.password or "",
+            }
+        )
+        fac.name = full_name
+        fac.email = target_user.email
+        fac.is_admin = target_user.is_superuser
+        fac.is_active = True
+        fac.courses = courses_str
+        fac.save()
+
+        count = len([c for c in selected_courses if c.strip()])
+        messages.success(request, f"Faculty profile updated: {count} course(s) assigned to '{target_user.username}'.")
+
+    next_url = request.POST.get("next") or request.META.get("HTTP_REFERER") or reverse("admin_list")
+    return redirect(next_url)
+
+
 # --- ADMIN MANAGEMENT OVERVIEW & CRUD ---
 
 
@@ -1118,6 +1334,7 @@ def admin_list_view(request):
         return redirect("admin_login")
 
     q = request.GET.get("q", "").strip()
+    role_filter = request.GET.get("role", "").strip()
     
     # If the user is a superuser, they can see all admins (superusers + staff).
     # If the user is a staff administrator, they cannot see superuser accounts.
@@ -1136,24 +1353,70 @@ def admin_list_view(request):
             | Q(last_name__icontains=q)
         )
 
-    if user.is_superuser:
-        all_admins = User.objects.filter(Q(is_superuser=True) | Q(is_staff=True))
-        total_admins = all_admins.count()
-        superusers_count = all_admins.filter(is_superuser=True).count()
-        staff_count = all_admins.filter(is_staff=True, is_superuser=False).count()
-    else:
-        all_admins = User.objects.filter(is_staff=True, is_superuser=False)
-        total_admins = all_admins.count()
-        superusers_count = 0
-        staff_count = total_admins
+    # Compute breakdown counts across all registered members
+    all_users = User.objects.filter(Q(is_superuser=True) | Q(is_staff=True))
+    superusers_count = 0
+    faculty_count = 0
+    staff_count = 0
+    for u in all_users:
+        p = get_admin_profile(u)
+        if u.is_superuser:
+            superusers_count += 1
+        if p and p.is_faculty:
+            faculty_count += 1
+        if p and p.is_staff_role:
+            staff_count += 1
+
+    # Prepare enhanced items with role info and courses
+    admin_items = []
+    for a in admins:
+        prof = get_admin_profile(a)
+        fac_rec = Faculty.objects.filter(admin_account=prof, is_active=True).first()
+        is_fac = bool(prof and prof.is_faculty)
+        is_adm = a.is_superuser
+        is_stf = bool(prof and prof.is_staff_role)
+        
+        # Apply role filter if requested
+        if role_filter == "admin" and not is_adm:
+            continue
+        if role_filter == "faculty" and not is_fac:
+            continue
+        if role_filter == "staff" and not is_stf:
+            continue
+
+        raw_courses = (fac_rec.courses if fac_rec and fac_rec.courses else (prof.faculty_courses if prof else "")) or ""
+        courses_list = [c.strip() for c in raw_courses.split(",") if c.strip()]
+
+        admin_items.append({
+            "user": a,
+            "id": a.id,
+            "username": a.username,
+            "email": a.email,
+            "first_name": a.first_name,
+            "last_name": a.last_name,
+            "date_joined": a.date_joined,
+            "last_login": a.last_login,
+            "is_superuser": a.is_superuser,
+            "is_admin": is_adm,
+            "is_faculty": is_fac,
+            "is_staff": is_stf,
+            "faculty_record": fac_rec,
+            "courses_list": courses_list,
+            "faculty_courses": raw_courses,
+            "total_courses": len(courses_list),
+        })
 
     context = {
         "user": user,
-        "admins": admins,
-        "total_admins": total_admins,
+        "admins": admin_items,
+        "total_admins": len(admin_items),
+        "total_members_count": all_users.count(),
         "superusers_count": superusers_count,
+        "faculty_count": faculty_count,
         "staff_count": staff_count,
         "query": q,
+        "role_filter": role_filter,
+        "course_categories": Student.COURSE_CATEGORIES,
     }
     return render(request, "management/admin_list.html", context)
 
@@ -1177,7 +1440,14 @@ def admin_create_view(request):
         last_name = request.POST.get("last_name", "").strip()
         password = request.POST.get("password", "")
         confirm_password = request.POST.get("confirm_password", "")
-        is_superuser = request.POST.get("is_superuser") == "1"
+
+        role_admin = request.POST.get("role_admin") == "1" or request.POST.get("is_superuser") == "1"
+        role_faculty = request.POST.get("role_faculty") == "1"
+        role_staff = request.POST.get("role_staff") == "1"
+
+        if not (role_admin or role_faculty or role_staff):
+            messages.error(request, "Please select at least one role (Admin, Faculty, or Staff)!")
+            return redirect("admin_list")
 
         if not (username and email and password):
             messages.error(request, "Username, email, and password are required!")
@@ -1187,11 +1457,11 @@ def admin_create_view(request):
             messages.error(request, "Password and Confirm Password do not match!")
             return redirect("admin_list")
 
-        if User.objects.filter(username=username).exists():
+        if User.objects.filter(username__iexact=username).exists():
             messages.error(request, f"Username '{username}' is already taken!")
             return redirect("admin_list")
 
-        if User.objects.filter(email=email).exists():
+        if User.objects.filter(email__iexact=email).exists():
             messages.error(request, f"An account with email '{email}' already exists!")
             return redirect("admin_list")
 
@@ -1201,12 +1471,50 @@ def admin_create_view(request):
             first_name=first_name,
             last_name=last_name,
             password=make_password(password),
-            is_superuser=is_superuser,
+            is_superuser=role_admin,
             is_staff=True,
             is_active=True,
         )
+
+        full_name = f"{first_name} {last_name}".strip() or username
+        admin_prof, _ = Admin.objects.get_or_create(
+            email=email,
+            defaults={
+                "name": full_name,
+                "password": new_admin.password,
+            }
+        )
+        admin_prof.name = full_name
+        admin_prof.is_faculty = role_faculty
+        admin_prof.is_staff_role = role_staff
+        admin_prof.save()
+
+        if role_faculty:
+            fac, _ = Faculty.objects.get_or_create(
+                admin_account=admin_prof,
+                defaults={
+                    "name": full_name,
+                    "email": email,
+                    "phone": admin_prof.phone or "",
+                    "is_admin": role_admin,
+                    "is_active": True,
+                    "courses": admin_prof.faculty_courses or "",
+                    "password": admin_prof.password or "",
+                }
+            )
+            fac.name = full_name
+            fac.email = email
+            fac.is_admin = role_admin
+            fac.is_active = True
+            fac.save()
+
+        roles_assigned = []
+        if role_admin: roles_assigned.append("Admin")
+        if role_faculty: roles_assigned.append("Faculty")
+        if role_staff: roles_assigned.append("Staff")
+
         messages.success(
-            request, f"Administrator '{new_admin.username}' created successfully!"
+            request, f"Account '{new_admin.username}' created successfully with role(s): {', '.join(roles_assigned)}!"
         )
 
     return redirect("admin_list")
@@ -1235,17 +1543,24 @@ def admin_edit_view(request, admin_id):
         first_name = request.POST.get("first_name", "").strip()
         last_name = request.POST.get("last_name", "").strip()
         new_password = request.POST.get("new_password", "").strip()
-        is_superuser = request.POST.get("is_superuser") == "1"
+
+        role_admin = request.POST.get("role_admin") == "1" or request.POST.get("is_superuser") == "1"
+        role_faculty = request.POST.get("role_faculty") == "1"
+        role_staff = request.POST.get("role_staff") == "1"
+
+        if not (role_admin or role_faculty or role_staff):
+            messages.error(request, "Please select at least one role (Admin, Faculty, or Staff)!")
+            return redirect("admin_list")
 
         if not (username and email):
             messages.error(request, "Username and email are required!")
             return redirect("admin_list")
 
-        if username != target_admin.username and User.objects.filter(username=username).exists():
+        if username != target_admin.username and User.objects.filter(username__iexact=username).exists():
             messages.error(request, f"Username '{username}' is already in use!")
             return redirect("admin_list")
 
-        if email != target_admin.email and User.objects.filter(email=email).exists():
+        if email != target_admin.email and User.objects.filter(email__iexact=email).exists():
             messages.error(request, f"Email '{email}' is already in use!")
             return redirect("admin_list")
 
@@ -1255,10 +1570,10 @@ def admin_edit_view(request, admin_id):
         target_admin.last_name = last_name
 
         # Prevent demoting own superuser status if it's the last superuser
-        if target_admin.id == user.id and not is_superuser:
-            messages.error(request, "You cannot remove your own superuser status.")
+        if target_admin.id == user.id and not role_admin:
+            messages.error(request, "You cannot remove your own Admin/Superuser status.")
         else:
-            target_admin.is_superuser = is_superuser
+            target_admin.is_superuser = role_admin
 
         target_admin.is_staff = True
 
@@ -1266,7 +1581,49 @@ def admin_edit_view(request, admin_id):
             target_admin.password = make_password(new_password)
 
         target_admin.save()
-        messages.success(request, f"Administrator '{target_admin.username}' updated successfully!")
+
+        # Sync Admin profile and Faculty profile
+        admin_prof = get_admin_profile(target_admin)
+        full_name = f"{first_name} {last_name}".strip() or username
+        admin_prof.name = full_name
+        admin_prof.email = email
+        if new_password:
+            admin_prof.password = target_admin.password
+        admin_prof.is_faculty = role_faculty
+        admin_prof.is_staff_role = role_staff
+        admin_prof.save()
+
+        if role_faculty:
+            fac, _ = Faculty.objects.get_or_create(
+                admin_account=admin_prof,
+                defaults={
+                    "name": full_name,
+                    "email": email,
+                    "phone": admin_prof.phone or "",
+                    "is_admin": role_admin,
+                    "is_active": True,
+                    "courses": admin_prof.faculty_courses or "",
+                    "password": admin_prof.password or "",
+                }
+            )
+            fac.name = full_name
+            fac.email = email
+            fac.is_admin = role_admin
+            fac.is_active = True
+            fac.save()
+        else:
+            # If faculty role removed, deactivate faculty record
+            fac = Faculty.objects.filter(admin_account=admin_prof).first()
+            if fac:
+                fac.is_active = False
+                fac.save()
+
+        roles_assigned = []
+        if role_admin: roles_assigned.append("Admin")
+        if role_faculty: roles_assigned.append("Faculty")
+        if role_staff: roles_assigned.append("Staff")
+
+        messages.success(request, f"Account '{target_admin.username}' updated successfully with role(s): {', '.join(roles_assigned)}!")
 
     return redirect("admin_list")
 

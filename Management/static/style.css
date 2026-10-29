@@ -922,6 +922,24 @@ p {
     border-color: var(--danger-border);
 }
 
+.btn-icon.btn-whatsapp {
+    color: var(--text-muted);
+}
+
+.btn-icon.btn-whatsapp:hover {
+    color: #25D366;
+    background-color: rgba(37, 211, 102, 0.12);
+    border-color: rgba(37, 211, 102, 0.3);
+}
+
+.btn-icon.btn-whatsapp i,
+.btn-icon.btn-whatsapp .fa-whatsapp {
+    font-size: 1.15rem;
+    font-weight: 700;
+    -webkit-text-stroke: 0.7px currentColor;
+    display: inline-block;
+}
+
 /* Dossier Dark Pill Badge / Button */
 .dossier-btn-dark {
     display: inline-flex;

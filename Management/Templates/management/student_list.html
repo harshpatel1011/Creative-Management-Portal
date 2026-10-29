@@ -21,6 +21,10 @@
             <input type="text" name="q" value="{{ query|default:'' }}" class="search-input" placeholder="Search by name, email, phone..." aria-label="Search students">
             {% if course_filter %}<input type="hidden" name="course" value="{{ course_filter }}">{% endif %}
             {% if class_time_filter %}<input type="hidden" name="class_time" value="{{ class_time_filter }}">{% endif %}
+            {% if faculty_filter %}<input type="hidden" name="faculty" value="{{ faculty_filter }}">{% endif %}
+            {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+            {% if batch_filter %}<input type="hidden" name="batch_status" value="{{ batch_filter }}">{% endif %}
+            {% if batch_id_filter %}<input type="hidden" name="batch_id" value="{{ batch_id_filter }}">{% endif %}
             <button type="submit" class="btn-search" aria-label="Submit search"><i class="fa-solid fa-magnifying-glass"></i></button>
         </form>
         <a href="{% url 'admin_student_register' %}" class="btn-primary">
@@ -31,15 +35,34 @@
 </div>
 
 <!-- Filter Toolbar Card -->
+<style>
+.student-filter-grid-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.25rem;
+    width: 100%;
+}
+@media (max-width: 992px) {
+    .student-filter-grid-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@media (max-width: 640px) {
+    .student-filter-grid-row {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
 <div class="student-card" style="padding: 1.25rem 1.5rem; margin-bottom: 2rem;">
-    <form method="GET" action="{% url 'admin_student_list' %}" id="student-filter-form" style="display: flex; gap: 1.25rem; align-items: flex-end; flex-wrap: wrap; justify-content: space-between;">
+    <form method="GET" action="{% url 'admin_student_list' %}" id="student-filter-form" style="display: flex; flex-direction: column; gap: 1.25rem; width: 100%;">
         {% if query %}
         <input type="hidden" name="q" value="{{ query }}">
         {% endif %}
         
-        <div style="display: flex; gap: 1.25rem; align-items: flex-end; flex-wrap: wrap; flex: 1;">
+        <!-- Row 1: 3 Filters (Course, Batch Schedule, Assigned Faculty) -->
+        <div class="student-filter-grid-row">
             <!-- Filter by Course (Searchable) -->
-            <div style="flex: 1; min-width: 250px; max-width: 380px;">
+            <div style="width: 100%;">
                 <label class="form-label" style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem;">
                     <i class="fa-solid fa-graduation-cap" style="color: var(--primary);"></i> Filter by Course
                 </label>
@@ -67,7 +90,7 @@
             </div>
 
             <!-- Filter by Class Time (Searchable) -->
-            <div style="flex: 1; min-width: 200px; max-width: 280px;">
+            <div style="width: 100%;">
                 <label class="form-label" style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem;">
                     <i class="fa-solid fa-clock" style="color: var(--primary);"></i> Batch Schedule
                 </label>
@@ -89,7 +112,7 @@
             </div>
 
             <!-- Filter by Assigned Faculty (Searchable) -->
-            <div style="flex: 1; min-width: 200px; max-width: 280px;">
+            <div style="width: 100%;">
                 <label class="form-label" style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem;">
                     <i class="fa-solid fa-chalkboard-user" style="color: var(--primary);"></i> Assigned Faculty
                 </label>
@@ -103,33 +126,62 @@
                         {% for f in faculties %}
                         <li data-value="{{ f.name }}" class="faculty-filter-item" style="padding: 9px 14px; font-size: 0.85rem;">
                             <strong>{{ f.name }}</strong>
-                            <small style="display: block; color: var(--text-muted); font-size: 0.72rem;">{{ f.department }}</small>
+                            {% if f.courses %}
+                            <small style="display: block; color: var(--text-muted); font-size: 0.72rem; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ f.courses }}</small>
+                            {% endif %}
                         </li>
                         {% endfor %}
                     </ul>
                     <input type="hidden" name="faculty" id="hidden-faculty-filter" value="{{ faculty_filter }}">
                 </div>
             </div>
+        </div>
 
+        <!-- Row 2: 2 Filters (Status, Batch Assignment) + Actions on Far Right -->
+        <div class="student-filter-grid-row" style="align-items: flex-end;">
             <!-- Filter by Status -->
-            <div style="flex: 1; min-width: 170px; max-width: 220px;">
+            <div style="width: 100%;">
                 <label class="form-label" style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem;">
-                    <i class="fa-solid fa-user-clock" style="color: var(--primary);"></i> Leave Status
+                    <i class="fa-solid fa-sliders" style="color: var(--primary);"></i> Student Status
                 </label>
                 <div class="searchable-select-container">
-                    <input type="text" id="status-filter-input" class="searchable-select-input" placeholder="All Status..." autocomplete="off" readonly style="cursor: pointer;" value="{% if status_filter == 'active' %}Active{% elif status_filter == 'leave' %}On Leave ({{ on_leave_count }}){% else %}All Status{% endif %}">
+                    <input type="text" id="status-filter-input" class="searchable-select-input" placeholder="All Status..." autocomplete="off" readonly style="cursor: pointer;" value="{% if status_filter == 'active' %}Running{% elif status_filter == 'leave' %}On Leave ({{ on_leave_count }}){% elif status_filter %}{{ status_filter }}{% else %}All Status{% endif %}">
                     <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
-                    <ul id="status-filter-list" class="searchable-list custom-scrollbar" style="max-height: 200px;">
+                    <ul id="status-filter-list" class="searchable-list custom-scrollbar" style="max-height: 250px;">
                         <li data-value="" class="all-option" style="padding: 9px 14px; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border-color);">
                             <span><i class="fa-solid fa-users" style="margin-right: 6px;"></i> All Status (Show All)</span>
                         </li>
-                        <li data-value="active" class="status-filter-item" style="padding: 9px 14px; font-size: 0.85rem;">
-                            <strong><i class="fa-solid fa-circle-check" style="color: #10b981; margin-right: 6px; font-size: 0.75rem;"></i>Active</strong>
-                            <small style="color: var(--text-muted); font-size: 0.72rem;">Currently attending sessions</small>
+                        <li data-value="Running" class="status-filter-item" style="padding: 9px 14px; font-size: 0.85rem;">
+                            <strong><i class="fa-solid fa-play" style="color: #10b981; margin-right: 6px; font-size: 0.75rem;"></i>Running</strong>
+                            <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Active ongoing classes</small>
                         </li>
-                        <li data-value="leave" class="status-filter-item" style="padding: 9px 14px; font-size: 0.85rem;">
+                        <li data-value="Completed" class="status-filter-item" style="padding: 9px 14px; font-size: 0.85rem;">
+                            <strong><i class="fa-solid fa-circle-check" style="color: #059669; margin-right: 6px; font-size: 0.75rem;"></i>Completed</strong>
+                            <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Finished all coursework</small>
+                        </li>
+                        <li data-value="Dropped" class="status-filter-item" style="padding: 9px 14px; font-size: 0.85rem;">
+                            <strong><i class="fa-solid fa-circle-xmark" style="color: #dc2626; margin-right: 6px; font-size: 0.75rem;"></i>Dropped</strong>
+                            <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Discontinued enrollment</small>
+                        </li>
+                        <li data-value="On Leave" class="status-filter-item" style="padding: 9px 14px; font-size: 0.85rem;">
                             <strong><i class="fa-solid fa-plane-departure" style="color: #f59e0b; margin-right: 6px; font-size: 0.75rem;"></i>On Leave ({{ on_leave_count }})</strong>
-                            <small style="color: var(--text-muted); font-size: 0.72rem;">Approved leave period</small>
+                            <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Approved leave period</small>
+                        </li>
+                        <li data-value="Suspend" class="status-filter-item" style="padding: 9px 14px; font-size: 0.85rem;">
+                            <strong><i class="fa-solid fa-ban" style="color: #e11d48; margin-right: 6px; font-size: 0.75rem;"></i>Suspend</strong>
+                            <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Temporarily suspended</small>
+                        </li>
+                        <li data-value="In Job" class="status-filter-item" style="padding: 9px 14px; font-size: 0.85rem;">
+                            <strong><i class="fa-solid fa-briefcase" style="color: #2563eb; margin-right: 6px; font-size: 0.75rem;"></i>In Job</strong>
+                            <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Placed / working</small>
+                        </li>
+                        <li data-value="In Project" class="status-filter-item" style="padding: 9px 14px; font-size: 0.85rem;">
+                            <strong><i class="fa-solid fa-diagram-project" style="color: #9333ea; margin-right: 6px; font-size: 0.75rem;"></i>In Project</strong>
+                            <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Working on live project</small>
+                        </li>
+                        <li data-value="Branch Transfer" class="status-filter-item" style="padding: 9px 14px; font-size: 0.85rem;">
+                            <strong><i class="fa-solid fa-right-left" style="color: #0284c7; margin-right: 6px; font-size: 0.75rem;"></i>Branch Transfer</strong>
+                            <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Transferred to other branch</small>
                         </li>
                     </ul>
                     <input type="hidden" name="status" id="hidden-status-filter" value="{{ status_filter }}">
@@ -137,7 +189,7 @@
             </div>
 
             <!-- Filter by Batch Assignment -->
-            <div style="flex: 1; min-width: 180px; max-width: 230px;">
+            <div style="width: 100%;">
                 <label class="form-label" style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem;">
                     <i class="fa-solid fa-layer-group" style="color: var(--primary);"></i> Batch Assignment
                 </label>
@@ -160,17 +212,18 @@
                     <input type="hidden" name="batch_status" id="hidden-batch-filter" value="{{ batch_filter }}">
                 </div>
             </div>
-        </div>
 
-        <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
-            {% if course_filter or class_time_filter or faculty_filter or status_filter or query %}
-            <a href="{% url 'admin_student_list' %}" class="btn-secondary" style="height: 40px; font-size: 0.82rem; padding: 0 0.85rem;">
-                <i class="fa-solid fa-xmark"></i> Clear Filters
-            </a>
-            {% endif %}
-            <span class="dossier-btn-dark" style="height: 40px; display: inline-flex; align-items: center; padding: 0 0.85rem; font-size: 0.82rem;">
-                Showing <strong>{{ students.count }}</strong> of <strong>{{ total_students_count }}</strong>
-            </span>
+            <!-- Clear Filters & Count Actions (Far Right Column) -->
+            <div style="display: flex; gap: 0.75rem; align-items: center; justify-content: flex-end; width: 100%; height: 40px;">
+                {% if course_filter or class_time_filter or faculty_filter or status_filter or batch_filter or batch_id_filter or query %}
+                <a href="{% url 'admin_student_list' %}" class="btn-secondary" style="height: 40px; font-size: 0.82rem; padding: 0 0.85rem; display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;" title="Clear all active filters">
+                    <i class="fa-solid fa-xmark"></i> Clear Filters
+                </a>
+                {% endif %}
+                <span class="dossier-btn-dark" style="height: 40px; display: inline-flex; align-items: center; padding: 0 0.85rem; font-size: 0.82rem; white-space: nowrap;">
+                    Showing <strong>{{ students.count }}</strong> of <strong>{{ total_students_count }}</strong>
+                </span>
+            </div>
         </div>
     </form>
 </div>
@@ -196,16 +249,44 @@
                     <div style="display: flex; align-items: center; gap: 0.85rem;">
                         <div class="card-avatar" style="width: 40px; height: 40px; font-size: 1rem; position: relative;">
                             {{ s.name|slice:":1"|upper }}
-                            {% if s.is_on_leave %}
+                            {% if s.is_on_leave or s.status == 'On Leave' %}
                             <span title="On Leave" style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #f59e0b; border: 2px solid var(--bg-surface);"></span>
                             {% endif %}
                         </div>
                         <div>
                             <div style="display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;">
                                 <strong style="color: var(--text-primary); font-size: 0.92rem;">{{ s.name }}</strong>
-                                {% if s.is_on_leave %}
-                                <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35); font-size: 0.68rem; padding: 0.1rem 0.45rem; border-radius: 9999px; font-weight: 600;">
+                                {% if s.status == 'On Leave' or s.is_on_leave %}
+                                <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35); font-size: 0.68rem; padding: 0.1rem 0.45rem; border-radius: 9999px; font-weight: 600; cursor: pointer;" title="Status: On Leave (Click to change)" onclick="event.stopPropagation(); openStatusModal('{{ s.id }}', '{{ s.name|escapejs }}', 'On Leave', '{{ s.leave_reason|escapejs }}', '{{ s.leave_start_date|date:'Y-m-d'|default:'' }}', '{{ s.leave_end_date|date:'Y-m-d'|default:'' }}');">
                                     <i class="fa-solid fa-plane-departure" style="font-size: 0.62rem; margin-right: 2px;"></i> On Leave
+                                </span>
+                                {% elif s.status == 'Completed' %}
+                                <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #059669; border: 1px solid rgba(16, 185, 129, 0.35); font-size: 0.68rem; padding: 0.1rem 0.45rem; border-radius: 9999px; font-weight: 600; cursor: pointer;" title="Status: Completed (Click to change)" onclick="event.stopPropagation(); openStatusModal('{{ s.id }}', '{{ s.name|escapejs }}', 'Completed', '', '', '');">
+                                    <i class="fa-solid fa-circle-check" style="font-size: 0.62rem; margin-right: 2px;"></i> Completed
+                                </span>
+                                {% elif s.status == 'Dropped' %}
+                                <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.35); font-size: 0.68rem; padding: 0.1rem 0.45rem; border-radius: 9999px; font-weight: 600; cursor: pointer;" title="Status: Dropped (Click to change)" onclick="event.stopPropagation(); openStatusModal('{{ s.id }}', '{{ s.name|escapejs }}', 'Dropped', '', '', '');">
+                                    <i class="fa-solid fa-circle-xmark" style="font-size: 0.62rem; margin-right: 2px;"></i> Dropped
+                                </span>
+                                {% elif s.status == 'Suspend' %}
+                                <span class="badge" style="background: rgba(225, 29, 72, 0.15); color: #e11d48; border: 1px solid rgba(225, 29, 72, 0.35); font-size: 0.68rem; padding: 0.1rem 0.45rem; border-radius: 9999px; font-weight: 600; cursor: pointer;" title="Status: Suspend (Click to change)" onclick="event.stopPropagation(); openStatusModal('{{ s.id }}', '{{ s.name|escapejs }}', 'Suspend', '', '', '');">
+                                    <i class="fa-solid fa-ban" style="font-size: 0.62rem; margin-right: 2px;"></i> Suspend
+                                </span>
+                                {% elif s.status == 'In Job' %}
+                                <span class="badge" style="background: rgba(37, 99, 235, 0.15); color: #2563eb; border: 1px solid rgba(37, 99, 235, 0.35); font-size: 0.68rem; padding: 0.1rem 0.45rem; border-radius: 9999px; font-weight: 600; cursor: pointer;" title="Status: In Job (Click to change)" onclick="event.stopPropagation(); openStatusModal('{{ s.id }}', '{{ s.name|escapejs }}', 'In Job', '', '', '');">
+                                    <i class="fa-solid fa-briefcase" style="font-size: 0.62rem; margin-right: 2px;"></i> In Job
+                                </span>
+                                {% elif s.status == 'In Project' %}
+                                <span class="badge" style="background: rgba(147, 51, 234, 0.15); color: #9333ea; border: 1px solid rgba(147, 51, 234, 0.35); font-size: 0.68rem; padding: 0.1rem 0.45rem; border-radius: 9999px; font-weight: 600; cursor: pointer;" title="Status: In Project (Click to change)" onclick="event.stopPropagation(); openStatusModal('{{ s.id }}', '{{ s.name|escapejs }}', 'In Project', '', '', '');">
+                                    <i class="fa-solid fa-diagram-project" style="font-size: 0.62rem; margin-right: 2px;"></i> In Project
+                                </span>
+                                {% elif s.status == 'Branch Transfer' %}
+                                <span class="badge" style="background: rgba(14, 165, 233, 0.15); color: #0284c7; border: 1px solid rgba(14, 165, 233, 0.35); font-size: 0.68rem; padding: 0.1rem 0.45rem; border-radius: 9999px; font-weight: 600; cursor: pointer;" title="Status: Branch Transfer (Click to change)" onclick="event.stopPropagation(); openStatusModal('{{ s.id }}', '{{ s.name|escapejs }}', 'Branch Transfer', '', '', '');">
+                                    <i class="fa-solid fa-right-left" style="font-size: 0.62rem; margin-right: 2px;"></i> Branch Transfer
+                                </span>
+                                {% else %}
+                                <span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #059669; border: 1px solid rgba(16, 185, 129, 0.28); font-size: 0.68rem; padding: 0.1rem 0.45rem; border-radius: 9999px; font-weight: 600; cursor: pointer;" title="Status: Running (Click to change)" onclick="event.stopPropagation(); openStatusModal('{{ s.id }}', '{{ s.name|escapejs }}', 'Running', '', '', '');">
+                                    <i class="fa-solid fa-play" style="font-size: 0.55rem; margin-right: 2px;"></i> Running
                                 </span>
                                 {% endif %}
                             </div>
@@ -265,18 +346,17 @@
                 </td>
                 <td style="text-align: right;" onclick="event.stopPropagation();">
                     <div style="display: inline-flex; align-items: center; gap: 0.4rem; justify-content: flex-end;">
+                        {% if s.whatsapp_url %}
+                        <a href="{{ s.whatsapp_url }}" target="_blank" rel="noopener noreferrer" class="btn-icon btn-whatsapp" title="WhatsApp ({{ s.phone }})">
+                            <i class="fa-brands fa-whatsapp" style="font-size: 1.15rem; -webkit-text-stroke: 0.7px currentColor; font-weight: 700;"></i>
+                        </a>
+                        {% endif %}
                         <a href="{% url 'admin_student_edit' s.id %}?next=list" class="btn-icon" title="Edit Student">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </a>
-                        {% if s.is_on_leave %}
-                        <button type="button" class="btn-icon" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border-color: rgba(245, 158, 11, 0.4);" title="On Leave (Click to Manage / Resume)" onclick="openLeaveModal('{{ s.id }}', '{{ s.name|escapejs }}', true, '{{ s.leave_reason|escapejs }}', '{{ s.leave_start_date|date:"Y-m-d"|default:"" }}', '{{ s.leave_end_date|date:"Y-m-d"|default:"" }}');">
-                            <i class="fa-solid fa-user-clock"></i>
+                        <button type="button" class="btn-icon" {% if s.is_on_leave or s.status == 'On Leave' %}style="background: rgba(245, 158, 11, 0.15); color: #d97706; border-color: rgba(245, 158, 11, 0.4);"{% endif %} title="Update Status (Currently: {{ s.status_display }})" onclick="openStatusModal('{{ s.id }}', '{{ s.name|escapejs }}', '{{ s.status|default:'Running'|escapejs }}', '{{ s.leave_reason|escapejs }}', '{{ s.leave_start_date|date:'Y-m-d'|default:'' }}', '{{ s.leave_end_date|date:'Y-m-d'|default:'' }}');">
+                            <i class="fa-solid fa-sliders"></i>
                         </button>
-                        {% else %}
-                        <button type="button" class="btn-icon" title="Mark On Leave" onclick="openLeaveModal('{{ s.id }}', '{{ s.name|escapejs }}', false, '', '', '');">
-                            <i class="fa-solid fa-plane-departure"></i>
-                        </button>
-                        {% endif %}
                         <a href="{% url 'admin_student_delete' s.id %}" class="btn-icon btn-delete" onclick="return confirm('Are you sure you want to delete {{ s.name }}? All associated records will also be deleted.');" title="Delete Student">
                             <i class="fa-solid fa-trash"></i>
                         </a>
@@ -295,18 +375,18 @@
     </div>
     <h3 style="font-size: 1.35rem; margin-bottom: 0.5rem; color: var(--text-primary);">No Students Found</h3>
     <p style="color: var(--text-secondary); margin-bottom: 1.75rem; max-width: 440px; margin-left: auto; margin-right: auto; font-size: 0.9rem;">
-        {% if query or course_filter or class_time_filter %}
+        {% if query or course_filter or class_time_filter or faculty_filter or status_filter or batch_filter or batch_id_filter %}
             We couldn't find any students matching your active search query and filter criteria.
         {% else %}
             No student accounts have been registered yet. Get started by registering your first student.
         {% endif %}
     </p>
-    {% if query or course_filter or class_time_filter %}
-    <a href="{% url 'admin_student_list' %}" class="btn-secondary" style="display: inline-flex;">
+    {% if query or course_filter or class_time_filter or faculty_filter or status_filter or batch_filter or batch_id_filter %}
+    <a href="{% url 'admin_student_list' %}" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 0.4rem;">
         <i class="fa-solid fa-xmark"></i> Clear Filters
     </a>
     {% else %}
-    <a href="{% url 'admin_student_register' %}" class="btn-primary" style="display: inline-flex;">
+    <a href="{% url 'admin_student_register' %}" class="btn-primary" style="display: inline-flex; align-items: center; gap: 0.4rem;">
         <i class="fa-solid fa-user-plus"></i> Register First Student
     </a>
     {% endif %}
@@ -333,10 +413,36 @@ document.addEventListener("DOMContentLoaded", function() {
             list.style.display = "none";
         }
 
-        input.addEventListener("focus", show);
+        input.addEventListener("focus", function() {
+            show();
+            if (!input.readOnly && input.value) {
+                input.select();
+            }
+        });
         input.addEventListener("click", function(e) {
             e.stopPropagation();
             show();
+        });
+        input.addEventListener("keydown", function(e) {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                const q = input.value.toLowerCase().trim();
+                if (!q) {
+                    hidden.value = "";
+                } else {
+                    const visible = Array.from(items).find(it => it.style.display !== "none" && !it.classList.contains("category-header"));
+                    if (visible) {
+                        const val = visible.getAttribute("data-value") || "";
+                        hidden.value = val;
+                        const textEl = visible.querySelector("strong") || visible.querySelector("span");
+                        input.value = textEl ? textEl.textContent.trim() : (val || visible.textContent.trim());
+                    } else {
+                        hidden.value = input.value.trim();
+                    }
+                }
+                hide();
+                form.submit();
+            }
         });
 
         input.addEventListener("input", function() {
@@ -402,288 +508,188 @@ document.addEventListener("DOMContentLoaded", function() {
 
     setupFilterDropdown("course-filter-input", "course-filter-list", "hidden-course-filter", ".course-filter-item, .all-option", true);
     setupFilterDropdown("time-filter-input", "time-filter-list", "hidden-time-filter", ".time-filter-item, .all-option", false);
+    setupFilterDropdown("faculty-filter-input", "faculty-filter-list", "hidden-faculty-filter", ".faculty-filter-item, .all-option", false);
     setupFilterDropdown("status-filter-input", "status-filter-list", "hidden-status-filter", ".status-filter-item, .all-option", false);
     setupFilterDropdown("batch-filter-input", "batch-filter-list", "hidden-batch-filter", ".batch-filter-item, .all-option", false);
 });
-
-    // Faculty Search Filter Logic
-    const facFilterInput = document.getElementById("faculty-filter-input");
-    const facFilterList = document.getElementById("faculty-filter-list");
-    const hiddenFacFilter = document.getElementById("hidden-faculty-filter");
-    const facFilterItems = document.querySelectorAll(".faculty-filter-item, #faculty-filter-list .all-option");
-
-    if (facFilterInput && facFilterList) {
-        facFilterInput.addEventListener("focus", () => facFilterList.style.display = "block");
-        facFilterInput.addEventListener("click", (e) => {
-            e.stopPropagation();
-            facFilterList.style.display = "block";
-        });
-        facFilterInput.addEventListener("input", function() {
-            const q = facFilterInput.value.toLowerCase().trim();
-            facFilterList.style.display = "block";
-            facFilterItems.forEach(item => {
-                item.style.display = item.textContent.toLowerCase().includes(q) ? "block" : "none";
-            });
-        });
-        facFilterItems.forEach(item => {
-            item.addEventListener("click", function() {
-                const val = item.getAttribute("data-value");
-                hiddenFacFilter.value = val;
-                facFilterInput.value = val;
-                facFilterList.style.display = "none";
-                filterForm.submit();
-            });
-        });
-        document.addEventListener("click", function(e) {
-            if (!facFilterInput.contains(e.target) && !facFilterList.contains(e.target)) {
-                facFilterList.style.display = "none";
-            }
-        });
-    }
-
 </script>
 
-<!-- ================= MODAL: STUDENT ON LEAVE ================= -->
-<div id="leaveModal" class="modal-backdrop-custom">
-    <div class="modal-dialog-custom" style="max-width: 500px;">
-        <div class="modal-header-custom">
+<!-- ================= MODAL: UPDATE STUDENT STATUS ================= -->
+<div id="statusModal" class="modal-backdrop-custom">
+    <div class="modal-dialog-custom" style="max-width: 480px; overflow: visible;">
+        <div class="modal-header-custom" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
             <div>
-                <h2 class="modal-title-custom" id="leaveModalTitle">
-                    <i class="fa-solid fa-plane-departure" style="color: var(--primary); margin-right: 6px;"></i> Mark Student On Leave
-                </h2>
-                <small style="font-size: 0.78rem; color: var(--text-muted);" id="leaveModalSubtitle">
-                    Record leave duration and attendance status
+                <h2 class="modal-title-custom">Update Status</h2>
+                <small style="font-size: 0.78rem; color: var(--text-muted);" id="statusModalSubtitle">
+                    Update student enrollment and attendance status
                 </small>
             </div>
-            <button type="button" class="toast-close" onclick="closeLeaveModal();" aria-label="Close dialog">
+            <button type="button" class="toast-close" onclick="closeStatusModal();" aria-label="Close dialog">
                 <i class="fa-solid fa-xmark" style="font-size: 1.1rem;"></i>
             </button>
         </div>
 
-        <form id="leaveModalForm" method="POST" action="">
+        <form id="statusModalForm" method="POST" action="">
             {% csrf_token %}
             <input type="hidden" name="next" value="{{ request.get_full_path }}">
             
-            <div class="modal-body-custom" style="padding: 1.25rem 1.5rem;">
+            <div class="modal-body-custom" style="padding: 1.25rem 1.5rem; overflow: visible;">
                 <!-- Student Info Banner -->
                 <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; border-radius: 8px; background: var(--bg-main); border: 1px solid var(--border-color); margin-bottom: 1.25rem;">
                     <div>
                         <small style="text-transform: uppercase; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); display: block; letter-spacing: 0.05em;">Student</small>
-                        <strong id="leaveStudentName" style="color: var(--text-primary); font-size: 1rem;">-</strong>
+                        <strong id="statusStudentName" style="color: var(--text-primary); font-size: 1rem;">-</strong>
                     </div>
-                    <span id="leaveStatusBadge" class="badge" style="display: none;"></span>
+                    <span id="statusCurrentBadge" class="badge" style="font-size: 0.75rem;">-</span>
                 </div>
 
-                <!-- Existing Leave Banner (Only shown if already on leave) -->
-                <div id="existingLeaveBanner" style="display: none; padding: 0.85rem 1rem; border-radius: 8px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); margin-bottom: 1.25rem;">
-                    <div style="display: flex; align-items: flex-start; gap: 0.6rem;">
-                        <i class="fa-solid fa-circle-exclamation" style="color: #d97706; margin-top: 2px;"></i>
-                        <div style="flex: 1; font-size: 0.82rem; color: var(--text-primary);">
-                            <strong>Currently On Leave</strong>
-                            <div id="existingLeaveDetails" style="color: var(--text-secondary); margin-top: 3px; font-size: 0.78rem;"></div>
-                        </div>
-                    </div>
-                    <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed rgba(245, 158, 11, 0.3); display: flex; justify-content: flex-end;">
-                        <button type="submit" name="action" value="mark_active" class="btn-success" style="font-size: 0.82rem; padding: 0.4rem 0.85rem; display: inline-flex; align-items: center; gap: 0.4rem;">
-                            <i class="fa-solid fa-user-check"></i> Mark as Active (Resume Classes)
-                        </button>
-                    </div>
-                </div>
-
-                <div id="leaveUpdateHeader" style="display: none; margin-bottom: 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">
-                    Or Update Leave Period:
-                </div>
-
-                <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="form-group" style="grid-column: span 2;">
-                        <label class="form-label" for="leave_reason">Leave Reason / Notes</label>
-                        <input type="text" id="leave_reason" name="leave_reason" class="form-input" placeholder="e.g. Medical reasons, Family function, Out of town..." autocomplete="off">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="leave_start_date">Start Date *</label>
-                        <input type="date" id="leave_start_date" name="leave_start_date" class="form-input" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="leave_end_date">End Date <small style="color: var(--text-muted);">(Optional)</small></label>
-                        <input type="date" id="leave_end_date" name="leave_end_date" class="form-input">
-                    </div>
-
-                    <div class="form-group" id="attendanceCheckboxGroup" style="grid-column: span 2; margin-top: 0.25rem;">
-                        <label style="display: flex; align-items: center; gap: 0.65rem; font-size: 0.85rem; color: var(--text-primary); cursor: pointer; user-select: none;">
-                            <input type="checkbox" name="mark_attendance_leave" value="1" checked style="width: 16px; height: 16px; accent-color: var(--primary);">
-                            <span>Mark today's attendance as <strong>Leave</strong></span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal-footer-custom" style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
-                <button type="button" class="btn-secondary" onclick="closeLeaveModal();">Cancel</button>
-                <div style="display: flex; gap: 0.5rem;">
-                    <button type="submit" name="action" value="mark_leave" id="leaveSubmitBtn" class="btn-primary" style="display: inline-flex; align-items: center; gap: 0.4rem;">
-                        <i class="fa-solid fa-plane-departure"></i> <span>Mark On Leave</span>
-                    </button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
-function openLeaveModal(studentId, studentName, isOnLeave, leaveReason, leaveStart, leaveEnd) {
-    const modal = document.getElementById('leaveModal');
-    const form = document.getElementById('leaveModalForm');
-    const title = document.getElementById('leaveModalTitle');
-    const subtitle = document.getElementById('leaveModalSubtitle');
-    const nameEl = document.getElementById('leaveStudentName');
-    const badgeEl = document.getElementById('leaveStatusBadge');
-    const existingBanner = document.getElementById('existingLeaveBanner');
-    const existingDetails = document.getElementById('existingLeaveDetails');
-    const updateHeader = document.getElementById('leaveUpdateHeader');
-    const reasonInput = document.getElementById('leave_reason');
-    const startInput = document.getElementById('leave_start_date');
-    const endInput = document.getElementById('leave_end_date');
-    const submitBtn = document.getElementById('leaveSubmitBtn');
-    const attGroup = document.getElementById('attendanceCheckboxGroup');
-
-    form.action = '/management/students/' + studentId + '/leave/';
-    nameEl.textContent = studentName;
-
-    const todayStr = new Date().toISOString().split('T')[0];
-
-    if (isOnLeave) {
-        title.innerHTML = '<i class="fa-solid fa-user-clock" style="color: #d97706; margin-right: 6px;"></i> Manage Leave Status';
-        subtitle.textContent = 'Student is currently marked On Leave';
-        badgeEl.style.display = 'inline-block';
-        badgeEl.className = 'badge';
-        badgeEl.style.background = 'rgba(245, 158, 11, 0.15)';
-        badgeEl.style.color = '#d97706';
-        badgeEl.style.border = '1px solid rgba(245, 158, 11, 0.3)';
-        badgeEl.innerHTML = '<i class="fa-solid fa-plane-departure"></i> On Leave';
-
-        existingBanner.style.display = 'block';
-        let detailText = leaveReason ? ('Reason: ' + leaveReason) : 'Reason: Not specified';
-        if (leaveStart) {
-            detailText += ' | From: ' + leaveStart;
-            if (leaveEnd) detailText += ' to ' + leaveEnd;
-        }
-        existingDetails.textContent = detailText;
-
-        updateHeader.style.display = 'block';
-        reasonInput.value = leaveReason || '';
-        startInput.value = leaveStart || todayStr;
-        endInput.value = leaveEnd || '';
-        submitBtn.className = 'btn-primary';
-        submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> <span>Update Leave Details</span>';
-        if (attGroup) attGroup.style.display = 'none';
-    } else {
-        title.innerHTML = '<i class="fa-solid fa-plane-departure" style="color: var(--primary); margin-right: 6px;"></i> Mark Student On Leave';
-        subtitle.textContent = 'Record leave period and mark attendance status';
-        badgeEl.style.display = 'inline-block';
-        badgeEl.className = 'badge';
-        badgeEl.style.background = 'rgba(16, 185, 129, 0.15)';
-        badgeEl.style.color = '#059669';
-        badgeEl.style.border = '1px solid rgba(16, 185, 129, 0.3)';
-        badgeEl.innerHTML = '<i class="fa-solid fa-circle-check"></i> Currently Active';
-
-        existingBanner.style.display = 'none';
-        updateHeader.style.display = 'none';
-        reasonInput.value = '';
-        startInput.value = todayStr;
-        endInput.value = '';
-        submitBtn.className = 'btn-primary';
-        submitBtn.innerHTML = '<i class="fa-solid fa-plane-departure"></i> <span>Mark On Leave</span>';
-        if (attGroup) attGroup.style.display = 'block';
-    }
-
-    modal.classList.add('show');
-}
-
-function closeLeaveModal() {
-    const modal = document.getElementById('leaveModal');
-    if (modal) {
-        modal.classList.remove('show');
-    }
-}
-
-window.addEventListener('click', function(e) {
-    const modal = document.getElementById('leaveModal');
-    if (e.target === modal) {
-        closeLeaveModal();
-    }
-});
-window.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeLeaveModal();
-    }
-});
-</script>
-
-
-<!-- ================= MODAL: ASSIGN STUDENT TO BATCH ================= -->
-<div id="assignStudentModal" class="modal-backdrop-custom">
-    <div class="modal-dialog-custom" style="max-width: 480px; overflow: visible;">
-        <div class="modal-header-custom" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
-            <div>
-                <h2 class="modal-title-custom"><i class="fa-solid fa-user-plus" style="color: var(--primary); margin-right: 6px;"></i> Assign Student to Batch</h2>
-                <small style="font-size: 0.78rem; color: var(--text-muted);">Assign student to a faculty-managed course batch</small>
-            </div>
-            <button type="button" class="toast-close" onclick="closeAssignModal();" aria-label="Close dialog">
-                <i class="fa-solid fa-xmark" style="font-size: 1.1rem;"></i>
-            </button>
-        </div>
-
-        <form method="POST" action="{% url 'admin_batch_assign_student' %}">
-            {% csrf_token %}
-            <input type="hidden" name="next" value="{{ request.get_full_path }}">
-            <input type="hidden" name="student_id" id="assign_student_id" value="">
-
-            <div class="modal-body-custom" style="padding: 1.25rem 1.5rem; overflow: visible;">
-                <div style="padding: 0.75rem 1rem; border-radius: 8px; background: var(--bg-main); border: 1px solid var(--border-color); margin-bottom: 1.25rem;">
-                    <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.05em;">Student Details</div>
-                    <strong id="assign_student_name" style="font-size: 1rem; color: var(--text-primary); display: block; margin-top: 2px;">-</strong>
-                    <div style="display: flex; gap: 8px; margin-top: 4px; font-size: 0.78rem; color: var(--text-secondary);">
-                        <span id="assign_student_course">-</span>
-                        <span>&bull;</span>
-                        <span id="assign_student_slot">-</span>
-                    </div>
-                </div>
-
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label class="form-label" for="select_batch_id" style="font-weight: 600; margin-bottom: 0.4rem; display: block;">Select Batch *</label>
-                    <div class="searchable-select-container">
-                        <input type="text" id="assign_batch_input" class="searchable-select-input" placeholder="Choose a Batch (Select or Search)..." autocomplete="off">
+                <!-- Custom Styled Select Status Dropdown -->
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label class="form-label" for="status_select_input" style="font-weight: 600; margin-bottom: 0.4rem; display: block; color: var(--text-primary);">Select Status</label>
+                    <div class="searchable-select-container" id="status_select_container">
+                        <input type="text" id="status_select_input" class="searchable-select-input" placeholder="Select Status..." autocomplete="off" readonly style="cursor: pointer; font-size: 0.9rem; font-weight: 500;">
                         <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
-                        <ul id="assign_batch_list" class="searchable-list custom-scrollbar" style="max-height: 240px;">
-                            <li data-value="unassign" data-text="-- Not Assigned to Any Batch --" class="assign-batch-item" style="padding: 9px 14px; font-size: 0.85rem; color: #ef4444; border-bottom: 1px solid var(--border-color);">
-                                <strong><i class="fa-solid fa-user-xmark" style="margin-right: 6px;"></i>Remove from Batch (Mark Not Assigned)</strong>
+                        <ul id="status_select_list" class="searchable-list custom-scrollbar" style="max-height: 250px;">
+                            <li data-value="Running" class="status-option-item" style="padding: 10px 14px; font-size: 0.85rem; display: flex; flex-direction: row; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color-light); cursor: pointer;">
+                                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                                    <span style="width: 26px; height: 26px; border-radius: 6px; background: rgba(16, 185, 129, 0.12); color: #059669; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">
+                                        <i class="fa-solid fa-play"></i>
+                                    </span>
+                                    <div>
+                                        <strong style="color: var(--text-primary); font-size: 0.88rem;">Running</strong>
+                                        <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Active ongoing classes</small>
+                                    </div>
+                                </div>
+                                <span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #059669; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 9999px;">Running</span>
                             </li>
-                            {% for b in all_batches %}
-                            <li data-value="{{ b.id }}" data-slot="{{ b.time_slot }}" data-text="{{ b.name }} ({{ b.time_slot }}{% if b.faculty %} &bull; {{ b.faculty.name }}{% endif %})" class="assign-batch-item" style="padding: 9px 14px; font-size: 0.85rem;">
-                                <strong>{{ b.name }}</strong>
-                                <small style="display: block; color: var(--text-muted); font-size: 0.72rem;">{{ b.time_slot }}{% if b.faculty %} &bull; {{ b.faculty.name }}{% endif %}</small>
+
+                            <li data-value="Completed" class="status-option-item" style="padding: 10px 14px; font-size: 0.85rem; display: flex; flex-direction: row; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color-light); cursor: pointer;">
+                                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                                    <span style="width: 26px; height: 26px; border-radius: 6px; background: rgba(16, 185, 129, 0.15); color: #059669; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">
+                                        <i class="fa-solid fa-circle-check"></i>
+                                    </span>
+                                    <div>
+                                        <strong style="color: var(--text-primary); font-size: 0.88rem;">Completed</strong>
+                                        <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Finished all coursework</small>
+                                    </div>
+                                </div>
+                                <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #059669; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 9999px;">Completed</span>
                             </li>
-                            {% empty %}
-                            <li style="padding: 12px 14px; font-size: 0.82rem; color: var(--text-muted); text-align: center;">
-                                No active batches available.
+
+                            <li data-value="Dropped" class="status-option-item" style="padding: 10px 14px; font-size: 0.85rem; display: flex; flex-direction: row; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color-light); cursor: pointer;">
+                                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                                    <span style="width: 26px; height: 26px; border-radius: 6px; background: rgba(239, 68, 68, 0.15); color: #dc2626; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">
+                                        <i class="fa-solid fa-circle-xmark"></i>
+                                    </span>
+                                    <div>
+                                        <strong style="color: var(--text-primary); font-size: 0.88rem;">Dropped</strong>
+                                        <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Discontinued enrollment</small>
+                                    </div>
+                                </div>
+                                <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #dc2626; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 9999px;">Dropped</span>
                             </li>
-                            {% endfor %}
-                            <li id="assign_no_slot_batches_msg" style="display: none; padding: 14px; font-size: 0.83rem; color: var(--text-muted); text-align: center; line-height: 1.4;">
-                                <i class="fa-solid fa-calendar-xmark" style="font-size: 1.2rem; color: #d97706; display: block; margin-bottom: 4px;"></i>
-                                <span>No batches available for this student's time slot (<strong id="assign_no_slot_name">-</strong>).</span>
+
+                            <li data-value="On Leave" class="status-option-item" style="padding: 10px 14px; font-size: 0.85rem; display: flex; flex-direction: row; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color-light); cursor: pointer;">
+                                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                                    <span style="width: 26px; height: 26px; border-radius: 6px; background: rgba(245, 158, 11, 0.15); color: #d97706; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">
+                                        <i class="fa-solid fa-plane-departure"></i>
+                                    </span>
+                                    <div>
+                                        <strong style="color: var(--text-primary); font-size: 0.88rem;">On Leave</strong>
+                                        <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Approved leave period</small>
+                                    </div>
+                                </div>
+                                <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #d97706; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 9999px;">On Leave</span>
+                            </li>
+
+                            <li data-value="Suspend" class="status-option-item" style="padding: 10px 14px; font-size: 0.85rem; display: flex; flex-direction: row; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color-light); cursor: pointer;">
+                                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                                    <span style="width: 26px; height: 26px; border-radius: 6px; background: rgba(225, 29, 72, 0.15); color: #e11d48; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">
+                                        <i class="fa-solid fa-ban"></i>
+                                    </span>
+                                    <div>
+                                        <strong style="color: var(--text-primary); font-size: 0.88rem;">Suspend</strong>
+                                        <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Temporarily suspended</small>
+                                    </div>
+                                </div>
+                                <span class="badge" style="background: rgba(225, 29, 72, 0.15); color: #e11d48; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 9999px;">Suspend</span>
+                            </li>
+
+                            <li data-value="In Job" class="status-option-item" style="padding: 10px 14px; font-size: 0.85rem; display: flex; flex-direction: row; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color-light); cursor: pointer;">
+                                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                                    <span style="width: 26px; height: 26px; border-radius: 6px; background: rgba(37, 99, 235, 0.15); color: #2563eb; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">
+                                        <i class="fa-solid fa-briefcase"></i>
+                                    </span>
+                                    <div>
+                                        <strong style="color: var(--text-primary); font-size: 0.88rem;">In Job</strong>
+                                        <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Placed / working</small>
+                                    </div>
+                                </div>
+                                <span class="badge" style="background: rgba(37, 99, 235, 0.15); color: #2563eb; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 9999px;">In Job</span>
+                            </li>
+
+                            <li data-value="In Project" class="status-option-item" style="padding: 10px 14px; font-size: 0.85rem; display: flex; flex-direction: row; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color-light); cursor: pointer;">
+                                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                                    <span style="width: 26px; height: 26px; border-radius: 6px; background: rgba(147, 51, 234, 0.15); color: #9333ea; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">
+                                        <i class="fa-solid fa-diagram-project"></i>
+                                    </span>
+                                    <div>
+                                        <strong style="color: var(--text-primary); font-size: 0.88rem;">In Project</strong>
+                                        <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Working on live project</small>
+                                    </div>
+                                </div>
+                                <span class="badge" style="background: rgba(147, 51, 234, 0.15); color: #9333ea; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 9999px;">In Project</span>
+                            </li>
+
+                            <li data-value="Branch Transfer" class="status-option-item" style="padding: 10px 14px; font-size: 0.85rem; display: flex; flex-direction: row; align-items: center; justify-content: space-between; border-bottom: none; cursor: pointer;">
+                                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                                    <span style="width: 26px; height: 26px; border-radius: 6px; background: rgba(14, 165, 233, 0.15); color: #0284c7; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">
+                                        <i class="fa-solid fa-right-left"></i>
+                                    </span>
+                                    <div>
+                                        <strong style="color: var(--text-primary); font-size: 0.88rem;">Branch Transfer</strong>
+                                        <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Transferred to other branch</small>
+                                    </div>
+                                </div>
+                                <span class="badge" style="background: rgba(14, 165, 233, 0.15); color: #0284c7; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 9999px;">Branch Transfer</span>
                             </li>
                         </ul>
-                        <input type="hidden" name="batch_id" id="select_batch_id" required>
+                        <input type="hidden" name="status" id="statusHiddenInput" required>
                     </div>
+                </div>
+
+                <!-- Leave Fields (Displayed when 'On Leave' is selected) -->
+                <div id="statusLeaveFields" style="display: none; padding: 1rem; border-radius: 8px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); margin-top: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.85rem;">
+                        <i class="fa-solid fa-plane-departure" style="color: #d97706; font-size: 0.9rem;"></i>
+                        <span style="font-size: 0.85rem; font-weight: 600; color: #d97706;">Leave Period & Attendance</span>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0.85rem;">
+                        <label class="form-label" for="status_leave_reason" style="font-size: 0.8rem;">Leave Reason / Notes</label>
+                        <input type="text" id="status_leave_reason" name="leave_reason" class="form-input" placeholder="e.g. Medical reasons, Family function, Out of town..." autocomplete="off">
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                        <div class="form-group">
+                            <label class="form-label" for="status_leave_start_date" style="font-size: 0.8rem;">Start Date *</label>
+                            <input type="date" id="status_leave_start_date" name="leave_start_date" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="status_leave_end_date" style="font-size: 0.8rem;">End Date *</label>
+                            <input type="date" id="status_leave_end_date" name="leave_end_date" class="form-input">
+                        </div>
+                    </div>
+                    <small style="display: block; color: var(--text-muted); font-size: 0.72rem; margin-top: 0.5rem; line-height: 1.4;">
+                        <i class="fa-solid fa-circle-info" style="color: #d97706;"></i> Daily attendance records for this period will automatically be marked as <strong>Leave</strong>.
+                    </small>
                 </div>
             </div>
 
-            <div class="modal-footer-custom" style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
-                <button type="button" class="btn-secondary" onclick="closeAssignModal();">Cancel</button>
-                <button type="submit" class="btn-primary">
-                    <i class="fa-solid fa-check"></i> Assign Batch
+            <div class="modal-footer-custom" style="padding: 1rem 1.5rem; display: flex; justify-content: flex-end; align-items: center; gap: 0.65rem; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+                <button type="button" class="btn-secondary" onclick="closeStatusModal();">Close</button>
+                <button type="submit" class="btn-primary" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                    <i class="fa-solid fa-floppy-disk"></i> Save changes
                 </button>
             </div>
         </form>
@@ -691,159 +697,166 @@ window.addEventListener('keydown', function(e) {
 </div>
 
 <script>
-// Helper to extract digits & normalize slot formats for bulletproof matching
-function getHoursAndPeriod(s) {
-    if (!s) return { hours: [], periods: [] };
-    const clean = s.toLowerCase().trim();
-    const hourMatches = clean.match(/(\d{1,2})(?::\d{2})?/g) || [];
-    const hours = hourMatches.map(m => parseInt(m.split(':')[0], 10));
-    const periods = clean.match(/(am|pm)/g) || [];
-    return { hours, periods };
+function openStatusModal(studentId, studentName, currentStatus, leaveReason, leaveStart, leaveEnd) {
+    const modal = document.getElementById('statusModal');
+    const form = document.getElementById('statusModalForm');
+    const nameEl = document.getElementById('statusStudentName');
+    const badgeEl = document.getElementById('statusCurrentBadge');
+    const inputEl = document.getElementById('status_select_input');
+    const hiddenEl = document.getElementById('statusHiddenInput');
+    const listEl = document.getElementById('status_select_list');
+    const containerEl = document.getElementById('status_select_container');
+    const reasonInput = document.getElementById('status_leave_reason');
+    const startInput = document.getElementById('status_leave_start_date');
+    const endInput = document.getElementById('status_leave_end_date');
+
+    form.action = '/management/students/' + studentId + '/status/';
+    nameEl.textContent = studentName;
+
+    const st = currentStatus || 'Running';
+    hiddenEl.value = st;
+    inputEl.value = st;
+
+    if (listEl) listEl.style.display = 'none';
+    if (containerEl) containerEl.classList.remove('open');
+
+    // Set badge style
+    badgeEl.textContent = st;
+    if (st === 'On Leave') {
+        badgeEl.style.background = 'rgba(245, 158, 11, 0.15)';
+        badgeEl.style.color = '#d97706';
+        badgeEl.style.border = '1px solid rgba(245, 158, 11, 0.35)';
+    } else if (st === 'Completed') {
+        badgeEl.style.background = 'rgba(16, 185, 129, 0.15)';
+        badgeEl.style.color = '#059669';
+        badgeEl.style.border = '1px solid rgba(16, 185, 129, 0.35)';
+    } else if (st === 'Dropped' || st === 'Suspend') {
+        badgeEl.style.background = 'rgba(239, 68, 68, 0.15)';
+        badgeEl.style.color = '#dc2626';
+        badgeEl.style.border = '1px solid rgba(239, 68, 68, 0.35)';
+    } else {
+        badgeEl.style.background = 'rgba(16, 185, 129, 0.12)';
+        badgeEl.style.color = '#059669';
+        badgeEl.style.border = '1px solid rgba(16, 185, 129, 0.25)';
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    reasonInput.value = leaveReason || '';
+    startInput.value = leaveStart || todayStr;
+    endInput.value = leaveEnd || leaveStart || todayStr;
+    endInput.min = startInput.value;
+
+    startInput.onchange = function() {
+        endInput.min = this.value;
+        if (endInput.value && endInput.value < this.value) {
+            endInput.value = this.value;
+        }
+    };
+
+    onStatusSelectChange(st);
+
+    modal.classList.add('show');
 }
 
-function slotsMatch(studentSlot, selectedSlot) {
-    if (!selectedSlot || !studentSlot) return false;
+function onStatusSelectChange(val) {
+    const leaveFields = document.getElementById('statusLeaveFields');
+    const startInput = document.getElementById('status_leave_start_date');
+    const endInput = document.getElementById('status_leave_end_date');
+    if (!leaveFields) return;
 
-    const s1 = studentSlot.trim().toLowerCase();
-    const s2 = selectedSlot.trim().toLowerCase();
-    if (s1 === s2) return true;
-
-    const d1 = getHoursAndPeriod(s1);
-    const d2 = getHoursAndPeriod(s2);
-
-    if (d1.hours.length >= 2 && d2.hours.length >= 2) {
-        if (d1.hours[0] === d2.hours[0] && d1.hours[1] === d2.hours[1]) {
-            if (d1.periods.length > 0 && d2.periods.length > 0) {
-                if (d1.periods.join('-') !== d2.periods.join('-')) {
-                    return false;
-                }
+    if (val === 'On Leave') {
+        leaveFields.style.display = 'block';
+        if (startInput) {
+            startInput.required = true;
+            if (!startInput.value) {
+                startInput.value = new Date().toISOString().split('T')[0];
             }
-            return true;
         }
+        if (endInput) {
+            endInput.required = true;
+            if (startInput && startInput.value) {
+                endInput.min = startInput.value;
+            }
+        }
+    } else {
+        leaveFields.style.display = 'none';
+        if (startInput) startInput.required = false;
+        if (endInput) endInput.required = false;
     }
-    return false;
 }
 
-function openAssignModal(studentId, name, slot, course) {
-    document.getElementById('assign_student_id').value = studentId;
-    document.getElementById('assign_student_name').textContent = name;
-    document.getElementById('assign_student_slot').textContent = slot || 'No Slot';
-    document.getElementById('assign_student_course').textContent = course || 'General';
-
-    const hidden = document.getElementById('select_batch_id');
-    const input = document.getElementById('assign_batch_input');
-    const list = document.getElementById('assign_batch_list');
-    const noBatchMsg = document.getElementById('assign_no_slot_batches_msg');
-    const noSlotName = document.getElementById('assign_no_slot_name');
-
-    hidden.value = '';
-    input.value = '';
-    if (input && input.parentElement) input.parentElement.classList.remove('open');
-    if (list) list.style.display = 'none';
-
-    let matchingCount = 0;
-    const items = list.querySelectorAll('.assign-batch-item');
-    items.forEach(item => {
-        const val = item.getAttribute('data-value');
-        if (val === 'unassign') {
-            item.style.display = 'flex';
-            item.setAttribute('data-matches-slot', 'true');
-            return;
-        }
-        const batchSlot = item.getAttribute('data-slot');
-        const strong = item.querySelector('strong');
-        if (!strong) return;
-        if (!item.hasAttribute('data-orig-text')) {
-            item.setAttribute('data-orig-text', strong.textContent);
-        }
-        strong.textContent = item.getAttribute('data-orig-text');
-
-        // ONLY show batches matching the student's selected time slot
-        const isMatch = Boolean(slot && batchSlot && slotsMatch(slot, batchSlot));
-        if (isMatch) {
-            item.style.display = 'flex';
-            item.setAttribute('data-matches-slot', 'true');
-            matchingCount++;
-        } else {
-            item.style.display = 'none';
-            item.setAttribute('data-matches-slot', 'false');
-        }
-    });
-
-    if (noBatchMsg) {
-        if (matchingCount === 0) {
-            noBatchMsg.style.display = 'block';
-            if (noSlotName) noSlotName.textContent = slot || 'No Slot';
-        } else {
-            noBatchMsg.style.display = 'none';
-        }
+function closeStatusModal() {
+    const modal = document.getElementById('statusModal');
+    if (modal) {
+        modal.classList.remove('show');
     }
-
-    document.getElementById('assignStudentModal').classList.add('show');
+    const listEl = document.getElementById('status_select_list');
+    if (listEl) listEl.style.display = 'none';
+    const containerEl = document.getElementById('status_select_container');
+    if (containerEl) containerEl.classList.remove('open');
 }
 
-function closeAssignModal() {
-    const m = document.getElementById('assignStudentModal');
-    if (m) m.classList.remove('show');
-    const list = document.getElementById('assign_batch_list');
-    if (list) list.style.display = 'none';
-    const input = document.getElementById('assign_batch_input');
-    if (input && input.parentElement) input.parentElement.classList.remove('open');
+// Backward compatibility bridge
+function openLeaveModal(studentId, studentName, isOnLeave, leaveReason, leaveStart, leaveEnd) {
+    openStatusModal(studentId, studentName, isOnLeave ? 'On Leave' : 'Running', leaveReason, leaveStart, leaveEnd);
+}
+function closeLeaveModal() {
+    closeStatusModal();
 }
 
+// Custom Dropdown Event Listeners for Status Modal
 document.addEventListener('DOMContentLoaded', function() {
-    const input = document.getElementById('assign_batch_input');
-    const list = document.getElementById('assign_batch_list');
-    const hidden = document.getElementById('select_batch_id');
-    if (!input || !list || !hidden) return;
+    const statusInput = document.getElementById('status_select_input');
+    const statusList = document.getElementById('status_select_list');
+    const statusHidden = document.getElementById('statusHiddenInput');
+    const statusContainer = document.getElementById('status_select_container');
+    if (!statusInput || !statusList || !statusHidden || !statusContainer) return;
 
-    function showList() {
-        list.style.display = 'block';
-        if (input.parentElement) input.parentElement.classList.add('open');
+    function showStatusList() {
+        statusList.style.display = 'block';
+        statusContainer.classList.add('open');
     }
-    function hideList() {
-        list.style.display = 'none';
-        if (input.parentElement) input.parentElement.classList.remove('open');
+    function hideStatusList() {
+        statusList.style.display = 'none';
+        statusContainer.classList.remove('open');
     }
 
-    input.addEventListener('focus', showList);
-    input.addEventListener('click', (e) => {
+    statusInput.addEventListener('click', function(e) {
         e.stopPropagation();
-        showList();
-    });
-    input.addEventListener('input', function() {
-        const q = input.value.toLowerCase().trim();
-        showList();
-        list.querySelectorAll('.assign-batch-item').forEach(item => {
-            if (item.getAttribute('data-matches-slot') === 'false') {
-                item.style.display = 'none';
-                return;
-            }
-            item.style.display = item.textContent.toLowerCase().includes(q) ? 'flex' : 'none';
-        });
+        if (statusList.style.display === 'block') {
+            hideStatusList();
+        } else {
+            showStatusList();
+        }
     });
 
-    list.addEventListener('click', function(e) {
-        const item = e.target.closest('.assign-batch-item');
+    statusList.addEventListener('click', function(e) {
+        const item = e.target.closest('.status-option-item');
         if (!item) return;
         const val = item.getAttribute('data-value');
-        hidden.value = val;
-        const text = item.getAttribute('data-text') || (item.querySelector('strong') ? item.querySelector('strong').textContent.trim() : item.textContent.trim());
-        input.value = text;
-        hideList();
+        statusHidden.value = val;
+        statusInput.value = val;
+        hideStatusList();
+        onStatusSelectChange(val);
     });
 
     document.addEventListener('click', function(e) {
-        if (!input.contains(e.target) && !list.contains(e.target)) {
-            hideList();
+        if (!statusContainer.contains(e.target)) {
+            hideStatusList();
         }
     });
 });
 
 window.addEventListener('click', function(e) {
-    const m = document.getElementById('assignStudentModal');
-    if (m && e.target === m) closeAssignModal();
+    const modal = document.getElementById('statusModal');
+    if (e.target === modal) {
+        closeStatusModal();
+    }
+});
+window.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeStatusModal();
+    }
 });
 </script>
-
 {% endblock %}

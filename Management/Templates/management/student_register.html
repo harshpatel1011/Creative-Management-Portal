@@ -93,7 +93,7 @@
                         <div id="selected_faculty_avatar" style="width: 32px; height: 32px; border-radius: var(--border-radius-full); background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">F</div>
                         <div>
                             <strong id="selected_faculty_name" style="color: var(--text-primary); font-size: 0.9rem; display: block;">Faculty Name</strong>
-                            <small id="selected_faculty_meta" style="color: var(--text-muted); font-size: 0.75rem;">Department</small>
+                            <small id="selected_faculty_meta" style="color: var(--text-muted); font-size: 0.75rem; display: none;"></small>
                         </div>
                     </div>
                     <button type="button" id="clear_faculty_btn" style="background: transparent; border: none; color: var(--danger); cursor: pointer; font-size: 0.85rem; padding: 4px;" title="Change selected faculty">
@@ -119,7 +119,7 @@
                             <span class="badge badge-secondary" style="font-size: 0.72rem;">Optional</span>
                         </li>
                         {% for f in faculties %}
-                        <li data-id="{{ f.id }}" data-name="{{ f.name }}" data-department="{{ f.department }}" data-courses="{{ f.courses }}" class="faculty-option-item" style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                        <li data-id="{{ f.id }}" data-name="{{ f.name }}" data-courses="{{ f.courses }}" class="faculty-option-item" style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
                             <div style="display: flex; align-items: center; gap: 10px;">
                                 <div style="width: 34px; height: 34px; border-radius: var(--border-radius-full); background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.82rem; flex-shrink: 0;">
                                     {{ f.name|slice:":1"|upper }}
@@ -131,9 +131,11 @@
                                             <i class="fa-solid fa-star"></i> Matches Course
                                         </span>
                                     </div>
-                                    <small style="color: var(--text-muted); font-size: 0.75rem; display: block;">
-                                        <span style="color: var(--primary); font-weight: 600;">{{ f.department }}</span> &bull; {{ f.specialization }}
+                                    {% if f.courses %}
+                                    <small style="color: var(--text-muted); font-size: 0.75rem; display: block; max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        {{ f.courses }}
                                     </small>
+                                    {% endif %}
                                 </div>
                             </div>
                             <span class="badge badge-secondary" style="font-size: 0.72rem;">Select</span>
@@ -466,7 +468,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
 
-    function selectFaculty(id, name, department, specialization) {
+    function selectFaculty(id, name, courses) {
         selectedFacultyIdHidden.value = id;
         selectedFacultyNameHidden.value = name;
         if (!id || !name) {
@@ -477,7 +479,13 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         selectedFacultyAvatar.textContent = name.charAt(0).toUpperCase();
         selectedFacultyName.textContent = name;
-        selectedFacultyMeta.textContent = `${department} • ${specialization}`;
+        if (courses) {
+            selectedFacultyMeta.textContent = courses;
+            selectedFacultyMeta.style.display = "block";
+        } else {
+            selectedFacultyMeta.textContent = "";
+            selectedFacultyMeta.style.display = "none";
+        }
         selectedFacultyChip.style.display = "flex";
         facultyInput.value = "";
         facultyList.style.display = "none";
@@ -499,10 +507,9 @@ document.addEventListener("DOMContentLoaded", function() {
         const q = facultyInput.value.toLowerCase().trim();
         facultyList.style.display = "block";
         facultyItems.forEach(item => {
-            const name = item.getAttribute("data-name").toLowerCase();
-            const dept = item.getAttribute("data-department").toLowerCase();
-            const spec = item.getAttribute("data-courses").toLowerCase();
-            if (name.includes(q) || dept.includes(q) || spec.includes(q)) {
+            const name = (item.getAttribute("data-name") || "").toLowerCase();
+            const courses = (item.getAttribute("data-courses") || "").toLowerCase();
+            if (!q || name.includes(q) || courses.includes(q)) {
                 item.style.display = "flex";
             } else {
                 item.style.display = "none";
@@ -514,9 +521,8 @@ document.addEventListener("DOMContentLoaded", function() {
         item.addEventListener("click", function() {
             const id = item.getAttribute("data-id");
             const name = item.getAttribute("data-name");
-            const dept = item.getAttribute("data-department");
-            const spec = item.querySelector("small").textContent;
-            selectFaculty(id, name, dept, spec);
+            const courses = item.getAttribute("data-courses") || "";
+            selectFaculty(id, name, courses);
         });
     });
 

@@ -127,7 +127,6 @@
                     <th style="padding: 0.85rem 1rem; position: sticky; left: 0; background: var(--bg-main); z-index: 2; width: 220px; box-shadow: 2px 0 5px rgba(0,0,0,0.03);">
                         Student & Batch
                     </th>
-                    <th style="padding: 0.85rem 0.75rem; width: 120px;">Course</th>
                     
                     <!-- Days 1..31 -->
                     {% for day in days_list %}
@@ -156,11 +155,6 @@
                         <small style="color: var(--primary); font-size: 0.72rem; display: block; font-weight: 600;">
                             <i class="fa-solid fa-clock" style="font-size: 0.65rem;"></i> {{ row.student.class_time|default:"No Batch" }}
                         </small>
-                    </td>
-
-                    <!-- Course -->
-                    <td style="padding: 0.75rem 0.75rem; color: var(--text-secondary); font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">
-                        {{ row.student.courses_list|first|default:row.student.course|default:"-" }}
                     </td>
 
                     <!-- Day Cells -->

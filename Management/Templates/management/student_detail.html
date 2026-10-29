@@ -21,17 +21,10 @@
             <i class="fa-solid fa-arrow-left"></i>
             <span>Students</span>
         </a>
-        {% if student.is_on_leave %}
-        <button type="button" class="btn-warning" onclick="openLeaveModal('{{ student.id }}', '{{ student.name|escapejs }}', true, '{{ student.leave_reason|escapejs }}', '{{ student.leave_start_date|date:"Y-m-d"|default:"" }}', '{{ student.leave_end_date|date:"Y-m-d"|default:"" }}');" style="display: inline-flex; align-items: center; gap: 0.4rem; background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.4); padding: 0.55rem 1rem; border-radius: 6px; font-weight: 600; cursor: pointer;">
-            <i class="fa-solid fa-user-clock"></i>
-            <span>On Leave (Manage)</span>
+        <button type="button" class="btn-secondary" onclick="openStatusModal('{{ student.id }}', '{{ student.name|escapejs }}', '{{ student.status|default:'Running'|escapejs }}', '{{ student.leave_reason|escapejs }}', '{{ student.leave_start_date|date:'Y-m-d'|default:'' }}', '{{ student.leave_end_date|date:'Y-m-d'|default:'' }}');" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.55rem 1rem; border-radius: 6px; font-weight: 600; cursor: pointer; {% if student.is_on_leave or student.status == 'On Leave' %}background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.4);{% endif %}">
+            <i class="fa-solid fa-sliders"></i>
+            <span>Update Status</span>
         </button>
-        {% else %}
-        <button type="button" class="btn-secondary" onclick="openLeaveModal('{{ student.id }}', '{{ student.name|escapejs }}', false, '', '', '');" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.55rem 1rem; border-radius: 6px; font-weight: 600; cursor: pointer;">
-            <i class="fa-solid fa-plane-departure"></i>
-            <span>Mark On Leave</span>
-        </button>
-        {% endif %}
         <a href="{% url 'admin_student_edit' student.id %}?next=detail" class="btn-primary">
             <i class="fa-solid fa-pen-to-square"></i>
             <span>Edit Profile</span>
@@ -53,13 +46,37 @@
             <div style="flex: 1;">
                 <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.4rem;">
                     <h2 style="font-size: 1.65rem; color: var(--text-primary); margin: 0;">{{ student.name }}</h2>
-                    {% if student.is_on_leave %}
-                    <span class="dossier-btn-dark warning" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border-color: rgba(245, 158, 11, 0.4);">
+                    {% if student.status == 'On Leave' or student.is_on_leave %}
+                    <span class="dossier-btn-dark warning" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border-color: rgba(245, 158, 11, 0.4); cursor: pointer;" onclick="openStatusModal('{{ student.id }}', '{{ student.name|escapejs }}', 'On Leave', '{{ student.leave_reason|escapejs }}', '{{ student.leave_start_date|date:'Y-m-d'|default:'' }}', '{{ student.leave_end_date|date:'Y-m-d'|default:'' }}');" title="Click to update status">
                         <i class="fa-solid fa-plane-departure"></i> On Leave
                     </span>
+                    {% elif student.status == 'Completed' %}
+                    <span class="dossier-btn-dark success" style="cursor: pointer;" onclick="openStatusModal('{{ student.id }}', '{{ student.name|escapejs }}', 'Completed', '', '', '');" title="Click to update status">
+                        <i class="fa-solid fa-circle-check"></i> Completed
+                    </span>
+                    {% elif student.status == 'Dropped' %}
+                    <span class="dossier-btn-dark danger" style="background: rgba(239, 68, 68, 0.15); color: #dc2626; border-color: rgba(239, 68, 68, 0.4); cursor: pointer;" onclick="openStatusModal('{{ student.id }}', '{{ student.name|escapejs }}', 'Dropped', '', '', '');" title="Click to update status">
+                        <i class="fa-solid fa-circle-xmark"></i> Dropped
+                    </span>
+                    {% elif student.status == 'Suspend' %}
+                    <span class="dossier-btn-dark danger" style="background: rgba(225, 29, 72, 0.15); color: #e11d48; border-color: rgba(225, 29, 72, 0.4); cursor: pointer;" onclick="openStatusModal('{{ student.id }}', '{{ student.name|escapejs }}', 'Suspend', '', '', '');" title="Click to update status">
+                        <i class="fa-solid fa-ban"></i> Suspend
+                    </span>
+                    {% elif student.status == 'In Job' %}
+                    <span class="dossier-btn-dark primary" style="background: rgba(37, 99, 235, 0.15); color: #2563eb; border-color: rgba(37, 99, 235, 0.4); cursor: pointer;" onclick="openStatusModal('{{ student.id }}', '{{ student.name|escapejs }}', 'In Job', '', '', '');" title="Click to update status">
+                        <i class="fa-solid fa-briefcase"></i> In Job
+                    </span>
+                    {% elif student.status == 'In Project' %}
+                    <span class="dossier-btn-dark primary" style="background: rgba(147, 51, 234, 0.15); color: #9333ea; border-color: rgba(147, 51, 234, 0.4); cursor: pointer;" onclick="openStatusModal('{{ student.id }}', '{{ student.name|escapejs }}', 'In Project', '', '', '');" title="Click to update status">
+                        <i class="fa-solid fa-diagram-project"></i> In Project
+                    </span>
+                    {% elif student.status == 'Branch Transfer' %}
+                    <span class="dossier-btn-dark primary" style="background: rgba(14, 165, 233, 0.15); color: #0284c7; border-color: rgba(14, 165, 233, 0.4); cursor: pointer;" onclick="openStatusModal('{{ student.id }}', '{{ student.name|escapejs }}', 'Branch Transfer', '', '', '');" title="Click to update status">
+                        <i class="fa-solid fa-right-left"></i> Branch Transfer
+                    </span>
                     {% else %}
-                    <span class="dossier-btn-dark success">
-                        <i class="fa-solid fa-circle-check"></i> Active Student
+                    <span class="dossier-btn-dark success" style="cursor: pointer;" onclick="openStatusModal('{{ student.id }}', '{{ student.name|escapejs }}', 'Running', '', '', '');" title="Click to update status">
+                        <i class="fa-solid fa-play" style="font-size: 0.65rem;"></i> Running
                     </span>
                     {% endif %}
                 </div>
@@ -99,7 +116,14 @@
                     <span><i class="fa-solid fa-envelope" style="color: var(--primary); margin-right: 4px;"></i> {{ student.email }}</span>
                     {% if student.phone %}
                     <span>&bull;</span>
-                    <span><i class="fa-solid fa-phone" style="color: var(--primary); margin-right: 4px;"></i> {{ student.phone }}</span>
+                    <span style="display: inline-flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-phone" style="color: var(--primary);"></i> {{ student.phone }}
+                        {% if student.whatsapp_url %}
+                        <a href="{{ student.whatsapp_url }}" target="_blank" rel="noopener noreferrer" title="Chat on WhatsApp ({{ student.phone }})" style="color: #25D366; text-decoration: none; font-size: 1rem; display: inline-flex; align-items: center; transition: transform 0.15s ease;">
+                            <i class="fa-brands fa-whatsapp"></i>
+                        </a>
+                        {% endif %}
+                    </span>
                     {% endif %}
                     <span>&bull;</span>
                     <span><i class="fa-solid fa-calendar-days" style="color: var(--primary); margin-right: 4px;"></i> Registered {{ student.created_at|date:"M d, Y" }}</span>
@@ -422,180 +446,348 @@
     {% endif %}
 </div>
 
-<!-- ================= MODAL: STUDENT ON LEAVE ================= -->
-<div id="leaveModal" class="modal-backdrop-custom">
-    <div class="modal-dialog-custom" style="max-width: 500px;">
-        <div class="modal-header-custom">
+<!-- ================= MODAL: UPDATE STUDENT STATUS ================= -->
+<div id="statusModal" class="modal-backdrop-custom">
+    <div class="modal-dialog-custom" style="max-width: 480px; overflow: visible;">
+        <div class="modal-header-custom" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
             <div>
-                <h2 class="modal-title-custom" id="leaveModalTitle">
-                    <i class="fa-solid fa-plane-departure" style="color: var(--primary); margin-right: 6px;"></i> Mark Student On Leave
-                </h2>
-                <small style="font-size: 0.78rem; color: var(--text-muted);" id="leaveModalSubtitle">
-                    Record leave duration and attendance status
+                <h2 class="modal-title-custom">Update Status</h2>
+                <small style="font-size: 0.78rem; color: var(--text-muted);" id="statusModalSubtitle">
+                    Update student enrollment and attendance status
                 </small>
             </div>
-            <button type="button" class="toast-close" onclick="closeLeaveModal();" aria-label="Close dialog">
+            <button type="button" class="toast-close" onclick="closeStatusModal();" aria-label="Close dialog">
                 <i class="fa-solid fa-xmark" style="font-size: 1.1rem;"></i>
             </button>
         </div>
 
-        <form id="leaveModalForm" method="POST" action="">
+        <form id="statusModalForm" method="POST" action="">
             {% csrf_token %}
             <input type="hidden" name="next" value="{{ request.get_full_path }}">
             
-            <div class="modal-body-custom" style="padding: 1.25rem 1.5rem;">
+            <div class="modal-body-custom" style="padding: 1.25rem 1.5rem; overflow: visible;">
                 <!-- Student Info Banner -->
                 <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; border-radius: 8px; background: var(--bg-main); border: 1px solid var(--border-color); margin-bottom: 1.25rem;">
                     <div>
                         <small style="text-transform: uppercase; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); display: block; letter-spacing: 0.05em;">Student</small>
-                        <strong id="leaveStudentName" style="color: var(--text-primary); font-size: 1rem;">-</strong>
+                        <strong id="statusStudentName" style="color: var(--text-primary); font-size: 1rem;">-</strong>
                     </div>
-                    <span id="leaveStatusBadge" class="badge" style="display: none;"></span>
+                    <span id="statusCurrentBadge" class="badge" style="font-size: 0.75rem;">-</span>
                 </div>
 
-                <!-- Existing Leave Banner (Only shown if already on leave) -->
-                <div id="existingLeaveBanner" style="display: none; padding: 0.85rem 1rem; border-radius: 8px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); margin-bottom: 1.25rem;">
-                    <div style="display: flex; align-items: flex-start; gap: 0.6rem;">
-                        <i class="fa-solid fa-circle-exclamation" style="color: #d97706; margin-top: 2px;"></i>
-                        <div style="flex: 1; font-size: 0.82rem; color: var(--text-primary);">
-                            <strong>Currently On Leave</strong>
-                            <div id="existingLeaveDetails" style="color: var(--text-secondary); margin-top: 3px; font-size: 0.78rem;"></div>
+                <!-- Custom Styled Select Status Dropdown -->
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label class="form-label" for="status_select_input" style="font-weight: 600; margin-bottom: 0.4rem; display: block; color: var(--text-primary);">Select Status</label>
+                    <div class="searchable-select-container" id="status_select_container">
+                        <input type="text" id="status_select_input" class="searchable-select-input" placeholder="Select Status..." autocomplete="off" readonly style="cursor: pointer; font-size: 0.9rem; font-weight: 500;">
+                        <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
+                        <ul id="status_select_list" class="searchable-list custom-scrollbar" style="max-height: 250px;">
+                            <li data-value="Running" class="status-option-item" style="padding: 10px 14px; font-size: 0.85rem; display: flex; flex-direction: row; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color-light); cursor: pointer;">
+                                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                                    <span style="width: 26px; height: 26px; border-radius: 6px; background: rgba(16, 185, 129, 0.12); color: #059669; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">
+                                        <i class="fa-solid fa-play"></i>
+                                    </span>
+                                    <div>
+                                        <strong style="color: var(--text-primary); font-size: 0.88rem;">Running</strong>
+                                        <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Active ongoing classes</small>
+                                    </div>
+                                </div>
+                                <span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #059669; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 9999px;">Running</span>
+                            </li>
+
+                            <li data-value="Completed" class="status-option-item" style="padding: 10px 14px; font-size: 0.85rem; display: flex; flex-direction: row; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color-light); cursor: pointer;">
+                                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                                    <span style="width: 26px; height: 26px; border-radius: 6px; background: rgba(16, 185, 129, 0.15); color: #059669; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">
+                                        <i class="fa-solid fa-circle-check"></i>
+                                    </span>
+                                    <div>
+                                        <strong style="color: var(--text-primary); font-size: 0.88rem;">Completed</strong>
+                                        <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Finished all coursework</small>
+                                    </div>
+                                </div>
+                                <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #059669; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 9999px;">Completed</span>
+                            </li>
+
+                            <li data-value="Dropped" class="status-option-item" style="padding: 10px 14px; font-size: 0.85rem; display: flex; flex-direction: row; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color-light); cursor: pointer;">
+                                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                                    <span style="width: 26px; height: 26px; border-radius: 6px; background: rgba(239, 68, 68, 0.15); color: #dc2626; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">
+                                        <i class="fa-solid fa-circle-xmark"></i>
+                                    </span>
+                                    <div>
+                                        <strong style="color: var(--text-primary); font-size: 0.88rem;">Dropped</strong>
+                                        <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Discontinued enrollment</small>
+                                    </div>
+                                </div>
+                                <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #dc2626; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 9999px;">Dropped</span>
+                            </li>
+
+                            <li data-value="On Leave" class="status-option-item" style="padding: 10px 14px; font-size: 0.85rem; display: flex; flex-direction: row; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color-light); cursor: pointer;">
+                                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                                    <span style="width: 26px; height: 26px; border-radius: 6px; background: rgba(245, 158, 11, 0.15); color: #d97706; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">
+                                        <i class="fa-solid fa-plane-departure"></i>
+                                    </span>
+                                    <div>
+                                        <strong style="color: var(--text-primary); font-size: 0.88rem;">On Leave</strong>
+                                        <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Approved leave period</small>
+                                    </div>
+                                </div>
+                                <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #d97706; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 9999px;">On Leave</span>
+                            </li>
+
+                            <li data-value="Suspend" class="status-option-item" style="padding: 10px 14px; font-size: 0.85rem; display: flex; flex-direction: row; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color-light); cursor: pointer;">
+                                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                                    <span style="width: 26px; height: 26px; border-radius: 6px; background: rgba(225, 29, 72, 0.15); color: #e11d48; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">
+                                        <i class="fa-solid fa-ban"></i>
+                                    </span>
+                                    <div>
+                                        <strong style="color: var(--text-primary); font-size: 0.88rem;">Suspend</strong>
+                                        <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Temporarily suspended</small>
+                                    </div>
+                                </div>
+                                <span class="badge" style="background: rgba(225, 29, 72, 0.15); color: #e11d48; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 9999px;">Suspend</span>
+                            </li>
+
+                            <li data-value="In Job" class="status-option-item" style="padding: 10px 14px; font-size: 0.85rem; display: flex; flex-direction: row; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color-light); cursor: pointer;">
+                                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                                    <span style="width: 26px; height: 26px; border-radius: 6px; background: rgba(37, 99, 235, 0.15); color: #2563eb; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">
+                                        <i class="fa-solid fa-briefcase"></i>
+                                    </span>
+                                    <div>
+                                        <strong style="color: var(--text-primary); font-size: 0.88rem;">In Job</strong>
+                                        <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Placed / working</small>
+                                    </div>
+                                </div>
+                                <span class="badge" style="background: rgba(37, 99, 235, 0.15); color: #2563eb; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 9999px;">In Job</span>
+                            </li>
+
+                            <li data-value="In Project" class="status-option-item" style="padding: 10px 14px; font-size: 0.85rem; display: flex; flex-direction: row; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color-light); cursor: pointer;">
+                                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                                    <span style="width: 26px; height: 26px; border-radius: 6px; background: rgba(147, 51, 234, 0.15); color: #9333ea; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">
+                                        <i class="fa-solid fa-diagram-project"></i>
+                                    </span>
+                                    <div>
+                                        <strong style="color: var(--text-primary); font-size: 0.88rem;">In Project</strong>
+                                        <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Working on live project</small>
+                                    </div>
+                                </div>
+                                <span class="badge" style="background: rgba(147, 51, 234, 0.15); color: #9333ea; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 9999px;">In Project</span>
+                            </li>
+
+                            <li data-value="Branch Transfer" class="status-option-item" style="padding: 10px 14px; font-size: 0.85rem; display: flex; flex-direction: row; align-items: center; justify-content: space-between; border-bottom: none; cursor: pointer;">
+                                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                                    <span style="width: 26px; height: 26px; border-radius: 6px; background: rgba(14, 165, 233, 0.15); color: #0284c7; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">
+                                        <i class="fa-solid fa-right-left"></i>
+                                    </span>
+                                    <div>
+                                        <strong style="color: var(--text-primary); font-size: 0.88rem;">Branch Transfer</strong>
+                                        <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Transferred to other branch</small>
+                                    </div>
+                                </div>
+                                <span class="badge" style="background: rgba(14, 165, 233, 0.15); color: #0284c7; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 9999px;">Branch Transfer</span>
+                            </li>
+                        </ul>
+                        <input type="hidden" name="status" id="statusHiddenInput" required>
+                    </div>
+                </div>
+
+                <!-- Leave Fields (Displayed when 'On Leave' is selected) -->
+                <div id="statusLeaveFields" style="display: none; padding: 1rem; border-radius: 8px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); margin-top: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.85rem;">
+                        <i class="fa-solid fa-plane-departure" style="color: #d97706; font-size: 0.9rem;"></i>
+                        <span style="font-size: 0.85rem; font-weight: 600; color: #d97706;">Leave Period & Attendance</span>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0.85rem;">
+                        <label class="form-label" for="status_leave_reason" style="font-size: 0.8rem;">Leave Reason / Notes</label>
+                        <input type="text" id="status_leave_reason" name="leave_reason" class="form-input" placeholder="e.g. Medical reasons, Family function, Out of town..." autocomplete="off">
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                        <div class="form-group">
+                            <label class="form-label" for="status_leave_start_date" style="font-size: 0.8rem;">Start Date *</label>
+                            <input type="date" id="status_leave_start_date" name="leave_start_date" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="status_leave_end_date" style="font-size: 0.8rem;">End Date *</label>
+                            <input type="date" id="status_leave_end_date" name="leave_end_date" class="form-input">
                         </div>
                     </div>
-                    <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed rgba(245, 158, 11, 0.3); display: flex; justify-content: flex-end;">
-                        <button type="submit" name="action" value="mark_active" class="btn-success" style="font-size: 0.82rem; padding: 0.4rem 0.85rem; display: inline-flex; align-items: center; gap: 0.4rem;">
-                            <i class="fa-solid fa-user-check"></i> Mark as Active (Resume Classes)
-                        </button>
-                    </div>
-                </div>
-
-                <div id="leaveUpdateHeader" style="display: none; margin-bottom: 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">
-                    Or Update Leave Period:
-                </div>
-
-                <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="form-group" style="grid-column: span 2;">
-                        <label class="form-label" for="leave_reason">Leave Reason / Notes</label>
-                        <input type="text" id="leave_reason" name="leave_reason" class="form-input" placeholder="e.g. Medical reasons, Family function, Out of town..." autocomplete="off">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="leave_start_date">Start Date *</label>
-                        <input type="date" id="leave_start_date" name="leave_start_date" class="form-input" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="leave_end_date">End Date <small style="color: var(--text-muted);">(Optional)</small></label>
-                        <input type="date" id="leave_end_date" name="leave_end_date" class="form-input">
-                    </div>
-
-                    <div class="form-group" id="attendanceCheckboxGroup" style="grid-column: span 2; margin-top: 0.25rem;">
-                        <label style="display: flex; align-items: center; gap: 0.65rem; font-size: 0.85rem; color: var(--text-primary); cursor: pointer; user-select: none;">
-                            <input type="checkbox" name="mark_attendance_leave" value="1" checked style="width: 16px; height: 16px; accent-color: var(--primary);">
-                            <span>Mark today's attendance as <strong>Leave</strong></span>
-                        </label>
-                    </div>
+                    <small style="display: block; color: var(--text-muted); font-size: 0.72rem; margin-top: 0.5rem; line-height: 1.4;">
+                        <i class="fa-solid fa-circle-info" style="color: #d97706;"></i> Daily attendance records for this period will automatically be marked as <strong>Leave</strong>.
+                    </small>
                 </div>
             </div>
 
-            <div class="modal-footer-custom" style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
-                <button type="button" class="btn-secondary" onclick="closeLeaveModal();">Cancel</button>
-                <div style="display: flex; gap: 0.5rem;">
-                    <button type="submit" name="action" value="mark_leave" id="leaveSubmitBtn" class="btn-primary" style="display: inline-flex; align-items: center; gap: 0.4rem;">
-                        <i class="fa-solid fa-plane-departure"></i> <span>Mark On Leave</span>
-                    </button>
-                </div>
+            <div class="modal-footer-custom" style="padding: 1rem 1.5rem; display: flex; justify-content: flex-end; align-items: center; gap: 0.65rem; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+                <button type="button" class="btn-secondary" onclick="closeStatusModal();">Close</button>
+                <button type="submit" class="btn-primary" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                    <i class="fa-solid fa-floppy-disk"></i> Save changes
+                </button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-function openLeaveModal(studentId, studentName, isOnLeave, leaveReason, leaveStart, leaveEnd) {
-    const modal = document.getElementById('leaveModal');
-    const form = document.getElementById('leaveModalForm');
-    const title = document.getElementById('leaveModalTitle');
-    const subtitle = document.getElementById('leaveModalSubtitle');
-    const nameEl = document.getElementById('leaveStudentName');
-    const badgeEl = document.getElementById('leaveStatusBadge');
-    const existingBanner = document.getElementById('existingLeaveBanner');
-    const existingDetails = document.getElementById('existingLeaveDetails');
-    const updateHeader = document.getElementById('leaveUpdateHeader');
-    const reasonInput = document.getElementById('leave_reason');
-    const startInput = document.getElementById('leave_start_date');
-    const endInput = document.getElementById('leave_end_date');
-    const submitBtn = document.getElementById('leaveSubmitBtn');
-    const attGroup = document.getElementById('attendanceCheckboxGroup');
+function openStatusModal(studentId, studentName, currentStatus, leaveReason, leaveStart, leaveEnd) {
+    const modal = document.getElementById('statusModal');
+    const form = document.getElementById('statusModalForm');
+    const nameEl = document.getElementById('statusStudentName');
+    const badgeEl = document.getElementById('statusCurrentBadge');
+    const inputEl = document.getElementById('status_select_input');
+    const hiddenEl = document.getElementById('statusHiddenInput');
+    const listEl = document.getElementById('status_select_list');
+    const containerEl = document.getElementById('status_select_container');
+    const reasonInput = document.getElementById('status_leave_reason');
+    const startInput = document.getElementById('status_leave_start_date');
+    const endInput = document.getElementById('status_leave_end_date');
 
-    form.action = '/management/students/' + studentId + '/leave/';
+    form.action = '/management/students/' + studentId + '/status/';
     nameEl.textContent = studentName;
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const st = currentStatus || 'Running';
+    hiddenEl.value = st;
+    inputEl.value = st;
 
-    if (isOnLeave) {
-        title.innerHTML = '<i class="fa-solid fa-user-clock" style="color: #d97706; margin-right: 6px;"></i> Manage Leave Status';
-        subtitle.textContent = 'Student is currently marked On Leave';
-        badgeEl.style.display = 'inline-block';
-        badgeEl.className = 'badge';
+    if (listEl) listEl.style.display = 'none';
+    if (containerEl) containerEl.classList.remove('open');
+
+    // Set badge style
+    badgeEl.textContent = st;
+    if (st === 'On Leave') {
         badgeEl.style.background = 'rgba(245, 158, 11, 0.15)';
         badgeEl.style.color = '#d97706';
-        badgeEl.style.border = '1px solid rgba(245, 158, 11, 0.3)';
-        badgeEl.innerHTML = '<i class="fa-solid fa-plane-departure"></i> On Leave';
-
-        existingBanner.style.display = 'block';
-        let detailText = leaveReason ? ('Reason: ' + leaveReason) : 'Reason: Not specified';
-        if (leaveStart) {
-            detailText += ' | From: ' + leaveStart;
-            if (leaveEnd) detailText += ' to ' + leaveEnd;
-        }
-        existingDetails.textContent = detailText;
-
-        updateHeader.style.display = 'block';
-        reasonInput.value = leaveReason || '';
-        startInput.value = leaveStart || todayStr;
-        endInput.value = leaveEnd || '';
-        submitBtn.className = 'btn-primary';
-        submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> <span>Update Leave Details</span>';
-        if (attGroup) attGroup.style.display = 'none';
-    } else {
-        title.innerHTML = '<i class="fa-solid fa-plane-departure" style="color: var(--primary); margin-right: 6px;"></i> Mark Student On Leave';
-        subtitle.textContent = 'Record leave period and mark attendance status';
-        badgeEl.style.display = 'inline-block';
-        badgeEl.className = 'badge';
+        badgeEl.style.border = '1px solid rgba(245, 158, 11, 0.35)';
+    } else if (st === 'Completed') {
         badgeEl.style.background = 'rgba(16, 185, 129, 0.15)';
         badgeEl.style.color = '#059669';
-        badgeEl.style.border = '1px solid rgba(16, 185, 129, 0.3)';
-        badgeEl.innerHTML = '<i class="fa-solid fa-circle-check"></i> Currently Active';
-
-        existingBanner.style.display = 'none';
-        updateHeader.style.display = 'none';
-        reasonInput.value = '';
-        startInput.value = todayStr;
-        endInput.value = '';
-        submitBtn.className = 'btn-primary';
-        submitBtn.innerHTML = '<i class="fa-solid fa-plane-departure"></i> <span>Mark On Leave</span>';
-        if (attGroup) attGroup.style.display = 'block';
+        badgeEl.style.border = '1px solid rgba(16, 185, 129, 0.35)';
+    } else if (st === 'Dropped' || st === 'Suspend') {
+        badgeEl.style.background = 'rgba(239, 68, 68, 0.15)';
+        badgeEl.style.color = '#dc2626';
+        badgeEl.style.border = '1px solid rgba(239, 68, 68, 0.35)';
+    } else {
+        badgeEl.style.background = 'rgba(16, 185, 129, 0.12)';
+        badgeEl.style.color = '#059669';
+        badgeEl.style.border = '1px solid rgba(16, 185, 129, 0.25)';
     }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    reasonInput.value = leaveReason || '';
+    startInput.value = leaveStart || todayStr;
+    endInput.value = leaveEnd || leaveStart || todayStr;
+    endInput.min = startInput.value;
+
+    startInput.onchange = function() {
+        endInput.min = this.value;
+        if (endInput.value && endInput.value < this.value) {
+            endInput.value = this.value;
+        }
+    };
+
+    onStatusSelectChange(st);
 
     modal.classList.add('show');
 }
 
-function closeLeaveModal() {
-    const modal = document.getElementById('leaveModal');
-    if (modal) {
-        modal.classList.remove('show');
+function onStatusSelectChange(val) {
+    const leaveFields = document.getElementById('statusLeaveFields');
+    const startInput = document.getElementById('status_leave_start_date');
+    const endInput = document.getElementById('status_leave_end_date');
+    if (!leaveFields) return;
+
+    if (val === 'On Leave') {
+        leaveFields.style.display = 'block';
+        if (startInput) {
+            startInput.required = true;
+            if (!startInput.value) {
+                startInput.value = new Date().toISOString().split('T')[0];
+            }
+        }
+        if (endInput) {
+            endInput.required = true;
+            if (startInput && startInput.value) {
+                endInput.min = startInput.value;
+            }
+        }
+    } else {
+        leaveFields.style.display = 'none';
+        if (startInput) startInput.required = false;
+        if (endInput) endInput.required = false;
     }
 }
 
+function closeStatusModal() {
+    const modal = document.getElementById('statusModal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
+    const listEl = document.getElementById('status_select_list');
+    if (listEl) listEl.style.display = 'none';
+    const containerEl = document.getElementById('status_select_container');
+    if (containerEl) containerEl.classList.remove('open');
+}
+
+// Backward compatibility bridge
+function openLeaveModal(studentId, studentName, isOnLeave, leaveReason, leaveStart, leaveEnd) {
+    openStatusModal(studentId, studentName, isOnLeave ? 'On Leave' : 'Running', leaveReason, leaveStart, leaveEnd);
+}
+function closeLeaveModal() {
+    closeStatusModal();
+}
+
+// Custom Dropdown Event Listeners for Status Modal
+document.addEventListener('DOMContentLoaded', function() {
+    const statusInput = document.getElementById('status_select_input');
+    const statusList = document.getElementById('status_select_list');
+    const statusHidden = document.getElementById('statusHiddenInput');
+    const statusContainer = document.getElementById('status_select_container');
+    if (!statusInput || !statusList || !statusHidden || !statusContainer) return;
+
+    function showStatusList() {
+        statusList.style.display = 'block';
+        statusContainer.classList.add('open');
+    }
+    function hideStatusList() {
+        statusList.style.display = 'none';
+        statusContainer.classList.remove('open');
+    }
+
+    statusInput.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (statusList.style.display === 'block') {
+            hideStatusList();
+        } else {
+            showStatusList();
+        }
+    });
+
+    statusList.addEventListener('click', function(e) {
+        const item = e.target.closest('.status-option-item');
+        if (!item) return;
+        const val = item.getAttribute('data-value');
+        statusHidden.value = val;
+        statusInput.value = val;
+        hideStatusList();
+        onStatusSelectChange(val);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!statusContainer.contains(e.target)) {
+            hideStatusList();
+        }
+    });
+});
+
 window.addEventListener('click', function(e) {
-    const modal = document.getElementById('leaveModal');
+    const modal = document.getElementById('statusModal');
     if (e.target === modal) {
-        closeLeaveModal();
+        closeStatusModal();
     }
 });
 window.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
-        closeLeaveModal();
+        closeStatusModal();
     }
 });
 </script>

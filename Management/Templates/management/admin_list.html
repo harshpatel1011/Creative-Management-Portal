@@ -1,26 +1,26 @@
 {% extends 'management/base.html' %}
 {% load static %}
 
-{% block title %}System Administrators - Creative Management{% endblock %}
+{% block title %}Personnel & Administrators - Creative Management{% endblock %}
 
 {% block breadcrumbs %}
-<a href="{% url 'admin_list' %}">Administrators</a>
+<a href="{% url 'admin_list' %}">Personnel & Roles</a>
 <span class="breadcrumb-separator">/</span>
-<span class="breadcrumb-current">Management Personnel</span>
+<span class="breadcrumb-current">Management Directory</span>
 {% endblock %}
 
 {% block content %}
 <!-- Page Header -->
 <div class="page-header">
     <div class="header-text">
-        <h1>System Administrators</h1>
-        <p>Manage administrative personnel accounts, security credentials, and system privileges</p>
+        <h1>Administrators & Faculty</h1>
+        <p>Manage administrative personnel, faculty profiles, security credentials, and system privileges</p>
     </div>
     <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
         {% if user.is_superuser %}
         <button type="button" class="btn-primary" onclick="openCreateAdminModal();">
             <i class="fa-solid fa-user-plus"></i>
-            <span>Register Admin</span>
+            <span>Register Member</span>
         </button>
         {% endif %}
     </div>
@@ -28,88 +28,102 @@
 
 <!-- KPI Overview Grid -->
 <div class="stats-overview-grid" style="margin-bottom: 2rem;">
-    <div class="kpi-card">
+    <div class="kpi-card" onclick="window.location.href='{% url 'admin_list' %}';" style="cursor: pointer;" title="View all registered personnel">
         <div>
             <div class="kpi-header">
                 <div class="kpi-icon" style="background: rgba(79, 70, 229, 0.1); color: var(--primary);">
                     <i class="fa-solid fa-users-gear"></i>
                 </div>
-                <span class="dossier-btn-dark">Directory</span>
+                <span class="dossier-btn-dark {% if not role_filter %}primary{% endif %}">Directory</span>
             </div>
-            <div class="kpi-value">{{ total_admins }}</div>
-            <div class="kpi-label">Total Administrators</div>
+            <div class="kpi-value">{{ total_members_count }}</div>
+            <div class="kpi-label">Total Members</div>
         </div>
         <div class="kpi-footer">
-            <span>Configured admin personnel</span>
+            <span>All registered management accounts</span>
         </div>
     </div>
 
-    {% if user.is_superuser %}
-    <div class="kpi-card">
+    <div class="kpi-card" onclick="window.location.href='{% url 'admin_list' %}?role=admin';" style="cursor: pointer;" title="Filter Administrators only">
         <div>
             <div class="kpi-header">
                 <div class="kpi-icon" style="background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan);">
                     <i class="fa-solid fa-shield-halved"></i>
                 </div>
-                <span class="dossier-btn-dark success">Root Access</span>
+                <span class="dossier-btn-dark {% if role_filter == 'admin' %}primary{% endif %}">Admin</span>
             </div>
             <div class="kpi-value">{{ superusers_count }}</div>
-            <div class="kpi-label">Super Administrators</div>
+            <div class="kpi-label">Administrators</div>
         </div>
         <div class="kpi-footer">
-            <span>Full privileges enabled</span>
+            <span>Root administrative access</span>
         </div>
     </div>
-    {% else %}
-    <div class="kpi-card">
+
+    <div class="kpi-card" onclick="window.location.href='{% url 'admin_list' %}?role=faculty';" style="cursor: pointer;" title="Filter Faculty only">
+        <div>
+            <div class="kpi-header">
+                <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                    <i class="fa-solid fa-chalkboard-user"></i>
+                </div>
+                <span class="dossier-btn-dark {% if role_filter == 'faculty' %}primary{% endif %}" style="color: #059669; border-color: rgba(16, 185, 129, 0.3);">Faculty</span>
+            </div>
+            <div class="kpi-value" style="color: #10b981;">{{ faculty_count }}</div>
+            <div class="kpi-label">Faculty Instructors</div>
+        </div>
+        <div class="kpi-footer">
+            <span>Teaching & course assignments</span>
+        </div>
+    </div>
+
+    <div class="kpi-card" onclick="window.location.href='{% url 'admin_list' %}?role=staff';" style="cursor: pointer;" title="Filter Staff only">
         <div>
             <div class="kpi-header">
                 <div class="kpi-icon" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-violet);">
                     <i class="fa-solid fa-user-tie"></i>
                 </div>
-                <span class="dossier-btn-dark primary">Staff Level</span>
+                <span class="dossier-btn-dark {% if role_filter == 'staff' %}primary{% endif %}">Staff</span>
             </div>
             <div class="kpi-value">{{ staff_count }}</div>
-            <div class="kpi-label">Staff Administrators</div>
+            <div class="kpi-label">Staff Managers</div>
         </div>
         <div class="kpi-footer">
-            <span>Active manager accounts</span>
+            <span>Standard operations staff</span>
         </div>
     </div>
-    {% endif %}
+</div>
 
-    <div class="kpi-card">
-        <div>
-            <div class="kpi-header">
-                <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">
-                    <i class="fa-solid fa-circle-check"></i>
-                </div>
-                <span class="dossier-btn-dark success">Current Session</span>
-            </div>
-            <div class="kpi-value" style="font-size: 1.45rem; line-height: 1.8rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
-                {{ user.username }}
-            </div>
-            <div class="kpi-label">{% if user.is_superuser %}Superuser{% else %}Staff Admin{% endif %}</div>
-        </div>
-        <div class="kpi-footer">
-            <span>{{ user.email|default:"Active account" }}</span>
-        </div>
-    </div>
+<!-- Quick Role Filter Pills -->
+<div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap; align-items: center;">
+    <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-right: 0.25rem;">Filter by Role:</span>
+    <a href="{% url 'admin_list' %}{% if query %}?q={{ query }}{% endif %}" class="dossier-btn-dark {% if not role_filter %}primary{% endif %}" style="text-decoration: none; padding: 0.35rem 0.85rem; font-size: 0.8rem;">
+        All ({{ total_members_count }})
+    </a>
+    <a href="{% url 'admin_list' %}?role=admin{% if query %}&q={{ query }}{% endif %}" class="dossier-btn-dark {% if role_filter == 'admin' %}primary{% endif %}" style="text-decoration: none; padding: 0.35rem 0.85rem; font-size: 0.8rem;">
+        <i class="fa-solid fa-shield-halved" style="color: var(--primary); margin-right: 4px;"></i> Admin ({{ superusers_count }})
+    </a>
+    <a href="{% url 'admin_list' %}?role=faculty{% if query %}&q={{ query }}{% endif %}" class="dossier-btn-dark {% if role_filter == 'faculty' %}primary{% endif %}" style="text-decoration: none; padding: 0.35rem 0.85rem; font-size: 0.8rem;">
+        <i class="fa-solid fa-chalkboard-user" style="color: #10b981; margin-right: 4px;"></i> Faculty ({{ faculty_count }})
+    </a>
+    <a href="{% url 'admin_list' %}?role=staff{% if query %}&q={{ query }}{% endif %}" class="dossier-btn-dark {% if role_filter == 'staff' %}primary{% endif %}" style="text-decoration: none; padding: 0.35rem 0.85rem; font-size: 0.8rem;">
+        <i class="fa-solid fa-user-tie" style="color: var(--accent-violet); margin-right: 4px;"></i> Staff ({{ staff_count }})
+    </a>
 </div>
 
 <!-- Search Bar & Stats Header -->
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
     <form method="GET" action="{% url 'admin_list' %}" class="search-form">
+        {% if role_filter %}<input type="hidden" name="role" value="{{ role_filter }}">{% endif %}
         <input type="text" name="q" value="{{ query|default:'' }}" class="search-input" placeholder="Search by username, email, name..." style="min-width: 320px;" aria-label="Search administrators">
         <button type="submit" class="btn-search" aria-label="Submit search"><i class="fa-solid fa-magnifying-glass"></i></button>
         {% if query %}
-        <a href="{% url 'admin_list' %}" class="btn-secondary" style="margin-left: 0.5rem; height: 40px; display: inline-flex; align-items: center;" title="Clear Search">
+        <a href="{% url 'admin_list' %}{% if role_filter %}?role={{ role_filter }}{% endif %}" class="btn-secondary" style="margin-left: 0.5rem; height: 40px; display: inline-flex; align-items: center;" title="Clear Search">
             <i class="fa-solid fa-xmark"></i> Clear
         </a>
         {% endif %}
     </form>
     <span class="dossier-btn-dark">
-        Showing <strong>{{ admins.count }}</strong> administrator{{ admins.count|pluralize }}
+        Showing <strong>{{ total_admins }}</strong> member{{ total_admins|pluralize }}
     </span>
 </div>
 
@@ -143,18 +157,41 @@
                             {% if admin_item.first_name or admin_item.last_name %}
                                 {{ admin_item.first_name }} {{ admin_item.last_name }} &bull;
                             {% endif %}
-                            {% if admin_item.is_superuser %}Super Administrator{% else %}Staff Manager{% endif %}
+                            {% if admin_item.is_admin and admin_item.is_faculty and admin_item.is_staff %}
+                                Administrator, Faculty & Staff
+                            {% elif admin_item.is_admin and admin_item.is_faculty %}
+                                Administrator & Faculty
+                            {% elif admin_item.is_admin and admin_item.is_staff %}
+                                Administrator & Staff
+                            {% elif admin_item.is_admin %}
+                                Administrator
+                            {% elif admin_item.is_faculty and admin_item.is_staff %}
+                                Faculty & Staff
+                            {% elif admin_item.is_faculty %}
+                                Faculty Instructor
+                            {% elif admin_item.is_staff %}
+                                Staff Manager
+                            {% else %}
+                                Member
+                            {% endif %}
                         </p>
                     </div>
                 </div>
                 
-                <div>
-                    {% if admin_item.is_superuser %}
-                    <span class="dossier-btn-dark primary" style="font-size: 0.72rem; padding: 0.2rem 0.55rem;">
-                        <i class="fa-solid fa-shield-halved"></i> Superuser
+                <!-- Role Badges (Admin, Faculty, Staff) -->
+                <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; justify-content: flex-end; max-width: 160px;">
+                    {% if admin_item.is_admin %}
+                    <span class="dossier-btn-dark primary" style="font-size: 0.72rem; padding: 0.2rem 0.55rem;" title="System Administrator">
+                        <i class="fa-solid fa-shield-halved"></i> Admin
                     </span>
-                    {% else %}
-                    <span class="dossier-btn-dark" style="font-size: 0.72rem; padding: 0.2rem 0.55rem;">
+                    {% endif %}
+                    {% if admin_item.is_faculty %}
+                    <span class="dossier-btn-dark success" style="font-size: 0.72rem; padding: 0.2rem 0.55rem; background: rgba(16, 185, 129, 0.12); color: #059669; border-color: rgba(16, 185, 129, 0.3);" title="Faculty Instructor">
+                        <i class="fa-solid fa-chalkboard-user"></i> Faculty
+                    </span>
+                    {% endif %}
+                    {% if admin_item.is_staff %}
+                    <span class="dossier-btn-dark" style="font-size: 0.72rem; padding: 0.2rem 0.55rem;" title="Staff Operations">
                         <i class="fa-solid fa-user-tie"></i> Staff
                     </span>
                     {% endif %}
@@ -184,15 +221,47 @@
                     </span>
                 </div>
             </div>
+
+            <!-- Assigned Teaching Courses Section (for Faculty members) -->
+            {% if admin_item.is_faculty %}
+            <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--border-color);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
+                    <span style="font-size: 0.74rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">
+                        <i class="fa-solid fa-graduation-cap" style="color: #10b981; margin-right: 4px;"></i> Assigned Courses ({{ admin_item.total_courses }})
+                    </span>
+                </div>
+                {% if admin_item.courses_list %}
+                <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; max-height: 85px; overflow-y: auto;">
+                    {% for c in admin_item.courses_list %}
+                    <span class="badge" style="font-size: 0.72rem; padding: 0.15rem 0.5rem; background: rgba(79, 70, 229, 0.08); color: var(--primary); border: 1px solid rgba(79, 70, 229, 0.2);">
+                        {{ c }}
+                    </span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div style="font-size: 0.78rem; color: var(--text-muted); font-style: italic;">
+                    No courses assigned yet.
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
         </div>
 
         <!-- Action / Status Footer -->
         {% if user.is_superuser %}
         <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.85rem; border-top: 1px solid var(--border-color); gap: 0.5rem; flex-wrap: wrap;">
-            <button type="button" class="btn-secondary" style="height: 32px; padding: 0 0.85rem; font-size: 0.78rem;"
-                    onclick="openEditAdminModal('{{ admin_item.id }}', '{{ admin_item.username|escapejs }}', '{{ admin_item.email|escapejs }}', '{{ admin_item.first_name|escapejs }}', '{{ admin_item.last_name|escapejs }}', {% if admin_item.is_superuser %}true{% else %}false{% endif %});">
-                <i class="fa-solid fa-user-pen"></i> Edit Profile
-            </button>
+            <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+                <button type="button" class="btn-secondary" style="height: 32px; padding: 0 0.85rem; font-size: 0.78rem;"
+                        onclick="openEditAdminModal('{{ admin_item.id }}', '{{ admin_item.username|escapejs }}', '{{ admin_item.email|escapejs }}', '{{ admin_item.first_name|escapejs }}', '{{ admin_item.last_name|escapejs }}', {% if admin_item.is_admin %}true{% else %}false{% endif %}, {% if admin_item.is_faculty %}true{% else %}false{% endif %}, {% if admin_item.is_staff %}true{% else %}false{% endif %});">
+                    <i class="fa-solid fa-user-pen"></i> Edit Profile
+                </button>
+                {% if admin_item.is_faculty %}
+                <button type="button" class="btn-secondary" style="height: 32px; padding: 0 0.85rem; font-size: 0.78rem; color: #059669; border-color: rgba(16, 185, 129, 0.3);"
+                        onclick="openFacultyCoursesModal('{{ admin_item.id }}', '{{ admin_item.username|escapejs }}', '{{ admin_item.faculty_courses|escapejs }}');" title="Update faculty teaching courses only">
+                    <i class="fa-solid fa-graduation-cap"></i> Update Courses
+                </button>
+                {% endif %}
+            </div>
             <div>
                 {% if admin_item.id == user.id %}
                 <span class="dossier-btn-dark" style="padding: 0.35rem 0.75rem; font-size: 0.75rem; opacity: 0.6; cursor: not-allowed;" title="You cannot delete your own logged-in account">
@@ -208,7 +277,16 @@
         </div>
         {% else %}
         <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.75rem; border-top: 1px solid var(--border-color); font-size: 0.75rem; color: var(--text-muted);">
-            <span><i class="fa-solid fa-shield-halved" style="color: var(--primary);"></i> Directory Account</span>
+            <div>
+                {% if admin_item.is_faculty and admin_item.id == user.id %}
+                <button type="button" class="btn-secondary" style="height: 30px; padding: 0 0.75rem; font-size: 0.75rem; color: #059669; border-color: rgba(16, 185, 129, 0.3);"
+                        onclick="openFacultyCoursesModal('{{ admin_item.id }}', '{{ admin_item.username|escapejs }}', '{{ admin_item.faculty_courses|escapejs }}');">
+                    <i class="fa-solid fa-graduation-cap"></i> Update My Courses
+                </button>
+                {% else %}
+                <span><i class="fa-solid fa-shield-halved" style="color: var(--primary);"></i> Directory Account</span>
+                {% endif %}
+            </div>
             {% if admin_item.id == user.id %}
             <span class="dossier-btn-dark success" style="padding: 0.15rem 0.5rem; font-size: 0.7rem; font-weight: 700;">YOUR ACCOUNT</span>
             {% else %}
@@ -220,28 +298,28 @@
     {% empty %}
     <div class="student-card" style="grid-column: 1 / -1; padding: 4rem 2rem; text-align: center;">
         <i class="fa-solid fa-users-slash" style="font-size: 2.5rem; color: var(--border-color); margin-bottom: 0.75rem; display: block;"></i>
-        <h3 style="color: var(--text-primary); margin-bottom: 0.25rem;">No Administrators Found</h3>
-        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.88rem;">No admin records matched your search query "{{ query }}".</p>
-        <a href="{% url 'admin_list' %}" class="btn-secondary">Clear Search Filter</a>
+        <h3 style="color: var(--text-primary); margin-bottom: 0.25rem;">No Members Found</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.88rem;">No records matched your search query "{{ query }}".</p>
+        <a href="{% url 'admin_list' %}" class="btn-secondary">Clear Filter</a>
     </div>
     {% endfor %}
 </div>
 
 {% if user.is_superuser %}
-<!-- ================= MODAL: REGISTER NEW ADMIN ================= -->
+<!-- ================= MODAL: REGISTER NEW ADMIN / FACULTY / STAFF ================= -->
 <div id="createAdminModal" class="modal-backdrop-custom">
-    <div class="modal-dialog-custom">
+    <div class="modal-dialog-custom" style="max-width: 580px;">
         <div class="modal-header-custom">
             <div>
-                <h2 class="modal-title-custom"><i class="fa-solid fa-user-shield" style="color: var(--primary); margin-right: 6px;"></i> Register Administrator</h2>
-                <small style="font-size: 0.78rem; color: var(--text-muted);">Create new administrative credentials with role permissions</small>
+                <h2 class="modal-title-custom"><i class="fa-solid fa-user-shield" style="color: var(--primary); margin-right: 6px;"></i> Register Member</h2>
+                <small style="font-size: 0.78rem; color: var(--text-muted);">Create new account with custom role permissions</small>
             </div>
             <button type="button" class="toast-close" onclick="closeCreateAdminModal();" aria-label="Close dialog">
                 <i class="fa-solid fa-xmark" style="font-size: 1.1rem;"></i>
             </button>
         </div>
 
-        <form method="POST" action="{% url 'admin_create' %}">
+        <form method="POST" action="{% url 'admin_create' %}" onsubmit="return validateCreateRoles();">
             {% csrf_token %}
             <div class="modal-body-custom">
                 <div class="form-grid">
@@ -275,11 +353,43 @@
                         <input type="password" id="new_confirm_password" name="confirm_password" class="form-input" placeholder="••••••••" required>
                     </div>
 
+                    <!-- 3 TICK ROLE SELECTION: 1. Admin 2. Faculty 3. Staff -->
                     <div class="form-group" style="grid-column: span 2; margin-top: 0.5rem;">
-                        <label style="display: flex; align-items: center; gap: 0.65rem; font-size: 0.85rem; color: var(--text-primary); cursor: pointer; user-select: none;">
-                            <input type="checkbox" name="is_superuser" value="1" checked style="width: 16px; height: 16px; accent-color: var(--primary);">
-                            <span>Grant <strong>Superuser Privileges</strong> (Full management and administrative permissions)</span>
-                        </label>
+                        <label class="form-label" style="margin-bottom: 0.6rem; font-weight: 600;">Roles & Permissions *</label>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem;">
+                            <label style="display: flex; align-items: flex-start; gap: 0.65rem; padding: 0.75rem 0.85rem; border: 1.5px solid var(--border-color); border-radius: 10px; cursor: pointer; transition: all 0.2s ease; background: var(--bg-surface);">
+                                <input type="checkbox" name="role_admin" id="new_role_admin" value="1" checked style="margin-top: 2px; width: 16px; height: 16px; accent-color: var(--primary);">
+                                <div>
+                                    <div style="font-weight: 600; font-size: 0.88rem; color: var(--text-primary);">
+                                        <i class="fa-solid fa-shield-halved" style="color: var(--primary); margin-right: 4px;"></i> 1. Admin
+                                    </div>
+                                    <small style="color: var(--text-muted); font-size: 0.72rem; line-height: 1.2; display: block; margin-top: 2px;">Full system access</small>
+                                </div>
+                            </label>
+                            
+                            <label style="display: flex; align-items: flex-start; gap: 0.65rem; padding: 0.75rem 0.85rem; border: 1.5px solid var(--border-color); border-radius: 10px; cursor: pointer; transition: all 0.2s ease; background: var(--bg-surface);">
+                                <input type="checkbox" name="role_faculty" id="new_role_faculty" value="1" style="margin-top: 2px; width: 16px; height: 16px; accent-color: #10b981;">
+                                <div>
+                                    <div style="font-weight: 600; font-size: 0.88rem; color: var(--text-primary);">
+                                        <i class="fa-solid fa-chalkboard-user" style="color: #10b981; margin-right: 4px;"></i> 2. Faculty
+                                    </div>
+                                    <small style="color: var(--text-muted); font-size: 0.72rem; line-height: 1.2; display: block; margin-top: 2px;">Teaching profile</small>
+                                </div>
+                            </label>
+
+                            <label style="display: flex; align-items: flex-start; gap: 0.65rem; padding: 0.75rem 0.85rem; border: 1.5px solid var(--border-color); border-radius: 10px; cursor: pointer; transition: all 0.2s ease; background: var(--bg-surface);">
+                                <input type="checkbox" name="role_staff" id="new_role_staff" value="1" style="margin-top: 2px; width: 16px; height: 16px; accent-color: var(--accent-violet);">
+                                <div>
+                                    <div style="font-weight: 600; font-size: 0.88rem; color: var(--text-primary);">
+                                        <i class="fa-solid fa-user-tie" style="color: var(--accent-violet); margin-right: 4px;"></i> 3. Staff
+                                    </div>
+                                    <small style="color: var(--text-muted); font-size: 0.72rem; line-height: 1.2; display: block; margin-top: 2px;">Standard operations</small>
+                                </div>
+                            </label>
+                        </div>
+                        <small style="display: block; color: var(--text-muted); font-size: 0.74rem; margin-top: 0.5rem;">
+                            <i class="fa-solid fa-circle-info" style="color: var(--primary);"></i> Admin can optionally also have Faculty ticked. Select at least one role.
+                        </small>
                     </div>
                 </div>
             </div>
@@ -287,27 +397,27 @@
             <div class="modal-footer-custom">
                 <button type="button" class="btn-secondary" onclick="closeCreateAdminModal();">Cancel</button>
                 <button type="submit" class="btn-primary">
-                    <i class="fa-solid fa-user-plus"></i> Create Administrator
+                    <i class="fa-solid fa-user-plus"></i> Create Member
                 </button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- ================= MODAL: EDIT ADMIN ================= -->
+<!-- ================= MODAL: EDIT ADMIN / FACULTY / STAFF ================= -->
 <div id="editAdminModal" class="modal-backdrop-custom">
-    <div class="modal-dialog-custom">
+    <div class="modal-dialog-custom" style="max-width: 580px;">
         <div class="modal-header-custom">
             <div>
-                <h2 class="modal-title-custom"><i class="fa-solid fa-user-pen" style="color: var(--primary); margin-right: 6px;"></i> Edit Administrator</h2>
-                <small style="font-size: 0.78rem; color: var(--text-muted);">Update personal details, administrative role, or password</small>
+                <h2 class="modal-title-custom"><i class="fa-solid fa-user-pen" style="color: var(--primary); margin-right: 6px;"></i> Edit Member Profile</h2>
+                <small style="font-size: 0.78rem; color: var(--text-muted);">Update personal details, roles, or password</small>
             </div>
             <button type="button" class="toast-close" onclick="closeEditAdminModal();" aria-label="Close dialog">
                 <i class="fa-solid fa-xmark" style="font-size: 1.1rem;"></i>
             </button>
         </div>
 
-        <form id="editAdminForm" method="POST" action="">
+        <form id="editAdminForm" method="POST" action="" onsubmit="return validateEditRoles();">
             {% csrf_token %}
             <div class="modal-body-custom">
                 <div class="form-grid">
@@ -336,11 +446,43 @@
                         <input type="password" id="edit_new_password" name="new_password" class="form-input" placeholder="Enter new password to reset">
                     </div>
 
+                    <!-- 3 TICK ROLE SELECTION: 1. Admin 2. Faculty 3. Staff -->
                     <div class="form-group" style="grid-column: span 2; margin-top: 0.5rem;">
-                        <label style="display: flex; align-items: center; gap: 0.65rem; font-size: 0.85rem; color: var(--text-primary); cursor: pointer; user-select: none;">
-                            <input type="checkbox" id="edit_is_superuser" name="is_superuser" value="1" style="width: 16px; height: 16px; accent-color: var(--primary);">
-                            <span>Superuser Privileges (Root administration rights)</span>
-                        </label>
+                        <label class="form-label" style="margin-bottom: 0.6rem; font-weight: 600;">Roles & Permissions *</label>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem;">
+                            <label style="display: flex; align-items: flex-start; gap: 0.65rem; padding: 0.75rem 0.85rem; border: 1.5px solid var(--border-color); border-radius: 10px; cursor: pointer; transition: all 0.2s ease; background: var(--bg-surface);">
+                                <input type="checkbox" name="role_admin" id="edit_role_admin" value="1" style="margin-top: 2px; width: 16px; height: 16px; accent-color: var(--primary);">
+                                <div>
+                                    <div style="font-weight: 600; font-size: 0.88rem; color: var(--text-primary);">
+                                        <i class="fa-solid fa-shield-halved" style="color: var(--primary); margin-right: 4px;"></i> 1. Admin
+                                    </div>
+                                    <small style="color: var(--text-muted); font-size: 0.72rem; line-height: 1.2; display: block; margin-top: 2px;">Full system access</small>
+                                </div>
+                            </label>
+                            
+                            <label style="display: flex; align-items: flex-start; gap: 0.65rem; padding: 0.75rem 0.85rem; border: 1.5px solid var(--border-color); border-radius: 10px; cursor: pointer; transition: all 0.2s ease; background: var(--bg-surface);">
+                                <input type="checkbox" name="role_faculty" id="edit_role_faculty" value="1" style="margin-top: 2px; width: 16px; height: 16px; accent-color: #10b981;">
+                                <div>
+                                    <div style="font-weight: 600; font-size: 0.88rem; color: var(--text-primary);">
+                                        <i class="fa-solid fa-chalkboard-user" style="color: #10b981; margin-right: 4px;"></i> 2. Faculty
+                                    </div>
+                                    <small style="color: var(--text-muted); font-size: 0.72rem; line-height: 1.2; display: block; margin-top: 2px;">Teaching profile</small>
+                                </div>
+                            </label>
+
+                            <label style="display: flex; align-items: flex-start; gap: 0.65rem; padding: 0.75rem 0.85rem; border: 1.5px solid var(--border-color); border-radius: 10px; cursor: pointer; transition: all 0.2s ease; background: var(--bg-surface);">
+                                <input type="checkbox" name="role_staff" id="edit_role_staff" value="1" style="margin-top: 2px; width: 16px; height: 16px; accent-color: var(--accent-violet);">
+                                <div>
+                                    <div style="font-weight: 600; font-size: 0.88rem; color: var(--text-primary);">
+                                        <i class="fa-solid fa-user-tie" style="color: var(--accent-violet); margin-right: 4px;"></i> 3. Staff
+                                    </div>
+                                    <small style="color: var(--text-muted); font-size: 0.72rem; line-height: 1.2; display: block; margin-top: 2px;">Standard operations</small>
+                                </div>
+                            </label>
+                        </div>
+                        <small style="display: block; color: var(--text-muted); font-size: 0.74rem; margin-top: 0.5rem;">
+                            <i class="fa-solid fa-circle-info" style="color: var(--primary);"></i> Admin can optionally also have Faculty ticked. Select at least one role.
+                        </small>
                     </div>
                 </div>
             </div>
@@ -348,7 +490,95 @@
             <div class="modal-footer-custom">
                 <button type="button" class="btn-secondary" onclick="closeEditAdminModal();">Cancel</button>
                 <button type="submit" class="btn-primary">
-                    <i class="fa-solid fa-floppy-disk"></i> Save Admin Changes
+                    <i class="fa-solid fa-floppy-disk"></i> Save Member Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- ================= MODAL: UPDATE FACULTY COURSES ONLY ================= -->
+<div id="facultyCoursesModal" class="modal-backdrop-custom">
+    <div class="modal-dialog-custom" style="max-width: 680px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="modal-header-custom">
+            <div>
+                <h2 class="modal-title-custom">
+                    <i class="fa-solid fa-graduation-cap" style="color: #10b981; margin-right: 6px;"></i>
+                    Update Faculty Courses
+                </h2>
+                <small style="font-size: 0.78rem; color: var(--text-muted);">
+                    Faculty Member: <strong id="facultyCoursesModalUserName" style="color: var(--text-primary);"></strong> &bull; Select teaching courses
+                </small>
+            </div>
+            <button type="button" class="toast-close" onclick="closeFacultyCoursesModal();" aria-label="Close dialog">
+                <i class="fa-solid fa-xmark" style="font-size: 1.1rem;"></i>
+            </button>
+        </div>
+
+        <form id="facultyCoursesForm" method="POST" action="" style="display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden;">
+            {% csrf_token %}
+            <div class="modal-body-custom" style="overflow-y: auto; flex: 1; padding: 1.25rem;">
+                <!-- Search & Quick Selection Header -->
+                <div style="position: sticky; top: -1.25rem; z-index: 5; background: var(--bg-surface); padding-bottom: 0.75rem; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+                    <div style="position: relative; margin-bottom: 0.65rem;">
+                        <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem;"></i>
+                        <input type="text" id="facultyCourseSearchInput" class="form-input" placeholder="Search courses (e.g. Flutter, Web Development, Python)..." style="padding-left: 2.25rem;" oninput="filterFacultyCourses();">
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                        <span id="facultyCoursesSelectedCount" class="badge badge-primary" style="font-size: 0.78rem; padding: 0.25rem 0.6rem;">
+                            0 courses selected
+                        </span>
+                        <div style="display: flex; gap: 0.4rem;">
+                            <button type="button" class="btn-secondary" style="height: 28px; padding: 0 0.65rem; font-size: 0.74rem;" onclick="selectAllFacultyCourses(true);">
+                                <i class="fa-solid fa-check-double"></i> Select All
+                            </button>
+                            <button type="button" class="btn-secondary" style="height: 28px; padding: 0 0.65rem; font-size: 0.74rem;" onclick="selectAllFacultyCourses(false);">
+                                <i class="fa-solid fa-rotate-left"></i> Clear All
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Course Categories Grid -->
+                <div id="facultyCoursesCategoriesContainer">
+                    {% for category, courses in course_categories.items %}
+                    <div class="faculty-course-category-section" style="margin-bottom: 1.25rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border-color); role-section">
+                            <span style="font-size: 0.84rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.45rem;">
+                                <i class="fa-solid fa-folder" style="color: var(--primary); font-size: 0.85rem;"></i>
+                                {{ category }}
+                            </span>
+                            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">
+                                {{ courses|length }} course{{ courses|length|pluralize }}
+                            </span>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 0.45rem;">
+                            {% for course in courses %}
+                            <label class="faculty-course-item" data-course-name="{{ course|lower }}" style="display: flex; align-items: center; gap: 0.55rem; padding: 0.45rem 0.65rem; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; font-size: 0.8rem; background: var(--bg-surface); transition: all 0.15s ease; user-select: none;">
+                                <input type="checkbox" name="courses" value="{{ course }}" class="faculty-course-checkbox" onchange="updateFacultyCoursesCount();" style="accent-color: #10b981; width: 16px; height: 16px;">
+                                <span style="color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="{{ course }}">
+                                    {{ course }}
+                                </span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div id="noCoursesMatchNotice" style="display: none; padding: 2.5rem 1rem; text-align: center; color: var(--text-muted); font-size: 0.88rem;">
+                    <i class="fa-solid fa-magnifying-glass" style="font-size: 1.75rem; margin-bottom: 0.5rem; opacity: 0.5; display: block;"></i>
+                    No courses match your filter.
+                </div>
+            </div>
+
+            <div class="modal-footer-custom">
+                <button type="button" class="btn-secondary" onclick="closeFacultyCoursesModal();">Cancel</button>
+                <button type="submit" class="btn-primary" style="background: #10b981; border-color: #059669;">
+                    <i class="fa-solid fa-floppy-disk"></i> Save Courses
                 </button>
             </div>
         </form>
@@ -366,7 +596,19 @@ function closeCreateAdminModal() {
     if (modal) modal.classList.remove('show');
 }
 
-function openEditAdminModal(id, username, email, firstName, lastName, isSuperuser) {
+function validateCreateRoles() {
+    const admin = document.getElementById('new_role_admin')?.checked;
+    const faculty = document.getElementById('new_role_faculty')?.checked;
+    const staff = document.getElementById('new_role_staff')?.checked;
+
+    if (!admin && !faculty && !staff) {
+        alert('Please tick at least one role: Admin, Faculty, or Staff.');
+        return false;
+    }
+    return true;
+}
+
+function openEditAdminModal(id, username, email, firstName, lastName, isAdmin, isFaculty, isStaff) {
     const modal = document.getElementById('editAdminModal');
     const form = document.getElementById('editAdminForm');
     if (form) form.action = `/management/admins/${id}/edit/`;
@@ -376,14 +618,18 @@ function openEditAdminModal(id, username, email, firstName, lastName, isSuperuse
     const fEl = document.getElementById('edit_first_name');
     const lEl = document.getElementById('edit_last_name');
     const pEl = document.getElementById('edit_new_password');
-    const sEl = document.getElementById('edit_is_superuser');
+    const aEl = document.getElementById('edit_role_admin');
+    const facEl = document.getElementById('edit_role_faculty');
+    const stEl = document.getElementById('edit_role_staff');
 
     if (uEl) uEl.value = username || '';
     if (eEl) eEl.value = email || '';
     if (fEl) fEl.value = firstName || '';
     if (lEl) lEl.value = lastName || '';
     if (pEl) pEl.value = '';
-    if (sEl) sEl.checked = !!isSuperuser;
+    if (aEl) aEl.checked = !!isAdmin;
+    if (facEl) facEl.checked = !!isFaculty;
+    if (stEl) stEl.checked = !!isStaff;
 
     if (modal) modal.classList.add('show');
 }
@@ -393,17 +639,120 @@ function closeEditAdminModal() {
     if (modal) modal.classList.remove('show');
 }
 
-// Close modals when clicking on backdrop
+function validateEditRoles() {
+    const admin = document.getElementById('edit_role_admin')?.checked;
+    const faculty = document.getElementById('edit_role_faculty')?.checked;
+    const staff = document.getElementById('edit_role_staff')?.checked;
+
+    if (!admin && !faculty && !staff) {
+        alert('Please tick at least one role: Admin, Faculty, or Staff.');
+        return false;
+    }
+    return true;
+}
+
+// ================= FACULTY COURSES UPDATE MODAL =================
+function openFacultyCoursesModal(id, username, coursesStr) {
+    const modal = document.getElementById('facultyCoursesModal');
+    const form = document.getElementById('facultyCoursesForm');
+    const titleEl = document.getElementById('facultyCoursesModalUserName');
+    const searchInput = document.getElementById('facultyCourseSearchInput');
+
+    if (form) form.action = `/management/admins/${id}/courses/`;
+    if (titleEl) titleEl.textContent = username || 'Faculty Member';
+    if (searchInput) searchInput.value = '';
+
+    // Parse comma-separated courses
+    const assignedCourses = (coursesStr || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+
+    // Set checkboxes
+    const checkboxes = document.querySelectorAll('.faculty-course-checkbox');
+    checkboxes.forEach(cb => {
+        const val = (cb.value || '').trim().toLowerCase();
+        cb.checked = assignedCourses.includes(val);
+    });
+
+    filterFacultyCourses();
+    updateFacultyCoursesCount();
+
+    if (modal) modal.classList.add('show');
+}
+
+function closeFacultyCoursesModal() {
+    const modal = document.getElementById('facultyCoursesModal');
+    if (modal) modal.classList.remove('show');
+}
+
+function updateFacultyCoursesCount() {
+    const checkboxes = document.querySelectorAll('.faculty-course-checkbox:checked');
+    const badge = document.getElementById('facultyCoursesSelectedCount');
+    if (badge) {
+        const c = checkboxes.length;
+        badge.textContent = `${c} course${c === 1 ? '' : 's'} selected`;
+    }
+}
+
+function filterFacultyCourses() {
+    const searchInput = document.getElementById('facultyCourseSearchInput');
+    const query = (searchInput?.value || '').trim().toLowerCase();
+    const items = document.querySelectorAll('.faculty-course-item');
+    const sections = document.querySelectorAll('.faculty-course-category-section');
+    let totalVisible = 0;
+
+    items.forEach(item => {
+        const name = item.getAttribute('data-course-name') || '';
+        if (!query || name.includes(query)) {
+            item.style.display = 'flex';
+            totalVisible++;
+        } else {
+            item.style.display = 'none';
+        }
+    });
+
+    // Check each category section
+    sections.forEach(sec => {
+        const visibleItems = sec.querySelectorAll('.faculty-course-item[style*="display: flex"]');
+        if (visibleItems.length === 0 && query) {
+            sec.style.display = 'none';
+        } else {
+            sec.style.display = 'block';
+        }
+    });
+
+    const notice = document.getElementById('noCoursesMatchNotice');
+    if (notice) {
+        notice.style.display = totalVisible === 0 ? 'block' : 'none';
+    }
+}
+
+function selectAllFacultyCourses(select) {
+    const items = document.querySelectorAll('.faculty-course-item');
+    items.forEach(item => {
+        if (item.style.display !== 'none') {
+            const cb = item.querySelector('.faculty-course-checkbox');
+            if (cb) cb.checked = !!select;
+        }
+    });
+    updateFacultyCoursesCount();
+}
+
+// Close modals when clicking on backdrop or pressing ESC
 window.addEventListener('click', function(e) {
     const createModal = document.getElementById('createAdminModal');
     const editModal = document.getElementById('editAdminModal');
-    if (e.target === createModal) {
+    const facultyCoursesModal = document.getElementById('facultyCoursesModal');
+
+    if (e.target === createModal) closeCreateAdminModal();
+    if (e.target === editModal) closeEditAdminModal();
+    if (e.target === facultyCoursesModal) closeFacultyCoursesModal();
+});
+
+window.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
         closeCreateAdminModal();
-    }
-    if (e.target === editModal) {
         closeEditAdminModal();
+        closeFacultyCoursesModal();
     }
 });
 </script>
-{% endif %}
 {% endblock %}
