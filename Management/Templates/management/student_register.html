@@ -67,8 +67,7 @@
                         {% endfor %}
                         {% empty %}
                         <li style="padding: 14px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
-                            <i class="fa-solid fa-chalkboard-user" style="margin-right: 6px; color: var(--text-muted);"></i> No faculty instructors configured yet.<br>
-                            <a href="{% url 'admin_faculty_create' %}" target="_blank" style="color: var(--primary); font-weight: 600; text-decoration: underline; margin-top: 4px; display: inline-block;">+ Add Faculty Instructor</a> or proceed without one.
+                            <i class="fa-solid fa-graduation-cap" style="margin-right: 6px; color: var(--text-muted);"></i> No courses available.
                         </li>
                         {% endfor %}
                     </ul>
@@ -225,7 +224,7 @@
     </form>
 </div>
 
-<!-- Interactive Multi-Course, Multi-Batch & Course-Based Faculty Script -->
+<!-- Interactive Multi-Course & Multi-Batch Script -->
 <script>
 function handleReferenceChange() {
     const refSelect = document.getElementById("reference_select");

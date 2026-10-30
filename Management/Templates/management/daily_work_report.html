@@ -326,7 +326,7 @@
                     <i class="fa-solid fa-graduation-cap" style="color: var(--primary);"></i> Course Module
                 </label>
                 <div class="searchable-select-container">
-                    <input type="text" id="dwr_course_input" class="searchable-select-input" placeholder="All Course Modules" autocomplete="off" style="cursor: pointer; height: 42px;" value="{% if course_filter %}{{ course_filter }}{% else %}All Course Modules{% endif %}">
+                    <input type="text" id="dwr_course_input" class="searchable-select-input" placeholder="Search course module..." autocomplete="off" style="cursor: pointer; height: 42px;" value="{% if course_filter %}{{ course_filter }}{% else %}All Course Modules{% endif %}">
                     <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
                     <ul id="dwr_course_list" class="searchable-list custom-scrollbar" style="max-height: 280px;">
                         <li data-value="" class="all-option" style="padding: 9px 14px; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border-color);">
@@ -587,6 +587,9 @@ function setupFilterDropdown(inputId, listId, hiddenId, itemSelector, isCourse =
     const items = list.querySelectorAll(itemSelector);
     const categoryHeaders = isCourse ? list.querySelectorAll(".category-header") : [];
 
+    let wasOpenOnMousedown = false;
+    let previousText = input.value;
+
     function show() {
         document.querySelectorAll('.searchable-list').forEach(l => {
             if (l !== list) l.style.display = 'none';
@@ -597,14 +600,30 @@ function setupFilterDropdown(inputId, listId, hiddenId, itemSelector, isCourse =
         list.style.display = "block";
         const container = input.closest(".searchable-select-container");
         if (container) container.classList.add("open");
+
+        // Clear text box on click/open for searchable inputs so user can type immediately
+        if (!input.readOnly) {
+            if (input.value) {
+                previousText = input.value;
+            }
+            input.value = "";
+            items.forEach(it => it.style.display = "");
+            if (isCourse) {
+                categoryHeaders.forEach(cat => cat.style.display = "");
+            }
+        }
     }
+
     function hide() {
         list.style.display = "none";
         const container = input.closest(".searchable-select-container");
         if (container) container.classList.remove("open");
-    }
 
-    let wasOpenOnMousedown = false;
+        // Restore previous text if closed without selecting an option
+        if (!input.readOnly && !input.value) {
+            input.value = previousText;
+        }
+    }
 
     input.addEventListener("mousedown", function() {
         wasOpenOnMousedown = (list.style.display === "block");
@@ -612,9 +631,6 @@ function setupFilterDropdown(inputId, listId, hiddenId, itemSelector, isCourse =
 
     input.addEventListener("focus", function() {
         show();
-        if (!input.readOnly && input.value) {
-            input.select();
-        }
     });
 
     input.addEventListener("click", function(e) {
@@ -623,9 +639,12 @@ function setupFilterDropdown(inputId, listId, hiddenId, itemSelector, isCourse =
             hide();
         } else {
             show();
-            if (!input.readOnly && input.value) {
-                input.select();
-            }
+        }
+    });
+
+    input.addEventListener("keydown", function(e) {
+        if (e.key === "Escape") {
+            hide();
         }
     });
 
@@ -678,6 +697,7 @@ function setupFilterDropdown(inputId, listId, hiddenId, itemSelector, isCourse =
         hidden.value = val;
         const textEl = item.querySelector("strong") || item.querySelector("span");
         input.value = textEl ? textEl.textContent.trim() : (val || item.textContent.trim());
+        previousText = input.value;
         hide();
         form.submit();
     });

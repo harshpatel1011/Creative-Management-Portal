@@ -336,12 +336,6 @@ def student_register_view(request):
         else:
             reference_detail = request.POST.get("reference_detail", "").strip()
 
-        faculty_id = request.POST.get("faculty_id", "").strip() or request.POST.get("faculty", "").strip()
-        faculty_member = None
-        if faculty_id and faculty_id.isdigit():
-            faculty_member = Faculty.objects.filter(id=int(faculty_id)).first()
-        faculty_name = faculty_member.name if faculty_member else request.POST.get("faculty_name", "").strip()
-
         if not (name and email and password and selected_courses):
             messages.error(request, "Please fill in all required fields including at least one course!")
             return render(
@@ -351,7 +345,6 @@ def student_register_view(request):
                     "user": user,
                     "class_time_choices": class_time_choices,
                     "course_categories": course_categories,
-                    "faculties": faculties,
                     "all_students": all_students,
                     "all_staff": all_staff,
                 },
@@ -366,7 +359,6 @@ def student_register_view(request):
                     "user": user,
                     "class_time_choices": class_time_choices,
                     "course_categories": course_categories,
-                    "faculties": faculties,
                     "all_students": all_students,
                     "all_staff": all_staff,
                 },
@@ -378,25 +370,41 @@ def student_register_view(request):
             password=make_password(password),
             course=", ".join(selected_courses),
             class_time=class_time_str,
-            faculty=faculty_name,
-            faculty_member=faculty_member,
             phone=phone,
             reference=reference,
             reference_detail=reference_detail,
         )
 
+        # Automatically assign student to matching active batches based on selected timings,
+        # inheriting instructor/faculty assignment directly from the batch.
+        primary_batch = None
         for b in selected_batches:
             StudentBatch.objects.get_or_create(student=student, batch_time=b)
+            matching_batch = Batch.objects.filter(time_slot__iexact=b.strip(), is_active=True).first()
+            if matching_batch:
+                matching_batch.students.add(student)
+                if not primary_batch:
+                    primary_batch = matching_batch
+
+        if primary_batch:
+            student.assigned_batch = primary_batch
+            if primary_batch.faculty:
+                student.faculty_member = primary_batch.faculty
+                student.faculty = primary_batch.faculty.name
+            student.save(update_fields=['assigned_batch', 'faculty_member', 'faculty'])
 
         for c in selected_courses:
             StudentCourse.objects.get_or_create(
                 student=student, 
                 course_name=c,
-                defaults={"faculty": faculty_name, "faculty_member": faculty_member}
+                defaults={
+                    "faculty": student.faculty or "",
+                    "faculty_member": student.faculty_member
+                }
             )
 
         batch_count_msg = f"{len(selected_batches)} batch schedule(s)" if selected_batches else "flexible schedule"
-        fac_msg = f" assigned to {faculty_name}" if faculty_name else ""
+        fac_msg = f" (assigned to batch instructor: {student.faculty})" if student.faculty else ""
         messages.success(request, f"Student {name} registered successfully with {len(selected_courses)} course(s), {batch_count_msg}{fac_msg}!")
         return redirect("admin_student_list")
 
@@ -444,20 +452,25 @@ def student_list_view(request):
             Q(class_time__icontains=class_time_filter) | Q(enrolled_batches__batch_time=class_time_filter)
         ).distinct()
 
-    faculty_filter = request.GET.get("faculty", "").strip()
-    if faculty_filter:
+    batch_faculty_filter = request.GET.get("batch_faculty", "").strip() or request.GET.get("faculty", "").strip()
+    if batch_faculty_filter:
         fac_q = (
-            Q(faculty__icontains=faculty_filter)
-            | Q(faculty_member__id=faculty_filter if faculty_filter.isdigit() else None)
-            | Q(faculty_member__name__icontains=faculty_filter)
-            | Q(enrolled_courses__faculty__icontains=faculty_filter)
-            | Q(enrolled_courses__faculty_member__name__icontains=faculty_filter)
-            | Q(assigned_batch__faculty__name__icontains=faculty_filter)
-            | Q(assigned_batches__faculty__name__icontains=faculty_filter)
+            Q(assigned_batch__faculty__name__icontains=batch_faculty_filter)
+            | Q(assigned_batches__faculty__name__icontains=batch_faculty_filter)
+            | Q(faculty__icontains=batch_faculty_filter)
+            | Q(faculty_member__name__icontains=batch_faculty_filter)
+            | Q(enrolled_courses__faculty__icontains=batch_faculty_filter)
+            | Q(enrolled_courses__faculty_member__name__icontains=batch_faculty_filter)
         )
-        first_token = faculty_filter.split()[0] if " " in faculty_filter else ""
+        if batch_faculty_filter.isdigit():
+            fac_q |= Q(assigned_batch__faculty__id=int(batch_faculty_filter)) | Q(assigned_batches__faculty__id=int(batch_faculty_filter))
+        first_token = batch_faculty_filter.split()[0] if " " in batch_faculty_filter else ""
         if first_token and len(first_token) >= 3:
-            fac_q |= Q(faculty__icontains=first_token) | Q(faculty_member__name__icontains=first_token)
+            fac_q |= (
+                Q(assigned_batch__faculty__name__icontains=first_token)
+                | Q(assigned_batches__faculty__name__icontains=first_token)
+                | Q(faculty__icontains=first_token)
+            )
         students = students.filter(fac_q).distinct()
 
     # Automatically sync expired leave status
@@ -471,15 +484,25 @@ def student_list_view(request):
     elif status_filter in [c[0] for c in Student.STUDENT_STATUS_CHOICES]:
         students = students.filter(status=status_filter)
 
-    batch_filter = request.GET.get("batch_status", "").strip()
-    if batch_filter == "unassigned":
+    batch_param = request.GET.get("batch_id", "").strip() or request.GET.get("batch_status", "").strip() or request.GET.get("batch", "").strip()
+    batch_filter = ""
+    batch_id_filter = ""
+
+    if batch_param.isdigit():
+        batch_id_filter = batch_param
+    elif batch_param.startswith("batch_"):
+        batch_id_filter = batch_param.replace("batch_", "")
+    elif batch_param in ["unassigned", "assigned"]:
+        batch_filter = batch_param
+
+    selected_batch_obj = None
+    if batch_id_filter and batch_id_filter.isdigit():
+        selected_batch_obj = Batch.objects.filter(id=int(batch_id_filter)).first()
+        students = students.filter(Q(assigned_batch__id=int(batch_id_filter)) | Q(assigned_batches__id=int(batch_id_filter))).distinct()
+    elif batch_filter == "unassigned":
         students = students.filter(assigned_batch__isnull=True, assigned_batches__isnull=True)
     elif batch_filter == "assigned":
         students = students.filter(Q(assigned_batch__isnull=False) | Q(assigned_batches__isnull=False)).distinct()
-
-    batch_id_filter = request.GET.get("batch_id", "").strip()
-    if batch_id_filter and batch_id_filter.isdigit():
-        students = students.filter(Q(assigned_batch__id=int(batch_id_filter)) | Q(assigned_batches__id=int(batch_id_filter))).distinct()
 
     course_categories = Student.COURSE_CATEGORIES
     class_time_choices = [c[0] for c in Student.CLASS_TIME_CHOICES]
@@ -491,13 +514,15 @@ def student_list_view(request):
         "query": q,
         "course_filter": course_filter,
         "class_time_filter": class_time_filter,
-        "faculty_filter": faculty_filter,
+        "batch_faculty_filter": batch_faculty_filter,
+        "faculty_filter": batch_faculty_filter,
         "course_categories": course_categories,
         "class_time_choices": class_time_choices,
         "faculties": faculties,
         "status_filter": status_filter,
         "batch_filter": batch_filter,
         "batch_id_filter": batch_id_filter,
+        "selected_batch_obj": selected_batch_obj,
         "all_batches": Batch.objects.filter(is_active=True).select_related('faculty').order_by('time_slot', 'name'),
         "unassigned_batch_count": Student.objects.filter(assigned_batch__isnull=True, assigned_batches__isnull=True).count(),
         "on_leave_count": Student.objects.filter(is_on_leave=True).count(),
@@ -614,11 +639,6 @@ def student_edit_view(request, student_id):
         if password:
             student.password = make_password(password)
 
-        faculty_id = request.POST.get("faculty_id", "").strip() or request.POST.get("faculty", "").strip()
-        faculty_member = None
-        if faculty_id and faculty_id.isdigit():
-            faculty_member = Faculty.objects.filter(id=int(faculty_id)).first()
-
         reference = request.POST.get("reference", "").strip()
         if reference == "Internet":
             reference_detail = request.POST.get("reference_internet", "").strip()
@@ -637,17 +657,41 @@ def student_edit_view(request, student_id):
         student.email = email
         student.course = ", ".join(selected_courses)
         student.class_time = ", ".join(selected_batches)
-        student.faculty_member = faculty_member
-        student.faculty = faculty_member.name if faculty_member else request.POST.get("faculty_name", "").strip()
         student.phone = request.POST.get("phone")
         student.reference = reference
         student.reference_detail = reference_detail
-        student.save()
 
-        # Sync StudentBatch
+        # Sync StudentBatch & Batch assignment, automatically inheriting instructor from batch
+        for b in student.assigned_batches.exclude(time_slot__in=selected_batches):
+            b.students.remove(student)
+
+        primary_batch = None
         StudentBatch.objects.filter(student=student).exclude(batch_time__in=selected_batches).delete()
         for b in selected_batches:
             StudentBatch.objects.get_or_create(student=student, batch_time=b)
+            matching_batch = Batch.objects.filter(time_slot__iexact=b.strip(), is_active=True).first()
+            if matching_batch:
+                matching_batch.students.add(student)
+                if not primary_batch:
+                    primary_batch = matching_batch
+
+        if primary_batch:
+            student.assigned_batch = primary_batch
+            if primary_batch.faculty:
+                student.faculty_member = primary_batch.faculty
+                student.faculty = primary_batch.faculty.name
+            else:
+                student.faculty_member = None
+                student.faculty = ""
+        elif not selected_batches:
+            student.assigned_batch = None
+            student.faculty_member = None
+            student.faculty = ""
+        elif student.assigned_batch and student.assigned_batch.faculty:
+            student.faculty_member = student.assigned_batch.faculty
+            student.faculty = student.assigned_batch.faculty.name
+
+        student.save()
 
         # Sync StudentCourse table
         StudentCourse.objects.filter(student=student).exclude(course_name__in=selected_courses).delete()
