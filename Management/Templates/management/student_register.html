@@ -41,7 +41,7 @@
             </div>
 
             <!-- Course Selection (Multi-Select) -->
-            <div class="form-group" style="grid-column: span 2; position: relative;">
+            <div class="form-group" style="position: relative;">
                 <label class="form-label">Course / Program Enrolled (Select one or multiple) *</label>
                 
                 <!-- Selected Chips Display -->
@@ -57,9 +57,9 @@
                             <i class="fa-solid fa-folder-open" style="margin-right: 5px;"></i> {{ category }}
                         </li>
                         {% for c in courses %}
-                        <li data-value="{{ c }}" data-category="{{ category }}" class="course-option-item" style="display: flex; align-items: center; gap: 10px; padding: 9px 14px; cursor: pointer;">
-                            <input type="checkbox" name="courses" value="{{ c }}" data-category="{{ category }}" id="course_chk_{{ forloop.parentloop.counter }}_{{ forloop.counter }}" class="course-checkbox" style="width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer;">
-                            <div class="course-option-text">
+                        <li data-value="{{ c }}" data-category="{{ category }}" class="course-option-item" style="display: flex; flex-direction: row; align-items: center; text-align: left; gap: 10px; padding: 9px 14px; cursor: pointer;">
+                            <input type="checkbox" name="courses" value="{{ c }}" data-category="{{ category }}" id="course_chk_{{ forloop.parentloop.counter }}_{{ forloop.counter }}" class="course-checkbox" style="width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; flex-shrink: 0; margin: 0;">
+                            <div class="course-option-text" style="flex: 1; text-align: left;">
                                 <strong style="color: var(--text-primary); font-size: 0.88rem; display: block;">{{ c }}</strong>
                                 <small style="color: var(--text-muted); font-size: 0.72rem;">{{ category }}</small>
                             </div>
@@ -80,7 +80,7 @@
 
 
             <!-- Multiple Batch / Schedule Selection -->
-            <div class="form-group" style="grid-column: span 2; position: relative;">
+            <div class="form-group" style="position: relative;">
                 <label class="form-label">Class Schedule / Timing (Select one or multiple batches) *</label>
                 
                 <!-- Selected Batch Chips Display -->
@@ -92,9 +92,9 @@
                     
                     <ul id="batch_dropdown_list" class="searchable-list custom-scrollbar" style="max-height: 240px; display: none;">
                         {% for choice in class_time_choices %}
-                        <li data-value="{{ choice }}" class="batch-option-item" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border-color);">
-                            <input type="checkbox" name="class_times" value="{{ choice }}" id="batch_chk_{{ forloop.counter }}" class="batch-checkbox" style="width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer;">
-                            <div class="batch-option-text">
+                        <li data-value="{{ choice }}" class="batch-option-item" style="display: flex; flex-direction: row; align-items: center; text-align: left; gap: 10px; padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border-color);">
+                            <input type="checkbox" name="class_times" value="{{ choice }}" id="batch_chk_{{ forloop.counter }}" class="batch-checkbox" style="width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; flex-shrink: 0; margin: 0;">
+                            <div class="batch-option-text" style="flex: 1; text-align: left;">
                                 <strong style="font-size: 0.88rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
                                     <i class="fa-solid fa-clock" style="color: var(--primary); font-size: 0.78rem;"></i>
                                     {{ choice }}
@@ -120,69 +120,162 @@
                 <input type="text" id="phone" name="phone" class="form-input" placeholder="Whatsapp No.">
             </div>
 
-            <!-- Reference Selection -->
-            <div class="form-group">
-                <label class="form-label" for="reference_select" style="display: flex; align-items: center; gap: 0.4rem;">
+            <!-- Reference Selection (Custom Matching Dropdown) -->
+            <div class="form-group" style="position: relative;">
+                <label class="form-label" style="display: flex; align-items: center; gap: 0.4rem;">
                     <i class="fa-solid fa-bullhorn" style="color: var(--primary);"></i> Reference
                 </label>
-                <select name="reference" id="reference_select" class="form-input" style="height: 42px; cursor: pointer;" onchange="handleReferenceChange();">
-                    <option value="">Select Reference</option>
-                    <option value="Internet">Internet</option>
-                    <option value="Student">Student</option>
-                    <option value="Seminar">Seminar</option>
-                    <option value="Staff">Staff</option>
-                    <option value="Other">Other</option>
-                </select>
+                <div class="searchable-select-container" id="reference_container">
+                    <input type="text" id="reference_display_input" class="searchable-select-input" placeholder="Select Reference..." autocomplete="off" readonly style="cursor: pointer; user-select: none;" value="">
+                    <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
+                    <ul id="reference_dropdown_list" class="searchable-list custom-scrollbar" style="max-height: 250px; display: none;">
+                        <li data-value="" data-text="" class="ref-item" style="padding: 10px 14px; font-weight: 500; color: var(--text-muted); border-bottom: 1px solid var(--border-color-light);">
+                            <span style="display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-ban" style="font-size: 0.8rem; color: var(--text-muted);"></i> None (Select Reference)
+                            </span>
+                        </li>
+                        <li data-value="Internet" data-text="Internet" class="ref-item" style="padding: 10px 14px; border-bottom: 1px solid var(--border-color-light);">
+                            <div style="display: flex; align-items: center; gap: 9px;">
+                                <i class="fa-solid fa-globe" style="color: #3b82f6; width: 16px; text-align: center;"></i>
+                                <strong>Internet</strong>
+                            </div>
+                        </li>
+                        <li data-value="Student" data-text="Student" class="ref-item" style="padding: 10px 14px; border-bottom: 1px solid var(--border-color-light);">
+                            <div style="display: flex; align-items: center; gap: 9px;">
+                                <i class="fa-solid fa-user-graduate" style="color: #10b981; width: 16px; text-align: center;"></i>
+                                <strong>Student</strong>
+                            </div>
+                        </li>
+                        <li data-value="Seminar" data-text="Seminar" class="ref-item" style="padding: 10px 14px; border-bottom: 1px solid var(--border-color-light);">
+                            <div style="display: flex; align-items: center; gap: 9px;">
+                                <i class="fa-solid fa-users-rectangle" style="color: #8b5cf6; width: 16px; text-align: center;"></i>
+                                <strong>Seminar</strong>
+                            </div>
+                        </li>
+                        <li data-value="Staff" data-text="Staff" class="ref-item" style="padding: 10px 14px; border-bottom: 1px solid var(--border-color-light);">
+                            <div style="display: flex; align-items: center; gap: 9px;">
+                                <i class="fa-solid fa-chalkboard-user" style="color: #f59e0b; width: 16px; text-align: center;"></i>
+                                <strong>Staff</strong>
+                            </div>
+                        </li>
+                        <li data-value="Other" data-text="Other" class="ref-item" style="padding: 10px 14px;">
+                            <div style="display: flex; align-items: center; gap: 9px;">
+                                <i class="fa-solid fa-asterisk" style="color: var(--primary); width: 16px; text-align: center;"></i>
+                                <strong>Other</strong>
+                            </div>
+                        </li>
+                    </ul>
+                    <input type="hidden" name="reference" id="reference_select" value="">
+                </div>
             </div>
 
             <!-- Dynamic Sub-Reference Field (Conditionally shown based on Reference choice) -->
             <div class="form-group" id="reference_detail_wrapper" style="grid-column: span 2; display: none; background: rgba(79, 70, 229, 0.04); border: 1px dashed rgba(79, 70, 229, 0.3); border-radius: var(--border-radius-md); padding: 1.1rem 1.25rem;">
                 <!-- 1. Internet Options -->
                 <div id="ref_sub_internet" style="display: none;">
-                    <label class="form-label" for="reference_internet" style="display: flex; align-items: center; gap: 0.45rem; font-weight: 700; color: #3b82f6; margin-bottom: 0.45rem;">
+                    <label class="form-label" style="display: flex; align-items: center; gap: 0.45rem; font-weight: 700; color: #3b82f6; margin-bottom: 0.45rem;">
                         <i class="fa-solid fa-globe"></i> Select Internet Channel / Platform *
                     </label>
-                    <select name="reference_internet" id="reference_internet" class="form-input" style="height: 42px; cursor: pointer;">
-                        <option value="">-- Select Internet Platform --</option>
-                        <option value="Instagram">Instagram</option>
-                        <option value="Facebook">Facebook</option>
-                        <option value="WhatsApp">WhatsApp</option>
-                        <option value="Google Search">Google Search / SEO</option>
-                        <option value="YouTube">YouTube</option>
-                        <option value="Website">Institute Website</option>
-                        <option value="LinkedIn">LinkedIn</option>
-                        <option value="Other Social Media">Other Social Media / Ads</option>
-                    </select>
+                    <div class="searchable-select-container">
+                        <input type="text" id="internet_display_input" class="searchable-select-input" placeholder="-- Select Internet Platform --" autocomplete="off" readonly style="cursor: pointer; user-select: none;" value="">
+                        <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
+                        <ul id="internet_dropdown_list" class="searchable-list custom-scrollbar" style="max-height: 220px; display: none;">
+                            <li data-value="" data-text="" class="ref-sub-item" style="padding: 10px 14px; color: var(--text-muted); border-bottom: 1px solid var(--border-color-light);">
+                                <span>-- Select Internet Platform --</span>
+                            </li>
+                            <li data-value="Instagram" data-text="Instagram" class="ref-sub-item" style="padding: 10px 14px; border-bottom: 1px solid var(--border-color-light);">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="fa-brands fa-instagram" style="color: #e1306c; width: 16px;"></i> <strong>Instagram</strong>
+                                </div>
+                            </li>
+                            <li data-value="Facebook" data-text="Facebook" class="ref-sub-item" style="padding: 10px 14px; border-bottom: 1px solid var(--border-color-light);">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="fa-brands fa-facebook" style="color: #1877f2; width: 16px;"></i> <strong>Facebook</strong>
+                                </div>
+                            </li>
+                            <li data-value="WhatsApp" data-text="WhatsApp" class="ref-sub-item" style="padding: 10px 14px; border-bottom: 1px solid var(--border-color-light);">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="fa-brands fa-whatsapp" style="color: #25d366; width: 16px;"></i> <strong>WhatsApp</strong>
+                                </div>
+                            </li>
+                            <li data-value="Google Search" data-text="Google Search" class="ref-sub-item" style="padding: 10px 14px; border-bottom: 1px solid var(--border-color-light);">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="fa-brands fa-google" style="color: #ea4335; width: 16px;"></i> <strong>Google Search / SEO</strong>
+                                </div>
+                            </li>
+                            <li data-value="YouTube" data-text="YouTube" class="ref-sub-item" style="padding: 10px 14px; border-bottom: 1px solid var(--border-color-light);">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="fa-brands fa-youtube" style="color: #ff0000; width: 16px;"></i> <strong>YouTube</strong>
+                                </div>
+                            </li>
+                            <li data-value="Website" data-text="Website" class="ref-sub-item" style="padding: 10px 14px; border-bottom: 1px solid var(--border-color-light);">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="fa-solid fa-globe" style="color: #3b82f6; width: 16px;"></i> <strong>Institute Website</strong>
+                                </div>
+                            </li>
+                            <li data-value="LinkedIn" data-text="LinkedIn" class="ref-sub-item" style="padding: 10px 14px; border-bottom: 1px solid var(--border-color-light);">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="fa-brands fa-linkedin" style="color: #0a66c2; width: 16px;"></i> <strong>LinkedIn</strong>
+                                </div>
+                            </li>
+                            <li data-value="Other Social Media" data-text="Other Social Media" class="ref-sub-item" style="padding: 10px 14px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="fa-solid fa-share-nodes" style="color: #6366f1; width: 16px;"></i> <strong>Other Social Media / Ads</strong>
+                                </div>
+                            </li>
+                        </ul>
+                        <input type="hidden" name="reference_internet" id="reference_internet" value="">
+                    </div>
                 </div>
 
                 <!-- 2. Student Options (Shows all registered students) -->
                 <div id="ref_sub_student" style="display: none;">
-                    <label class="form-label" for="reference_student" style="display: flex; align-items: center; gap: 0.45rem; font-weight: 700; color: #10b981; margin-bottom: 0.45rem;">
+                    <label class="form-label" style="display: flex; align-items: center; gap: 0.45rem; font-weight: 700; color: #10b981; margin-bottom: 0.45rem;">
                         <i class="fa-solid fa-user-graduate"></i> Select Registered Student (Referrer) *
                     </label>
-                    <select name="reference_student" id="reference_student" class="form-input" style="height: 42px; cursor: pointer;">
-                        <option value="">-- Select Registered Student --</option>
-                        {% for s in all_students %}
-                        <option value="{{ s.name }} ({{ s.course|default:'Student' }})">{{ s.name }} &bull; {{ s.course|default:"Student" }}</option>
-                        {% empty %}
-                        <option value="" disabled>No registered students found</option>
-                        {% endfor %}
-                    </select>
+                    <div class="searchable-select-container">
+                        <input type="text" id="ref_student_display_input" class="searchable-select-input" placeholder="Type to search registered student..." autocomplete="off" style="cursor: pointer;" value="">
+                        <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
+                        <ul id="ref_student_dropdown_list" class="searchable-list custom-scrollbar" style="max-height: 220px; display: none;">
+                            <li data-value="" data-text="" class="ref-student-item" style="padding: 10px 14px; color: var(--text-muted); border-bottom: 1px solid var(--border-color-light);">
+                                <span>-- Select Registered Student --</span>
+                            </li>
+                            {% for s in all_students %}
+                            <li data-value="{{ s.name }} ({{ s.course|default:'Student' }})" data-text="{{ s.name }} &bull; {{ s.course|default:'Student' }}" class="ref-student-item" style="padding: 10px 14px; border-bottom: 1px solid var(--border-color-light); display: flex; flex-direction: column; gap: 2px;">
+                                <strong style="color: var(--text-primary); font-size: 0.88rem;">{{ s.name }}</strong>
+                                <small style="color: var(--text-muted); font-size: 0.72rem;">{{ s.course|default:"Student" }}</small>
+                            </li>
+                            {% empty %}
+                            <li style="padding: 12px 14px; text-align: center; color: var(--text-muted); font-size: 0.82rem;">No registered students found</li>
+                            {% endfor %}
+                        </ul>
+                        <input type="hidden" name="reference_student" id="reference_student" value="">
+                    </div>
                 </div>
 
                 <!-- 3. Staff Options (Shows all registered staff/faculty) -->
                 <div id="ref_sub_staff" style="display: none;">
-                    <label class="form-label" for="reference_staff" style="display: flex; align-items: center; gap: 0.45rem; font-weight: 700; color: #f59e0b; margin-bottom: 0.45rem;">
+                    <label class="form-label" style="display: flex; align-items: center; gap: 0.45rem; font-weight: 700; color: #f59e0b; margin-bottom: 0.45rem;">
                         <i class="fa-solid fa-chalkboard-user"></i> Select Staff / Member (Referrer) *
                     </label>
-                    <select name="reference_staff" id="reference_staff" class="form-input" style="height: 42px; cursor: pointer;">
-                        <option value="">-- Select Staff / Faculty Member --</option>
-                        {% for staff in all_staff %}
-                        <option value="{{ staff.name }} ({{ staff.department|default:'Faculty' }})">{{ staff.name }} &bull; {{ staff.department|default:"Faculty" }}</option>
-                        {% empty %}
-                        <option value="" disabled>No staff members found</option>
-                        {% endfor %}
-                    </select>
+                    <div class="searchable-select-container">
+                        <input type="text" id="ref_staff_display_input" class="searchable-select-input" placeholder="Type to search staff member..." autocomplete="off" style="cursor: pointer;" value="">
+                        <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
+                        <ul id="ref_staff_dropdown_list" class="searchable-list custom-scrollbar" style="max-height: 220px; display: none;">
+                            <li data-value="" data-text="" class="ref-staff-item" style="padding: 10px 14px; color: var(--text-muted); border-bottom: 1px solid var(--border-color-light);">
+                                <span>-- Select Staff / Faculty Member --</span>
+                            </li>
+                            {% for staff in all_staff %}
+                            <li data-value="{{ staff.name }} ({{ staff.department|default:'Faculty' }})" data-text="{{ staff.name }} &bull; {{ staff.department|default:'Faculty' }}" class="ref-staff-item" style="padding: 10px 14px; border-bottom: 1px solid var(--border-color-light); display: flex; flex-direction: column; gap: 2px;">
+                                <strong style="color: var(--text-primary); font-size: 0.88rem;">{{ staff.name }}</strong>
+                                <small style="color: var(--text-muted); font-size: 0.72rem;">{{ staff.department|default:"Faculty" }}</small>
+                            </li>
+                            {% empty %}
+                            <li style="padding: 12px 14px; text-align: center; color: var(--text-muted); font-size: 0.82rem;">No staff members found</li>
+                            {% endfor %}
+                        </ul>
+                        <input type="hidden" name="reference_staff" id="reference_staff" value="">
+                    </div>
                 </div>
 
                 <!-- 4. Seminar Options -->
@@ -255,7 +348,93 @@ function handleReferenceChange() {
     wrapper.style.display = hasActive ? "block" : "none";
 }
 
+function setupSingleSelect(inputId, listId, hiddenId, itemSelector, onSelectCallback) {
+    const input = document.getElementById(inputId);
+    const list = document.getElementById(listId);
+    const hidden = document.getElementById(hiddenId);
+    if (!input || !list || !hidden) return;
+
+    const container = input.closest(".searchable-select-container");
+    const items = list.querySelectorAll(itemSelector);
+
+    function show() {
+        document.querySelectorAll('.searchable-list').forEach(l => {
+            if (l !== list && l.id !== 'course_dropdown_list' && l.id !== 'batch_dropdown_list') {
+                l.style.display = 'none';
+            }
+        });
+        document.querySelectorAll('.searchable-select-container').forEach(c => {
+            if (c !== container && !c.contains(document.getElementById('course_dropdown_list')) && !c.contains(document.getElementById('batch_dropdown_list'))) {
+                c.classList.remove('open');
+            }
+        });
+        list.style.display = "block";
+        if (container) container.classList.add("open");
+    }
+
+    function hide() {
+        list.style.display = "none";
+        if (container) container.classList.remove("open");
+    }
+
+    let wasOpen = false;
+    input.addEventListener("mousedown", function() {
+        wasOpen = (list.style.display === "block");
+    });
+
+    input.addEventListener("focus", function() {
+        show();
+    });
+
+    input.addEventListener("click", function(e) {
+        e.stopPropagation();
+        if (wasOpen) {
+            hide();
+        } else {
+            show();
+        }
+    });
+
+    if (!input.readOnly) {
+        input.addEventListener("input", function() {
+            const q = input.value.toLowerCase().trim();
+            show();
+            items.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(q) ? "" : "none";
+            });
+        });
+    }
+
+    items.forEach(item => {
+        item.addEventListener("click", function(e) {
+            e.stopPropagation();
+            const val = item.getAttribute("data-value") || "";
+            const text = item.getAttribute("data-text") || (item.querySelector("strong") ? item.querySelector("strong").textContent.trim() : item.textContent.trim());
+            hidden.value = val;
+            input.value = val ? text : "";
+            hide();
+            if (onSelectCallback) {
+                onSelectCallback(val);
+            }
+        });
+    });
+
+    document.addEventListener("click", function(e) {
+        if (!input.contains(e.target) && !list.contains(e.target)) {
+            hide();
+        }
+    });
+}
+
 document.addEventListener("DOMContentLoaded", function() {
+    setupSingleSelect("reference_display_input", "reference_dropdown_list", "reference_select", ".ref-item", function(val) {
+        handleReferenceChange();
+    });
+    setupSingleSelect("internet_display_input", "internet_dropdown_list", "reference_internet", ".ref-sub-item");
+    setupSingleSelect("ref_student_display_input", "ref_student_dropdown_list", "reference_student", ".ref-student-item");
+    setupSingleSelect("ref_staff_display_input", "ref_staff_dropdown_list", "reference_staff", ".ref-staff-item");
+
     handleReferenceChange();
     // -------------------------------------------------------------------------
     // 1. MULTI-COURSE SELECTION & CHIPS

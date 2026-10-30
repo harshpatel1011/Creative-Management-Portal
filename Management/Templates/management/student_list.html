@@ -152,7 +152,7 @@
                     <i class="fa-solid fa-sliders" style="color: var(--primary);"></i> Student Status
                 </label>
                 <div class="searchable-select-container">
-                    <input type="text" id="status-filter-input" class="searchable-select-input" placeholder="All Status..." autocomplete="off" readonly style="cursor: pointer;" value="{% if status_filter == 'active' %}Running{% elif status_filter == 'leave' %}On Leave ({{ on_leave_count }}){% elif status_filter %}{{ status_filter }}{% else %}All Status{% endif %}">
+                    <input type="text" id="status-filter-input" class="searchable-select-input" placeholder="All Status..." autocomplete="off" readonly onselectstart="return false;" style="cursor: pointer; user-select: none; -webkit-user-select: none;" value="{% if status_filter == 'active' %}Running{% elif status_filter == 'leave' %}On Leave ({{ on_leave_count }}){% elif status_filter %}{{ status_filter }}{% else %}All Status{% endif %}">
                     <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
                     <ul id="status-filter-list" class="searchable-list custom-scrollbar" style="max-height: 250px;">
                         <li data-value="" class="all-option" style="padding: 9px 14px; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border-color);">
@@ -201,7 +201,7 @@
                     <i class="fa-solid fa-layer-group" style="color: var(--primary);"></i> Batch Assignment
                 </label>
                 <div class="searchable-select-container">
-                    <input type="text" id="batch-filter-input" class="searchable-select-input" placeholder="All Batches..." autocomplete="off" readonly style="cursor: pointer; user-select: none;" value="{% if selected_batch_obj %}{{ selected_batch_obj.name }} ({{ selected_batch_obj.time_slot }}){% elif batch_filter == 'unassigned' %}Not Assigned ({{ unassigned_batch_count }}){% elif batch_filter == 'assigned' %}Any Assigned Batch{% else %}All Batches{% endif %}">
+                    <input type="text" id="batch-filter-input" class="searchable-select-input" placeholder="All Batches..." autocomplete="off" readonly onselectstart="return false;" style="cursor: pointer; user-select: none; -webkit-user-select: none;" value="{% if selected_batch_obj %}{{ selected_batch_obj.name }} ({{ selected_batch_obj.time_slot }}){% elif batch_filter == 'unassigned' %}Not Assigned ({{ unassigned_batch_count }}){% elif batch_filter == 'assigned' %}Any Assigned Batch{% else %}All Batches{% endif %}">
                     <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
                     <ul id="batch-filter-list" class="searchable-list custom-scrollbar" style="max-height: 280px;">
                         <li data-value="" data-text="All Batches (Show All)" class="all-option" style="padding: 9px 14px; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border-color);">
@@ -433,6 +433,7 @@ document.addEventListener("DOMContentLoaded", function() {
         
         const items = list.querySelectorAll(itemSelector);
         const categoryHeaders = isCourse ? list.querySelectorAll(".category-header") : [];
+        let originalValue = input.value;
 
         function show() {
             document.querySelectorAll('.searchable-list').forEach(l => {
@@ -444,11 +445,24 @@ document.addEventListener("DOMContentLoaded", function() {
             list.style.display = "block";
             const container = input.closest(".searchable-select-container");
             if (container) container.classList.add("open");
+
+            if (!input.readOnly) {
+                originalValue = input.value;
+                input.value = "";
+                items.forEach(it => it.style.display = "");
+                if (isCourse) {
+                    categoryHeaders.forEach(cat => cat.style.display = "");
+                }
+            }
         }
         function hide() {
             list.style.display = "none";
             const container = input.closest(".searchable-select-container");
             if (container) container.classList.remove("open");
+
+            if (!input.readOnly && !input.value) {
+                input.value = originalValue;
+            }
         }
 
         let wasOpenOnMousedown = false;
@@ -468,6 +482,21 @@ document.addEventListener("DOMContentLoaded", function() {
                 show();
             }
         });
+
+        // Prevent text selection highlight on readonly inputs
+        input.addEventListener("select", function(e) {
+            if (input.readOnly) {
+                e.preventDefault();
+                if (input.setSelectionRange) input.setSelectionRange(0, 0);
+                if (window.getSelection) window.getSelection().removeAllRanges();
+            }
+        });
+        input.addEventListener("mouseup", function() {
+            if (input.readOnly && window.getSelection) {
+                window.getSelection().removeAllRanges();
+            }
+        });
+
         input.addEventListener("keydown", function(e) {
             if (e.key === "Enter") {
                 e.preventDefault();
@@ -486,6 +515,7 @@ document.addEventListener("DOMContentLoaded", function() {
                         hidden.value = input.value.trim();
                     }
                 }
+                originalValue = input.value;
                 hide();
                 form.submit();
             }
@@ -542,6 +572,7 @@ document.addEventListener("DOMContentLoaded", function() {
             const customText = item.getAttribute("data-text");
             const textEl = item.querySelector("strong") || item.querySelector("span");
             input.value = customText || (textEl ? textEl.textContent.trim() : (val || item.textContent.trim()));
+            originalValue = input.value;
             hide();
             form.submit();
         });

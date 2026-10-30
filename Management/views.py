@@ -2319,15 +2319,36 @@ def admin_daily_work_report_view(request):
     prev_date = selected_date - datetime.timedelta(days=1)
     next_date = selected_date + datetime.timedelta(days=1)
 
-    batch_filter = request.GET.get("batch", "").strip()
+    batch_param = request.GET.get("batch_id", "").strip() or request.GET.get("batch", "").strip()
+    batch_filter = ""
+    batch_id_filter = ""
+    selected_batch_obj = None
+
+    if batch_param.isdigit():
+        batch_id_filter = batch_param
+    elif batch_param.startswith("batch_"):
+        batch_id_filter = batch_param.replace("batch_", "")
+    elif batch_param:
+        batch_filter = batch_param
+
+    if batch_id_filter and batch_id_filter.isdigit():
+        selected_batch_obj = Batch.objects.filter(id=int(batch_id_filter)).first()
+
     course_filter = request.GET.get("course", "").strip()
     q = request.GET.get("q", "").strip()
 
     # Query all students matching optional batch filter
     students_scope = Student.objects.all()
-    if batch_filter:
+    if selected_batch_obj:
         students_scope = students_scope.filter(
-            Q(class_time__icontains=batch_filter) | Q(enrolled_batches__batch_time=batch_filter)
+            Q(assigned_batch=selected_batch_obj) | Q(assigned_batches=selected_batch_obj)
+        ).distinct()
+    elif batch_filter:
+        students_scope = students_scope.filter(
+            Q(class_time__icontains=batch_filter)
+            | Q(enrolled_batches__batch_time=batch_filter)
+            | Q(assigned_batches__time_slot=batch_filter)
+            | Q(assigned_batch__time_slot=batch_filter)
         ).distinct()
 
     if course_filter:
@@ -2339,7 +2360,7 @@ def admin_daily_work_report_view(request):
     reports_qs = DailyWorkReport.objects.filter(
         date=selected_date,
         student__in=students_scope
-    ).select_related("student", "faculty")
+    ).select_related("student", "faculty", "student__assigned_batch").prefetch_related("student__assigned_batches")
 
     if course_filter:
         reports_qs = reports_qs.filter(course=course_filter)
@@ -2362,8 +2383,75 @@ def admin_daily_work_report_view(request):
     submitted_count = len(submitted_student_ids)
 
     # Pending students for this date
-    pending_students = list(students_scope.exclude(id__in=submitted_student_ids).order_by("name"))
+    pending_students = list(students_scope.exclude(id__in=submitted_student_ids).select_related("assigned_batch", "faculty_member").prefetch_related("assigned_batches").order_by("name"))
     pending_count = len(pending_students)
+
+    # Fetch active batches for batch-wise breakdown & dropdown filter
+    all_batches_qs = Batch.objects.filter(is_active=True).prefetch_related('students').select_related('faculty').order_by('time_slot', 'name')
+    all_batches = list(all_batches_qs)
+
+    # Determine which batches to show in the Batch-Based view
+    if selected_batch_obj:
+        target_batches = [selected_batch_obj]
+    elif batch_filter:
+        target_batches = [b for b in all_batches if batch_filter.lower() in b.time_slot.lower()]
+    else:
+        target_batches = all_batches
+
+    # Build batch groups data for selected date
+    batch_groups = []
+    covered_student_ids = set()
+
+    for b in target_batches:
+        b_students_qs = b.students.all().order_by("name")
+        if course_filter:
+            b_students_qs = b_students_qs.filter(course__icontains=course_filter)
+        b_students = list(b_students_qs)
+        b_student_ids = set(s.id for s in b_students)
+        covered_student_ids.update(b_student_ids)
+
+        b_reports = [r for r in reports if r.student_id in b_student_ids]
+        b_submitted_student_ids = set(r.student_id for r in b_reports)
+        b_pending_students = [s for s in b_students if s.id not in b_submitted_student_ids]
+
+        b_total = len(b_students)
+        b_submitted = len(b_submitted_student_ids)
+        b_pending = len(b_pending_students)
+        b_rate = round((b_submitted / b_total * 100)) if b_total > 0 else 0
+
+        batch_groups.append({
+            "batch": b,
+            "total_students": b_total,
+            "submitted_count": b_submitted,
+            "pending_count": b_pending,
+            "submission_rate": b_rate,
+            "reports": b_reports,
+            "pending_students": b_pending_students,
+            "is_complete": b_total > 0 and b_pending == 0,
+            "has_reports": len(b_reports) > 0,
+            "has_activity": b_total > 0 or len(b_reports) > 0,
+        })
+
+    # Catch any students or reports not covered in named batches
+    unassigned_reports = [r for r in reports if r.student_id not in covered_student_ids]
+    unassigned_pending = [s for s in pending_students if s.id not in covered_student_ids]
+
+    unassigned_group = None
+    if unassigned_reports or unassigned_pending:
+        unassigned_total = len(set(r.student_id for r in unassigned_reports)) + len(unassigned_pending)
+        unassigned_sub_count = len(set(r.student_id for r in unassigned_reports))
+        unassigned_rate = round((unassigned_sub_count / unassigned_total * 100)) if unassigned_total > 0 else 0
+        unassigned_group = {
+            "is_unassigned": True,
+            "title": "Flexible / Other Batches",
+            "total_students": unassigned_total,
+            "submitted_count": unassigned_sub_count,
+            "pending_count": len(unassigned_pending),
+            "submission_rate": unassigned_rate,
+            "reports": unassigned_reports,
+            "pending_students": unassigned_pending,
+            "has_reports": len(unassigned_reports) > 0,
+        }
 
     class_time_choices = [c[0] for c in Student.CLASS_TIME_CHOICES]
     course_categories = Student.COURSE_CATEGORIES
@@ -2381,13 +2469,19 @@ def admin_daily_work_report_view(request):
         "pending_count": pending_count,
         "pending_students": pending_students,
         "total_students_scoped": total_students_scoped,
-        "batch_filter": batch_filter,
+        "batch_filter": batch_param,
+        "batch_id_filter": batch_id_filter,
+        "selected_batch_obj": selected_batch_obj,
+        "all_batches": all_batches,
+        "batch_groups": batch_groups,
+        "unassigned_group": unassigned_group,
         "course_filter": course_filter,
         "class_time_choices": class_time_choices,
         "course_categories": course_categories,
         "q": q,
     }
     return render(request, "management/daily_work_report.html", context)
+
 
 # --- FACULTY MANAGEMENT VIEWS (ADMIN CREATED ONLY & ADMIN FACULTY TOGGLE) ---
 

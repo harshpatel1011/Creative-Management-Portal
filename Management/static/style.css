@@ -1426,6 +1426,14 @@ p {
     box-shadow: 0 0 0 3px var(--primary-glow);
 }
 
+.searchable-select-input[readonly] {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    cursor: pointer;
+}
+
 .searchable-select-container .search-icon-indicator {
     position: absolute;
     right: 12px;
@@ -1466,6 +1474,32 @@ p {
     color: var(--text-primary);
     font-size: 0.85rem;
     transition: background-color var(--transition-fast), color var(--transition-fast);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.searchable-list li.course-option-item,
+.searchable-list li.batch-option-item {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+    gap: 12px !important;
+    padding: 10px 14px !important;
+}
+
+.searchable-list li.course-option-item input[type="checkbox"],
+.searchable-list li.batch-option-item input[type="checkbox"] {
+    flex-shrink: 0;
+    margin: 0 !important;
+    cursor: pointer;
+}
+
+.course-option-text,
+.batch-option-text {
+    flex: 1;
+    text-align: left !important;
     display: flex;
     flex-direction: column;
     gap: 2px;

@@ -38,7 +38,7 @@
             <i class="fa-regular fa-calendar" style="color: var(--primary);"></i> Report Date:
         </span>
         <div style="display: flex; align-items: center; gap: 0.4rem;">
-            <a href="?date={{ prev_date_str }}{% if batch_filter %}&batch={{ batch_filter|urlencode }}{% endif %}{% if course_filter %}&course={{ course_filter|urlencode }}{% endif %}" class="btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;" title="Previous Day">
+            <a href="?date={{ prev_date_str }}{% if batch_filter %}&batch={{ batch_filter|urlencode }}{% endif %}{% if course_filter %}&course={{ course_filter|urlencode }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}" class="btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;" title="Previous Day">
                 <i class="fa-solid fa-chevron-left"></i>
             </a>
             <form method="GET" action="{% url 'admin_daily_work_report' %}" style="margin: 0; display: inline-flex;">
@@ -46,11 +46,11 @@
                 {% if course_filter %}<input type="hidden" name="course" value="{{ course_filter }}">{% endif %}
                 <input type="date" name="date" value="{{ selected_date_str }}" onchange="this.form.submit()" class="form-input" style="padding: 0.4rem 0.75rem; font-size: 0.88rem; width: auto; font-weight: 600; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px;">
             </form>
-            <a href="?date={{ next_date_str }}{% if batch_filter %}&batch={{ batch_filter|urlencode }}{% endif %}{% if course_filter %}&course={{ course_filter|urlencode }}{% endif %}" class="btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;" title="Next Day">
+            <a href="?date={{ next_date_str }}{% if batch_filter %}&batch={{ batch_filter|urlencode }}{% endif %}{% if course_filter %}&course={{ course_filter|urlencode }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}" class="btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;" title="Next Day">
                 <i class="fa-solid fa-chevron-right"></i>
             </a>
             {% if not is_today %}
-            <a href="{% url 'admin_daily_work_report' %}{% if batch_filter %}?batch={{ batch_filter|urlencode }}{% endif %}" class="btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.82rem;">
+            <a href="{% url 'admin_daily_work_report' %}?date={% now "Y-m-d" %}{% if batch_filter %}&batch={{ batch_filter|urlencode }}{% endif %}{% if course_filter %}&course={{ course_filter|urlencode }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}" class="btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.82rem;">
                 <i class="fa-solid fa-clock-rotate-left"></i> Today
             </a>
             {% endif %}
@@ -298,46 +298,64 @@
                 </div>
             </div>
 
-            <!-- 2. Batch Schedule Filter (Custom Dropdown) -->
+            <!-- 2. Batch Filter (Custom Dropdown with Active Batches & Schedules) -->
             <div class="filter-col">
                 <label class="form-label" style="display: flex; align-items: center; gap: 0.45rem; font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.45rem;">
-                    <i class="fa-regular fa-clock" style="color: var(--primary);"></i> Batch Schedule
+                    <i class="fa-solid fa-layer-group" style="color: var(--primary);"></i> Filter by Batch
                 </label>
                 <div class="searchable-select-container">
-                    <input type="text" id="dwr_batch_input" class="searchable-select-input" placeholder="All Batch Schedules" autocomplete="off" readonly style="cursor: pointer; height: 42px;" value="{% if batch_filter %}{{ batch_filter }}{% else %}All Batch Schedules{% endif %}">
+                    <input type="text" id="dwr_batch_input" class="searchable-select-input" placeholder="All Batches..." autocomplete="off" readonly onselectstart="return false;" style="cursor: pointer; height: 42px; user-select: none; -webkit-user-select: none;" value="{% if selected_batch_obj %}{{ selected_batch_obj.name }} ({{ selected_batch_obj.time_slot }}){% elif batch_filter %}{{ batch_filter }}{% else %}All Batches (Show All){% endif %}">
                     <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
-                    <ul id="dwr_batch_list" class="searchable-list custom-scrollbar" style="max-height: 250px;">
-                        <li data-value="" class="all-option" style="padding: 9px 14px; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border-color);">
-                            <span><i class="fa-solid fa-clock" style="margin-right: 6px;"></i> All Batch Schedules</span>
+                    <ul id="dwr_batch_list" class="searchable-list custom-scrollbar" style="max-height: 280px;">
+                        <li data-value="" data-text="All Batches (Show All)" class="all-option" style="padding: 9px 14px; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border-color);">
+                            <span><i class="fa-solid fa-layer-group" style="margin-right: 6px;"></i> All Batches (Show All)</span>
+                        </li>
+
+                        <!-- Active Batches Group -->
+                        {% if all_batches %}
+                        <li class="category-header" style="background: var(--bg-main); font-weight: 700; color: var(--primary); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 14px; cursor: default; border-bottom: 1px solid var(--border-color); pointer-events: none;">
+                            <i class="fa-solid fa-layer-group" style="margin-right: 5px;"></i> Active Batches
+                        </li>
+                        {% for b in all_batches %}
+                        <li data-value="{{ b.id }}" data-text="{{ b.name }} ({{ b.time_slot }})" class="dwr-batch-item {% if selected_batch_obj.id == b.id %}active-option{% endif %}" style="padding: 9px 14px; font-size: 0.85rem; border-bottom: 1px solid var(--border-color-light); display: flex; flex-direction: column; gap: 2px;">
+                            <strong><i class="fa-solid fa-graduation-cap" style="color: var(--primary); margin-right: 6px; font-size: 0.75rem;"></i>{{ b.name }} ({{ b.time_slot }})</strong>
+                            <small style="color: var(--text-muted); font-size: 0.72rem;">{{ b.student_count }} Students &bull; {{ b.course|default:'All Courses' }} &bull; {{ b.faculty.name|default:'Unassigned' }}</small>
+                        </li>
+                        {% endfor %}
+                        {% endif %}
+
+                        <!-- Timing Slots Group -->
+                        <li class="category-header" style="background: var(--bg-main); font-weight: 700; color: var(--text-secondary); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 14px; cursor: default; border-bottom: 1px solid var(--border-color); pointer-events: none;">
+                            <i class="fa-solid fa-clock" style="margin-right: 5px;"></i> Timing Slots
                         </li>
                         {% for slot in class_time_choices %}
-                        <li data-value="{{ slot }}" class="dwr-batch-item {% if batch_filter == slot %}active-option{% endif %}" style="padding: 9px 14px; font-size: 0.85rem; {% if batch_filter == slot %}background: rgba(79, 70, 229, 0.08); font-weight: 600; color: var(--primary);{% endif %}">
+                        <li data-value="{{ slot }}" data-text="{{ slot }}" class="dwr-batch-item {% if batch_filter == slot and not selected_batch_obj %}active-option{% endif %}" style="padding: 9px 14px; font-size: 0.85rem; border-bottom: 1px solid var(--border-color-light);">
                             <strong><i class="fa-solid fa-clock" style="color: var(--primary); margin-right: 6px; font-size: 0.75rem;"></i>{{ slot }}</strong>
                         </li>
                         {% endfor %}
                     </ul>
-                    <input type="hidden" name="batch" id="dwr_hidden_batch" value="{{ batch_filter }}">
+                    <input type="hidden" name="batch" id="dwr_hidden_batch" value="{% if selected_batch_obj %}{{ selected_batch_obj.id }}{% elif batch_filter %}{{ batch_filter }}{% endif %}">
                 </div>
             </div>
 
-            <!-- 3. Course Module Filter (Custom Dropdown) -->
+            <!-- 3. Course Filter (Matching Student List Design) -->
             <div class="filter-col">
                 <label class="form-label" style="display: flex; align-items: center; gap: 0.45rem; font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.45rem;">
-                    <i class="fa-solid fa-graduation-cap" style="color: var(--primary);"></i> Course Module
+                    <i class="fa-solid fa-graduation-cap" style="color: var(--primary);"></i> Filter by Course
                 </label>
                 <div class="searchable-select-container">
-                    <input type="text" id="dwr_course_input" class="searchable-select-input" placeholder="Search course module..." autocomplete="off" style="cursor: pointer; height: 42px;" value="{% if course_filter %}{{ course_filter }}{% else %}All Course Modules{% endif %}">
+                    <input type="text" id="dwr_course_input" class="searchable-select-input" placeholder="All Courses (Select or Search)..." autocomplete="off" value="{{ course_filter }}">
                     <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
                     <ul id="dwr_course_list" class="searchable-list custom-scrollbar" style="max-height: 280px;">
                         <li data-value="" class="all-option" style="padding: 9px 14px; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border-color);">
-                            <span><i class="fa-solid fa-list-check" style="margin-right: 6px;"></i> All Course Modules</span>
+                            <span><i class="fa-solid fa-list-check" style="margin-right: 6px;"></i> All Courses (Show All)</span>
                         </li>
                         {% for category, courses in course_categories.items %}
                         <li class="category-header" style="background: var(--bg-main); font-weight: 700; color: var(--primary); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 14px; cursor: default; border-bottom: 1px solid var(--border-color); pointer-events: none;">
                             <i class="fa-solid fa-folder-open" style="margin-right: 5px;"></i> {{ category }}
                         </li>
                         {% for c in courses %}
-                        <li data-value="{{ c }}" class="dwr-course-item {% if course_filter == c %}active-option{% endif %}" style="padding-left: 24px; font-size: 0.85rem; {% if course_filter == c %}background: rgba(79, 70, 229, 0.08); font-weight: 600; color: var(--primary);{% endif %}">
+                        <li data-value="{{ c }}" class="course-filter-item" style="padding-left: 24px; font-size: 0.85rem;">
                             <strong>{{ c }}</strong>
                             <small style="color: var(--text-muted); font-size: 0.72rem;">{{ category }}</small>
                         </li>
@@ -363,18 +381,257 @@
     </form>
 </div>
 
-<!-- Tabs: Submitted Reports vs Pending Students -->
-<div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
-    <button type="button" id="tab_btn_submitted" class="btn-secondary" onclick="switchReportTab('submitted');" style="border-radius: var(--border-radius-full); font-weight: 600; padding: 0.4rem 1rem; background: var(--primary); color: #ffffff;">
-        <i class="fa-solid fa-file-circle-check"></i> Submitted Reports ({{ total_reports }})
+<!-- View Navigation Tabs: By Batches vs All Submissions vs All Pending -->
+<div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; flex-wrap: wrap;">
+    <button type="button" id="tab_btn_batches" class="btn-secondary" onclick="switchReportTab('batches');" style="border-radius: var(--border-radius-full); font-weight: 600; padding: 0.45rem 1.15rem; background: var(--primary); color: #ffffff;">
+        <i class="fa-solid fa-layer-group"></i> By Batches ({{ batch_groups|length }})
     </button>
-    <button type="button" id="tab_btn_pending" class="btn-secondary" onclick="switchReportTab('pending');" style="border-radius: var(--border-radius-full); font-weight: 600; padding: 0.4rem 1rem;">
-        <i class="fa-solid fa-clock"></i> Pending Students ({{ pending_count }})
+    <button type="button" id="tab_btn_submitted" class="btn-secondary" onclick="switchReportTab('submitted');" style="border-radius: var(--border-radius-full); font-weight: 600; padding: 0.45rem 1.15rem;">
+        <i class="fa-solid fa-file-circle-check"></i> All Submissions ({{ total_reports }})
+    </button>
+    <button type="button" id="tab_btn_pending" class="btn-secondary" onclick="switchReportTab('pending');" style="border-radius: var(--border-radius-full); font-weight: 600; padding: 0.45rem 1.15rem;">
+        <i class="fa-solid fa-clock"></i> All Pending ({{ pending_count }})
     </button>
 </div>
 
+<!-- TAB 1: Batch-Wise View (Daily Work Reports Grouped By Batches) -->
+<div id="tab_pane_batches" style="display: block;">
+    {% if batch_groups %}
+    <div style="display: flex; flex-direction: column; gap: 2rem; margin-bottom: 3rem;">
+        {% for bg in batch_groups %}
+        <div class="student-card" style="padding: 1.5rem; border-top: 4px solid {% if bg.is_complete %}#10b981{% elif bg.submitted_count > 0 %}var(--primary){% else %}#f59e0b{% endif %};">
+            <!-- Batch Header -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.85rem;">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(79, 70, 229, 0.08); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+                            <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin: 0;">
+                                {{ bg.batch.name }}
+                            </h3>
+                            <span class="badge badge-secondary" style="font-size: 0.75rem;">
+                                <i class="fa-regular fa-clock"></i> {{ bg.batch.time_slot }}
+                            </span>
+                            {% if bg.batch.course %}
+                            <span class="badge badge-primary" style="font-size: 0.72rem;">
+                                <i class="fa-solid fa-graduation-cap"></i> {{ bg.batch.course }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 3px; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+                            <span><i class="fa-solid fa-chalkboard-user" style="color: var(--primary);"></i> Faculty: <strong>{{ bg.batch.faculty.name|default:"Unassigned" }}</strong></span>
+                            <span>&bull;</span>
+                            <span><i class="fa-solid fa-users"></i> <strong>{{ bg.total_students }}</strong> Enrolled Student{{ bg.total_students|pluralize }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Batch Submissions Pill & Progress -->
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+                    <div>
+                        {% if bg.is_complete %}
+                        <span class="dossier-btn-dark success" style="font-size: 0.78rem; padding: 0.3rem 0.75rem;">
+                            <i class="fa-solid fa-circle-check"></i> {{ bg.submitted_count }}/{{ bg.total_students }} All Submitted (100%)
+                        </span>
+                        {% elif bg.submitted_count > 0 %}
+                        <span class="dossier-btn-dark" style="font-size: 0.78rem; padding: 0.3rem 0.75rem; background: rgba(79, 70, 229, 0.08); color: var(--primary); border-color: rgba(79, 70, 229, 0.25);">
+                            <i class="fa-solid fa-pen-nib"></i> {{ bg.submitted_count }} of {{ bg.total_students }} Submitted ({{ bg.submission_rate }}%)
+                        </span>
+                        {% else %}
+                        <span class="dossier-btn-dark" style="font-size: 0.78rem; padding: 0.3rem 0.75rem; color: var(--warning); border-color: rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.05);">
+                            <i class="fa-solid fa-clock"></i> 0 of {{ bg.total_students }} Submitted (Pending)
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% if bg.total_students > 0 %}
+                    <div style="width: 140px; height: 6px; background: rgba(0,0,0,0.06); border-radius: 3px; overflow: hidden;">
+                        <div style="height: 100%; width: {{ bg.submission_rate }}%; background: {% if bg.is_complete %}#10b981{% elif bg.submission_rate > 0 %}var(--primary){% else %}transparent{% endif %}; border-radius: 3px; transition: width 0.3s ease;"></div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Reports inside this Batch -->
+            {% if bg.reports %}
+            <div style="display: flex; flex-direction: column; gap: 1.15rem; margin-bottom: 1.25rem;">
+                {% for r in bg.reports %}
+                <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 1.25rem; border-left: 3px solid var(--primary);">
+                    <!-- Student Row -->
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.85rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; flex-wrap: wrap; gap: 0.6rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div class="card-avatar" style="width: 36px; height: 36px; font-size: 0.95rem;">
+                                {{ r.student.name|slice:":1"|upper }}
+                            </div>
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                    <strong style="color: var(--text-primary); font-size: 0.95rem;">
+                                        <a href="{% url 'admin_student_detail' r.student.id %}" style="color: inherit; text-decoration: none;">
+                                            {{ r.student.name }}
+                                        </a>
+                                    </strong>
+                                    <span class="badge badge-primary" style="font-size: 0.7rem;">
+                                        <i class="fa-solid fa-book-open"></i> {{ r.course }}
+                                    </span>
+                                    {% if r.lecture_status == 'lecture' %}
+                                    <span class="badge badge-success" style="font-size: 0.7rem;">
+                                        <i class="fa-solid fa-chalkboard-user"></i> Lecture Conducted
+                                    </span>
+                                    {% else %}
+                                    <span class="badge badge-secondary" style="font-size: 0.7rem; background: rgba(139, 92, 246, 0.1); color: var(--accent-violet); border: 1px solid rgba(139, 92, 246, 0.25);">
+                                        <i class="fa-solid fa-laptop-code"></i> Class Lab / Practical
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <small style="color: var(--text-muted); font-size: 0.75rem;">
+                                    {{ r.student.email }}
+                                </small>
+                            </div>
+                        </div>
+
+                        <div style="text-align: right; display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">
+                                <i class="fa-regular fa-clock"></i> {{ r.created_at|date:"h:i A" }}
+                            </span>
+                            {% if r.is_locked %}
+                            <span class="badge" style="font-size: 0.65rem; padding: 2px 6px; background: rgba(100, 116, 139, 0.12); color: var(--text-muted); border: 1px solid var(--border-color);">
+                                <i class="fa-solid fa-lock"></i> Finalized
+                            </span>
+                            {% else %}
+                            <span class="badge badge-success" style="font-size: 0.65rem; padding: 2px 6px;">
+                                <i class="fa-solid fa-pen-nib"></i> Today's Active
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Running Topic Bar -->
+                    <div style="background: rgba(79, 70, 229, 0.04); border: 1px solid rgba(79, 70, 229, 0.15); border-radius: var(--border-radius-sm); padding: 0.5rem 0.85rem; margin-bottom: 0.85rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <span style="font-size: 0.75rem; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.04em;">
+                            <i class="fa-solid fa-arrow-trend-up"></i> Running Topic:
+                        </span>
+                        <span style="font-size: 0.88rem; font-weight: 600; color: var(--text-primary);">
+                            {{ r.running_topic }}
+                        </span>
+                    </div>
+
+                    <!-- Work Details Grid -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+                        <!-- Class Work -->
+                        <div style="background: var(--bg-main); border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 0.85rem 1rem;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.45rem;">
+                                <span style="font-size: 0.75rem; font-weight: 700; color: var(--primary); text-transform: uppercase;">
+                                    <i class="fa-solid fa-chalkboard"></i> Class Work
+                                </span>
+                                {% if r.class_work_time %}
+                                <span class="badge badge-primary" style="font-size: 0.68rem; padding: 1px 6px;">
+                                    {{ r.class_work_time }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div style="font-size: 0.85rem; color: var(--text-primary); line-height: 1.5; white-space: pre-line;">
+                                {{ r.class_work }}
+                            </div>
+                        </div>
+
+                        <!-- Home Practice Work -->
+                        <div style="background: var(--bg-main); border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 0.85rem 1rem;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.45rem;">
+                                <span style="font-size: 0.75rem; font-weight: 700; color: var(--success); text-transform: uppercase;">
+                                    <i class="fa-solid fa-house-laptop"></i> Home Practice
+                                </span>
+                                {% if r.home_work_time %}
+                                <span class="badge badge-success" style="font-size: 0.68rem; padding: 1px 6px;">
+                                    {{ r.home_work_time }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div style="font-size: 0.85rem; color: var(--text-primary); line-height: 1.5; white-space: pre-line;">
+                                {{ r.home_work }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="padding: 1.15rem; background: var(--bg-main); border-radius: 8px; text-align: center; color: var(--text-muted); font-size: 0.82rem; border: 1px dashed var(--border-color); margin-bottom: 1rem;">
+                <i class="fa-solid fa-clock" style="margin-right: 5px;"></i> No reports submitted for this batch on {{ selected_date|date:"M d, Y" }}.
+            </div>
+            {% endif %}
+
+            <!-- Pending Students Section of this Batch -->
+            {% if bg.pending_students %}
+            <div style="margin-top: 0.75rem; padding-top: 0.85rem; border-top: 1px solid var(--border-color);">
+                <details style="cursor: pointer;">
+                    <summary style="font-size: 0.82rem; font-weight: 600; color: var(--warning); display: flex; align-items: center; gap: 6px; outline: none; user-select: none;">
+                        <i class="fa-solid fa-chevron-down" style="font-size: 0.72rem;"></i>
+                        Pending Submissions from this Batch ({{ bg.pending_students|length }})
+                    </summary>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.75rem;">
+                        {% for ps in bg.pending_students %}
+                        <a href="{% url 'admin_student_detail' ps.id %}" class="dossier-btn-dark" style="font-size: 0.78rem; padding: 0.3rem 0.65rem; border-color: rgba(245, 158, 11, 0.25); background: rgba(245, 158, 11, 0.05); text-decoration: none; color: inherit;">
+                            <i class="fa-solid fa-user-clock" style="color: var(--warning); margin-right: 4px;"></i>
+                            <strong>{{ ps.name }}</strong> &bull; <small style="color: var(--text-muted);">{{ ps.course|default:"Student" }}</small>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </details>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <!-- Flexible / Unassigned Group if present -->
+        {% if unassigned_group %}
+        <div class="student-card" style="padding: 1.5rem; border-top: 4px solid var(--accent-violet);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.85rem;">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(139, 92, 246, 0.1); color: var(--accent-violet); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;">
+                        <i class="fa-solid fa-user-clock"></i>
+                    </div>
+                    <div>
+                        <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin: 0;">
+                            Flexible / Other Batches
+                        </h3>
+                        <small style="color: var(--text-muted); font-size: 0.8rem;">
+                            Students without fixed batch assignment
+                        </small>
+                    </div>
+                </div>
+                <span class="dossier-btn-dark" style="font-size: 0.78rem; padding: 0.3rem 0.75rem;">
+                    {{ unassigned_group.submitted_count }} Submitted &bull; {{ unassigned_group.pending_count }} Pending
+                </span>
+            </div>
+
+            {% if unassigned_group.reports %}
+            <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1rem;">
+                {% for r in unassigned_group.reports %}
+                <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 1.25rem;">
+                    <strong>{{ r.student.name }}</strong> &bull; {{ r.course }} &bull; Topic: {{ r.running_topic }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="student-card" style="text-align: center; padding: 3.5rem 1.5rem; margin-bottom: 2rem;">
+        <div style="width: 64px; height: 64px; border-radius: var(--border-radius-full); background: rgba(79, 70, 229, 0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.75rem; margin: 0 auto 1.25rem;">
+            <i class="fa-solid fa-layer-group"></i>
+        </div>
+        <h3 style="font-size: 1.25rem; color: var(--text-primary); margin-bottom: 0.5rem;">No Batches Found</h3>
+        <p style="color: var(--text-muted); font-size: 0.88rem; max-width: 520px; margin: 0 auto 1.5rem;">
+            No batches match your current filter criteria. Try resetting your search or filter options.
+        </p>
+    </div>
+    {% endif %}
+</div>
+
 <!-- TAB 1: Submitted Reports Grid / Roster -->
-<div id="tab_pane_submitted" style="display: block;">
+<div id="tab_pane_submitted" style="display: none;">
     {% if reports %}
     <div style="display: flex; flex-direction: column; gap: 1.5rem; margin-bottom: 3rem;">
         {% for r in reports %}
@@ -406,7 +663,7 @@
                             {% endif %}
                         </div>
                         <small style="color: var(--text-muted); font-size: 0.78rem; display: block; margin-top: 2px;">
-                            {{ r.student.email }} &bull; Batch: <strong>{{ r.student.class_time|default:"Flexible" }}</strong>
+                            {{ r.student.email }} &bull; <span class="badge badge-secondary" style="font-size: 0.72rem; padding: 2px 6px;"><i class="fa-solid fa-layer-group"></i> {{ r.student.batch_display|default:r.student.class_time|default:"Flexible" }}</span>{% if r.student.class_time %} &bull; <i class="fa-regular fa-clock" style="font-size: 0.72rem;"></i> {{ r.student.class_time }}{% endif %}
                         </small>
                     </div>
                 </div>
@@ -586,9 +843,7 @@ function setupFilterDropdown(inputId, listId, hiddenId, itemSelector, isCourse =
     
     const items = list.querySelectorAll(itemSelector);
     const categoryHeaders = isCourse ? list.querySelectorAll(".category-header") : [];
-
-    let wasOpenOnMousedown = false;
-    let previousText = input.value;
+    let originalValue = input.value;
 
     function show() {
         document.querySelectorAll('.searchable-list').forEach(l => {
@@ -601,11 +856,9 @@ function setupFilterDropdown(inputId, listId, hiddenId, itemSelector, isCourse =
         const container = input.closest(".searchable-select-container");
         if (container) container.classList.add("open");
 
-        // Clear text box on click/open for searchable inputs so user can type immediately
+        // When user clicks searchable input, clear text so user can immediately type
         if (!input.readOnly) {
-            if (input.value) {
-                previousText = input.value;
-            }
+            originalValue = input.value;
             input.value = "";
             items.forEach(it => it.style.display = "");
             if (isCourse) {
@@ -613,17 +866,18 @@ function setupFilterDropdown(inputId, listId, hiddenId, itemSelector, isCourse =
             }
         }
     }
-
     function hide() {
         list.style.display = "none";
         const container = input.closest(".searchable-select-container");
         if (container) container.classList.remove("open");
 
-        // Restore previous text if closed without selecting an option
+        // If user left input empty without picking an option, restore original value
         if (!input.readOnly && !input.value) {
-            input.value = previousText;
+            input.value = originalValue;
         }
     }
+
+    let wasOpenOnMousedown = false;
 
     input.addEventListener("mousedown", function() {
         wasOpenOnMousedown = (list.style.display === "block");
@@ -632,7 +886,6 @@ function setupFilterDropdown(inputId, listId, hiddenId, itemSelector, isCourse =
     input.addEventListener("focus", function() {
         show();
     });
-
     input.addEventListener("click", function(e) {
         e.stopPropagation();
         if (wasOpenOnMousedown) {
@@ -642,9 +895,41 @@ function setupFilterDropdown(inputId, listId, hiddenId, itemSelector, isCourse =
         }
     });
 
+    // Prevent text highlight selection on readonly inputs
+    input.addEventListener("select", function(e) {
+        if (input.readOnly) {
+            e.preventDefault();
+            if (input.setSelectionRange) input.setSelectionRange(0, 0);
+            if (window.getSelection) window.getSelection().removeAllRanges();
+        }
+    });
+    input.addEventListener("mouseup", function() {
+        if (input.readOnly && window.getSelection) {
+            window.getSelection().removeAllRanges();
+        }
+    });
+
     input.addEventListener("keydown", function(e) {
-        if (e.key === "Escape") {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            const q = input.value.toLowerCase().trim();
+            if (!q) {
+                hidden.value = "";
+            } else {
+                const visible = Array.from(items).find(it => it.style.display !== "none" && !it.classList.contains("category-header"));
+                if (visible) {
+                    const val = visible.getAttribute("data-value") || "";
+                    hidden.value = val;
+                    const customText = visible.getAttribute("data-text");
+                    const textEl = visible.querySelector("strong") || visible.querySelector("span");
+                    input.value = customText || (textEl ? textEl.textContent.trim() : (val || visible.textContent.trim()));
+                } else {
+                    hidden.value = input.value.trim();
+                }
+            }
+            originalValue = input.value;
             hide();
+            form.submit();
         }
     });
 
@@ -652,6 +937,7 @@ function setupFilterDropdown(inputId, listId, hiddenId, itemSelector, isCourse =
         const q = input.value.toLowerCase().trim();
         show();
 
+        let visibleCategory = null;
         items.forEach(item => {
             const text = item.textContent.toLowerCase();
             if (text.includes(q)) {
@@ -695,9 +981,10 @@ function setupFilterDropdown(inputId, listId, hiddenId, itemSelector, isCourse =
 
         const val = item.getAttribute("data-value") || "";
         hidden.value = val;
+        const customText = item.getAttribute("data-text");
         const textEl = item.querySelector("strong") || item.querySelector("span");
-        input.value = textEl ? textEl.textContent.trim() : (val || item.textContent.trim());
-        previousText = input.value;
+        input.value = val ? (customText || (textEl ? textEl.textContent.trim() : item.textContent.trim())) : "";
+        originalValue = input.value;
         hide();
         form.submit();
     });
@@ -711,29 +998,32 @@ function setupFilterDropdown(inputId, listId, hiddenId, itemSelector, isCourse =
 
 document.addEventListener("DOMContentLoaded", function() {
     setupFilterDropdown("dwr_batch_input", "dwr_batch_list", "dwr_hidden_batch", ".dwr-batch-item, .all-option", false);
-    setupFilterDropdown("dwr_course_input", "dwr_course_list", "dwr_hidden_course", ".dwr-course-item, .all-option", true);
+    setupFilterDropdown("dwr_course_input", "dwr_course_list", "dwr_hidden_course", ".course-filter-item, .all-option", true);
 });
 
 function switchReportTab(tab) {
+    const paneBatches = document.getElementById("tab_pane_batches");
     const paneSubmitted = document.getElementById("tab_pane_submitted");
     const panePending = document.getElementById("tab_pane_pending");
+    const btnBatches = document.getElementById("tab_btn_batches");
     const btnSubmitted = document.getElementById("tab_btn_submitted");
     const btnPending = document.getElementById("tab_btn_pending");
 
-    if (tab === "submitted") {
+    [paneBatches, paneSubmitted, panePending].forEach(p => { if (p) p.style.display = "none"; });
+    [btnBatches, btnSubmitted, btnPending].forEach(b => { if (b) { b.style.background = ""; b.style.color = ""; } });
+
+    if (tab === "batches" && paneBatches && btnBatches) {
+        paneBatches.style.display = "block";
+        btnBatches.style.background = "var(--primary)";
+        btnBatches.style.color = "#ffffff";
+    } else if (tab === "submitted" && paneSubmitted && btnSubmitted) {
         paneSubmitted.style.display = "block";
-        panePending.style.display = "none";
         btnSubmitted.style.background = "var(--primary)";
         btnSubmitted.style.color = "#ffffff";
-        btnPending.style.background = "";
-        btnPending.style.color = "";
-    } else {
-        paneSubmitted.style.display = "none";
+    } else if (tab === "pending" && panePending && btnPending) {
         panePending.style.display = "block";
         btnPending.style.background = "var(--primary)";
         btnPending.style.color = "#ffffff";
-        btnSubmitted.style.background = "";
-        btnSubmitted.style.color = "";
     }
 }
 </script>
