@@ -148,6 +148,15 @@ class Student(models.Model):
     leave_reason = models.CharField(max_length=255, blank=True, default='')
     leave_start_date = models.DateField(null=True, blank=True)
     leave_end_date = models.DateField(null=True, blank=True)
+    REFERENCE_CHOICES = [
+        ('Internet', 'Internet'),
+        ('Student', 'Student'),
+        ('Seminar', 'Seminar'),
+        ('Staff', 'Staff'),
+        ('Other', 'Other'),
+    ]
+    reference = models.CharField(max_length=50, choices=REFERENCE_CHOICES, blank=True, default='')
+    reference_detail = models.CharField(max_length=255, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
     @property
@@ -180,6 +189,14 @@ class Student(models.Model):
     @property
     def is_batch_assigned(self):
         return bool(self.assigned_batch or self.assigned_batches.exists())
+
+    @property
+    def reference_display(self):
+        if not self.reference:
+            return "Not Specified"
+        if self.reference_detail:
+            return f"{self.reference} ({self.reference_detail})"
+        return self.reference
 
     @property
     def whatsapp_number(self):

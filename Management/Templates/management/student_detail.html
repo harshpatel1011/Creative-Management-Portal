@@ -127,6 +127,13 @@
                     {% endif %}
                     <span>&bull;</span>
                     <span><i class="fa-solid fa-calendar-days" style="color: var(--primary); margin-right: 4px;"></i> Registered {{ student.created_at|date:"M d, Y" }}</span>
+                    {% if student.reference %}
+                    <span>&bull;</span>
+                    <span style="display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-bullhorn" style="color: var(--primary);"></i>
+                        Ref: <strong>{{ student.reference_display }}</strong>
+                    </span>
+                    {% endif %}
                     {% if student.is_on_leave %}
                     <span>&bull;</span>
                     <span style="color: #d97706; font-weight: 600;">

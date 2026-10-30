@@ -209,10 +209,94 @@
                 </div>
             </div>
 
-            <!-- Contact Phone Number -->
+            <!-- Contact Phone Number / WhatsApp No -->
             <div class="form-group">
-                <label class="form-label" for="phone">Contact Phone Number</label>
-                <input type="text" id="phone" name="phone" value="{{ student.phone|default:'' }}" class="form-input" placeholder="e.g. +91 98250 01234">
+                <label class="form-label" for="phone" style="display: flex; align-items: center; gap: 0.4rem;">
+                    <i class="fa-solid fa-phone" style="color: var(--primary);"></i> Whatsapp No / Phone
+                </label>
+                <input type="text" id="phone" name="phone" value="{{ student.phone|default:'' }}" class="form-input" placeholder="Whatsapp No.">
+            </div>
+
+            <!-- Reference Selection -->
+            <div class="form-group">
+                <label class="form-label" for="reference_select" style="display: flex; align-items: center; gap: 0.4rem;">
+                    <i class="fa-solid fa-bullhorn" style="color: var(--primary);"></i> Reference
+                </label>
+                <select name="reference" id="reference_select" class="form-input" style="height: 42px; cursor: pointer;" onchange="handleReferenceChange();">
+                    <option value="">Select Reference</option>
+                    <option value="Internet" {% if student.reference == 'Internet' %}selected{% endif %}>Internet</option>
+                    <option value="Student" {% if student.reference == 'Student' %}selected{% endif %}>Student</option>
+                    <option value="Seminar" {% if student.reference == 'Seminar' %}selected{% endif %}>Seminar</option>
+                    <option value="Staff" {% if student.reference == 'Staff' %}selected{% endif %}>Staff</option>
+                    <option value="Other" {% if student.reference == 'Other' %}selected{% endif %}>Other</option>
+                </select>
+            </div>
+
+            <!-- Dynamic Sub-Reference Field (Conditionally shown based on Reference choice) -->
+            <div class="form-group" id="reference_detail_wrapper" style="grid-column: span 2; display: none; background: rgba(79, 70, 229, 0.04); border: 1px dashed rgba(79, 70, 229, 0.3); border-radius: var(--border-radius-md); padding: 1.1rem 1.25rem;">
+                <!-- 1. Internet Options -->
+                <div id="ref_sub_internet" style="display: none;">
+                    <label class="form-label" for="reference_internet" style="display: flex; align-items: center; gap: 0.45rem; font-weight: 700; color: #3b82f6; margin-bottom: 0.45rem;">
+                        <i class="fa-solid fa-globe"></i> Select Internet Channel / Platform *
+                    </label>
+                    <select name="reference_internet" id="reference_internet" class="form-input" style="height: 42px; cursor: pointer;">
+                        <option value="">-- Select Internet Platform --</option>
+                        <option value="Instagram" {% if student.reference_detail == 'Instagram' %}selected{% endif %}>Instagram</option>
+                        <option value="Facebook" {% if student.reference_detail == 'Facebook' %}selected{% endif %}>Facebook</option>
+                        <option value="WhatsApp" {% if student.reference_detail == 'WhatsApp' %}selected{% endif %}>WhatsApp</option>
+                        <option value="Google Search" {% if student.reference_detail == 'Google Search' %}selected{% endif %}>Google Search / SEO</option>
+                        <option value="YouTube" {% if student.reference_detail == 'YouTube' %}selected{% endif %}>YouTube</option>
+                        <option value="Website" {% if student.reference_detail == 'Website' %}selected{% endif %}>Institute Website</option>
+                        <option value="LinkedIn" {% if student.reference_detail == 'LinkedIn' %}selected{% endif %}>LinkedIn</option>
+                        <option value="Other Social Media" {% if student.reference_detail == 'Other Social Media' %}selected{% endif %}>Other Social Media / Ads</option>
+                    </select>
+                </div>
+
+                <!-- 2. Student Options (Shows all registered students) -->
+                <div id="ref_sub_student" style="display: none;">
+                    <label class="form-label" for="reference_student" style="display: flex; align-items: center; gap: 0.45rem; font-weight: 700; color: #10b981; margin-bottom: 0.45rem;">
+                        <i class="fa-solid fa-user-graduate"></i> Select Registered Student (Referrer) *
+                    </label>
+                    <select name="reference_student" id="reference_student" class="form-input" style="height: 42px; cursor: pointer;">
+                        <option value="">-- Select Registered Student --</option>
+                        {% for s in all_students %}
+                        <option value="{{ s.name }} ({{ s.course|default:'Student' }})" {% if student.reference_detail == s.name or s.name in student.reference_detail %}selected{% endif %}>{{ s.name }} &bull; {{ s.course|default:"Student" }}</option>
+                        {% empty %}
+                        <option value="" disabled>No other registered students found</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- 3. Staff Options (Shows all registered staff/faculty) -->
+                <div id="ref_sub_staff" style="display: none;">
+                    <label class="form-label" for="reference_staff" style="display: flex; align-items: center; gap: 0.45rem; font-weight: 700; color: #f59e0b; margin-bottom: 0.45rem;">
+                        <i class="fa-solid fa-chalkboard-user"></i> Select Staff / Member (Referrer) *
+                    </label>
+                    <select name="reference_staff" id="reference_staff" class="form-input" style="height: 42px; cursor: pointer;">
+                        <option value="">-- Select Staff / Faculty Member --</option>
+                        {% for staff in all_staff %}
+                        <option value="{{ staff.name }} ({{ staff.department|default:'Faculty' }})" {% if student.reference_detail == staff.name or staff.name in student.reference_detail %}selected{% endif %}>{{ staff.name }} &bull; {{ staff.department|default:"Faculty" }}</option>
+                        {% empty %}
+                        <option value="" disabled>No staff members found</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- 4. Seminar Options -->
+                <div id="ref_sub_seminar" style="display: none;">
+                    <label class="form-label" for="reference_seminar" style="display: flex; align-items: center; gap: 0.45rem; font-weight: 700; color: #8b5cf6; margin-bottom: 0.45rem;">
+                        <i class="fa-solid fa-users-rectangle"></i> Seminar / Event Details *
+                    </label>
+                    <input type="text" name="reference_seminar" id="reference_seminar" value="{% if student.reference == 'Seminar' %}{{ student.reference_detail }}{% endif %}" class="form-input" placeholder="e.g. Annual IT Tech Seminar, College Workshop, Campus Drive, etc." style="height: 42px;">
+                </div>
+
+                <!-- 5. Other Options -->
+                <div id="ref_sub_other" style="display: none;">
+                    <label class="form-label" for="reference_other" style="display: flex; align-items: center; gap: 0.45rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.45rem;">
+                        <i class="fa-solid fa-asterisk" style="color: var(--primary);"></i> Specify Other Reference *
+                    </label>
+                    <input type="text" name="reference_other" id="reference_other" value="{% if student.reference == 'Other' %}{{ student.reference_detail }}{% endif %}" class="form-input" placeholder="e.g. Friend, Relative, Hoarding / Banner, Walk-in, Newspaper, etc." style="height: 42px;">
+                </div>
             </div>
 
             <!-- Email Address -->
@@ -243,7 +327,37 @@
 
 <!-- Interactive Multi-Course, Multi-Batch & Course-Based Faculty Script -->
 <script>
+function handleReferenceChange() {
+    const refSelect = document.getElementById("reference_select");
+    const wrapper = document.getElementById("reference_detail_wrapper");
+    if (!refSelect || !wrapper) return;
+
+    const val = refSelect.value;
+    const subSections = {
+        "Internet": document.getElementById("ref_sub_internet"),
+        "Student": document.getElementById("ref_sub_student"),
+        "Staff": document.getElementById("ref_sub_staff"),
+        "Seminar": document.getElementById("ref_sub_seminar"),
+        "Other": document.getElementById("ref_sub_other")
+    };
+
+    let hasActive = false;
+    for (const key in subSections) {
+        if (subSections[key]) {
+            if (key === val) {
+                subSections[key].style.display = "block";
+                hasActive = true;
+            } else {
+                subSections[key].style.display = "none";
+            }
+        }
+    }
+
+    wrapper.style.display = hasActive ? "block" : "none";
+}
+
 document.addEventListener("DOMContentLoaded", function() {
+    handleReferenceChange();
     // -------------------------------------------------------------------------
     // 1. MULTI-COURSE SELECTION & CHIPS
     // -------------------------------------------------------------------------

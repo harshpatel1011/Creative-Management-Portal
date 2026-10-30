@@ -16,7 +16,7 @@
             <i class="fa-solid fa-user-plus" style="color: var(--primary);"></i>
             Enroll New Student
         </h1>
-        <p>Register a new student with multi-course enrollment, flexible batch schedules, and course-assigned faculty</p>
+        <p>Register a new student with multi-course enrollment and scheduled batch timings</p>
     </div>
     <div class="header-actions">
         <a href="{% url 'admin_student_list' %}" class="btn-secondary">
@@ -28,7 +28,7 @@
 <div class="student-card" style="padding: 2.25rem; max-width: 950px; margin: 0 auto 3rem auto;">
     <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 1.75rem;">
         <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary); margin: 0 0 0.25rem 0;">Student Registration Dossier</h2>
-        <small style="color: var(--text-muted); font-size: 0.82rem;">Complete the academic profile, curriculum modules, batch timings, and faculty assignment</small>
+        <small style="color: var(--text-muted); font-size: 0.82rem;">Complete the academic profile, curriculum modules, and batch timings</small>
     </div>
 
     <form method="POST" action="{% url 'admin_student_register' %}" id="student_register_form">
@@ -78,78 +78,7 @@
                 </div>
             </div>
 
-            <!-- Course-Based Faculty Selection -->
-            <div class="form-group" style="grid-column: span 2; position: relative;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-                    <label class="form-label" style="margin: 0;">Assigned Faculty / Instructor (Optional - Course-Based)</label>
-                    <span id="faculty_match_status_pill" class="badge badge-secondary" style="font-size: 0.72rem; display: none;">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i> <span id="faculty_match_count">0</span> matching specialists
-                    </span>
-                </div>
 
-                <!-- Selected Faculty Chip/Card -->
-                <div id="selected_faculty_chip" style="display: none; align-items: center; justify-content: space-between; padding: 0.6rem 0.95rem; background: rgba(79, 70, 229, 0.06); border: 1px solid rgba(79, 70, 229, 0.25); border-radius: var(--border-radius-md); margin-bottom: 8px;">
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                        <div id="selected_faculty_avatar" style="width: 32px; height: 32px; border-radius: var(--border-radius-full); background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">F</div>
-                        <div>
-                            <strong id="selected_faculty_name" style="color: var(--text-primary); font-size: 0.9rem; display: block;">Faculty Name</strong>
-                            <small id="selected_faculty_meta" style="color: var(--text-muted); font-size: 0.75rem; display: none;"></small>
-                        </div>
-                    </div>
-                    <button type="button" id="clear_faculty_btn" style="background: transparent; border: none; color: var(--danger); cursor: pointer; font-size: 0.85rem; padding: 4px;" title="Change selected faculty">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                </div>
-
-                <div class="searchable-select-container" style="position: relative;">
-                    <input type="text" id="faculty_search_input" class="searchable-select-input" placeholder="Select or search faculty instructor..." autocomplete="off">
-                    <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
-
-                    <ul id="faculty_dropdown_list" class="searchable-list custom-scrollbar" style="max-height: 280px; display: none;">
-                        <li data-id="" data-name="" data-department="None" data-courses="" class="faculty-option-item no-faculty-option" style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(148, 163, 184, 0.06);">
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <div style="width: 34px; height: 34px; border-radius: var(--border-radius-full); background: rgba(148, 163, 184, 0.2); color: var(--text-muted); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.82rem; flex-shrink: 0;">
-                                    <i class="fa-solid fa-user-slash"></i>
-                                </div>
-                                <div>
-                                    <strong style="color: var(--text-primary); font-size: 0.88rem;">No Faculty Assigned</strong>
-                                    <small style="color: var(--text-muted); font-size: 0.75rem; display: block;">Flexible Self-Study / Unassigned</small>
-                                </div>
-                            </div>
-                            <span class="badge badge-secondary" style="font-size: 0.72rem;">Optional</span>
-                        </li>
-                        {% for f in faculties %}
-                        <li data-id="{{ f.id }}" data-name="{{ f.name }}" data-courses="{{ f.courses }}" class="faculty-option-item" style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <div style="width: 34px; height: 34px; border-radius: var(--border-radius-full); background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.82rem; flex-shrink: 0;">
-                                    {{ f.name|slice:":1"|upper }}
-                                </div>
-                                <div>
-                                    <div style="display: flex; align-items: center; gap: 6px;">
-                                        <strong style="color: var(--text-primary); font-size: 0.88rem;">{{ f.name }}</strong>
-                                        <span class="badge badge-success faculty-match-tag" style="display: none; font-size: 0.68rem; padding: 0.15rem 0.45rem;">
-                                            <i class="fa-solid fa-star"></i> Matches Course
-                                        </span>
-                                    </div>
-                                    {% if f.courses %}
-                                    <small style="color: var(--text-muted); font-size: 0.75rem; display: block; max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                        {{ f.courses }}
-                                    </small>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <span class="badge badge-secondary" style="font-size: 0.72rem;">Select</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                <input type="hidden" name="faculty_id" id="selected_faculty_id_hidden" value="">
-                <input type="hidden" name="faculty_name" id="selected_faculty_name_hidden" value="">
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
-                    <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary);"></i>
-                    <span id="faculty_hint_text">Faculty list automatically highlights specialist instructors based on your selected courses.</span>
-                </div>
-            </div>
 
             <!-- Multiple Batch / Schedule Selection -->
             <div class="form-group" style="grid-column: span 2; position: relative;">
@@ -184,10 +113,94 @@
                 </div>
             </div>
 
-            <!-- Contact Phone Number -->
+            <!-- Contact Phone Number / WhatsApp No -->
             <div class="form-group">
-                <label class="form-label" for="phone">Contact Phone Number</label>
-                <input type="text" id="phone" name="phone" class="form-input" placeholder="e.g. +91 98250 01234">
+                <label class="form-label" for="phone" style="display: flex; align-items: center; gap: 0.4rem;">
+                    <i class="fa-solid fa-phone" style="color: var(--primary);"></i> Whatsapp No*
+                </label>
+                <input type="text" id="phone" name="phone" class="form-input" placeholder="Whatsapp No.">
+            </div>
+
+            <!-- Reference Selection -->
+            <div class="form-group">
+                <label class="form-label" for="reference_select" style="display: flex; align-items: center; gap: 0.4rem;">
+                    <i class="fa-solid fa-bullhorn" style="color: var(--primary);"></i> Reference
+                </label>
+                <select name="reference" id="reference_select" class="form-input" style="height: 42px; cursor: pointer;" onchange="handleReferenceChange();">
+                    <option value="">Select Reference</option>
+                    <option value="Internet">Internet</option>
+                    <option value="Student">Student</option>
+                    <option value="Seminar">Seminar</option>
+                    <option value="Staff">Staff</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <!-- Dynamic Sub-Reference Field (Conditionally shown based on Reference choice) -->
+            <div class="form-group" id="reference_detail_wrapper" style="grid-column: span 2; display: none; background: rgba(79, 70, 229, 0.04); border: 1px dashed rgba(79, 70, 229, 0.3); border-radius: var(--border-radius-md); padding: 1.1rem 1.25rem;">
+                <!-- 1. Internet Options -->
+                <div id="ref_sub_internet" style="display: none;">
+                    <label class="form-label" for="reference_internet" style="display: flex; align-items: center; gap: 0.45rem; font-weight: 700; color: #3b82f6; margin-bottom: 0.45rem;">
+                        <i class="fa-solid fa-globe"></i> Select Internet Channel / Platform *
+                    </label>
+                    <select name="reference_internet" id="reference_internet" class="form-input" style="height: 42px; cursor: pointer;">
+                        <option value="">-- Select Internet Platform --</option>
+                        <option value="Instagram">Instagram</option>
+                        <option value="Facebook">Facebook</option>
+                        <option value="WhatsApp">WhatsApp</option>
+                        <option value="Google Search">Google Search / SEO</option>
+                        <option value="YouTube">YouTube</option>
+                        <option value="Website">Institute Website</option>
+                        <option value="LinkedIn">LinkedIn</option>
+                        <option value="Other Social Media">Other Social Media / Ads</option>
+                    </select>
+                </div>
+
+                <!-- 2. Student Options (Shows all registered students) -->
+                <div id="ref_sub_student" style="display: none;">
+                    <label class="form-label" for="reference_student" style="display: flex; align-items: center; gap: 0.45rem; font-weight: 700; color: #10b981; margin-bottom: 0.45rem;">
+                        <i class="fa-solid fa-user-graduate"></i> Select Registered Student (Referrer) *
+                    </label>
+                    <select name="reference_student" id="reference_student" class="form-input" style="height: 42px; cursor: pointer;">
+                        <option value="">-- Select Registered Student --</option>
+                        {% for s in all_students %}
+                        <option value="{{ s.name }} ({{ s.course|default:'Student' }})">{{ s.name }} &bull; {{ s.course|default:"Student" }}</option>
+                        {% empty %}
+                        <option value="" disabled>No registered students found</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- 3. Staff Options (Shows all registered staff/faculty) -->
+                <div id="ref_sub_staff" style="display: none;">
+                    <label class="form-label" for="reference_staff" style="display: flex; align-items: center; gap: 0.45rem; font-weight: 700; color: #f59e0b; margin-bottom: 0.45rem;">
+                        <i class="fa-solid fa-chalkboard-user"></i> Select Staff / Member (Referrer) *
+                    </label>
+                    <select name="reference_staff" id="reference_staff" class="form-input" style="height: 42px; cursor: pointer;">
+                        <option value="">-- Select Staff / Faculty Member --</option>
+                        {% for staff in all_staff %}
+                        <option value="{{ staff.name }} ({{ staff.department|default:'Faculty' }})">{{ staff.name }} &bull; {{ staff.department|default:"Faculty" }}</option>
+                        {% empty %}
+                        <option value="" disabled>No staff members found</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- 4. Seminar Options -->
+                <div id="ref_sub_seminar" style="display: none;">
+                    <label class="form-label" for="reference_seminar" style="display: flex; align-items: center; gap: 0.45rem; font-weight: 700; color: #8b5cf6; margin-bottom: 0.45rem;">
+                        <i class="fa-solid fa-users-rectangle"></i> Seminar / Event Details *
+                    </label>
+                    <input type="text" name="reference_seminar" id="reference_seminar" class="form-input" placeholder="e.g. Annual IT Tech Seminar, College Workshop, Campus Drive, etc." style="height: 42px;">
+                </div>
+
+                <!-- 5. Other Options -->
+                <div id="ref_sub_other" style="display: none;">
+                    <label class="form-label" for="reference_other" style="display: flex; align-items: center; gap: 0.45rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.45rem;">
+                        <i class="fa-solid fa-asterisk" style="color: var(--primary);"></i> Specify Other Reference *
+                    </label>
+                    <input type="text" name="reference_other" id="reference_other" class="form-input" placeholder="e.g. Friend, Relative, Hoarding / Banner, Walk-in, Newspaper, etc." style="height: 42px;">
+                </div>
             </div>
 
             <!-- Email Address -->
@@ -197,8 +210,8 @@
             </div>
 
             <!-- Student Initial Password -->
-            <div class="form-group" style="grid-column: span 2;">
-                <label class="form-label" for="password">Student Initial Password * (Encrypted on Save)</label>
+            <div class="form-group">
+                <label class="form-label" for="password">Student Initial Password *</label>
                 <input type="password" id="password" name="password" class="form-input" placeholder="Create secure initial password (min. 6 characters)" required>
             </div>
         </div>
@@ -214,7 +227,37 @@
 
 <!-- Interactive Multi-Course, Multi-Batch & Course-Based Faculty Script -->
 <script>
+function handleReferenceChange() {
+    const refSelect = document.getElementById("reference_select");
+    const wrapper = document.getElementById("reference_detail_wrapper");
+    if (!refSelect || !wrapper) return;
+
+    const val = refSelect.value;
+    const subSections = {
+        "Internet": document.getElementById("ref_sub_internet"),
+        "Student": document.getElementById("ref_sub_student"),
+        "Staff": document.getElementById("ref_sub_staff"),
+        "Seminar": document.getElementById("ref_sub_seminar"),
+        "Other": document.getElementById("ref_sub_other")
+    };
+
+    let hasActive = false;
+    for (const key in subSections) {
+        if (subSections[key]) {
+            if (key === val) {
+                subSections[key].style.display = "block";
+                hasActive = true;
+            } else {
+                subSections[key].style.display = "none";
+            }
+        }
+    }
+
+    wrapper.style.display = hasActive ? "block" : "none";
+}
+
 document.addEventListener("DOMContentLoaded", function() {
+    handleReferenceChange();
     // -------------------------------------------------------------------------
     // 1. MULTI-COURSE SELECTION & CHIPS
     // -------------------------------------------------------------------------
@@ -277,8 +320,7 @@ document.addEventListener("DOMContentLoaded", function() {
             courseCountText.style.color = "var(--text-muted)";
         }
 
-        // Trigger Course-based Faculty Filtering!
-        filterFacultyBySelectedCourses();
+
     }
 
     courseInput.addEventListener("focus", () => courseList.style.display = "block");
@@ -400,132 +442,6 @@ document.addEventListener("DOMContentLoaded", function() {
     batchCheckboxes.forEach(chk => {
         chk.addEventListener("change", updateBatchUI);
     });
-
-    // -------------------------------------------------------------------------
-    // 3. COURSE-BASED FACULTY SELECTION LOGIC
-    // -------------------------------------------------------------------------
-    const facultyInput = document.getElementById("faculty_search_input");
-    const facultyList = document.getElementById("faculty_dropdown_list");
-    const facultyItems = document.querySelectorAll(".faculty-option-item");
-    const selectedFacultyIdHidden = document.getElementById("selected_faculty_id_hidden");
-    const selectedFacultyNameHidden = document.getElementById("selected_faculty_name_hidden");
-    const selectedFacultyChip = document.getElementById("selected_faculty_chip");
-    const selectedFacultyAvatar = document.getElementById("selected_faculty_avatar");
-    const selectedFacultyName = document.getElementById("selected_faculty_name");
-    const selectedFacultyMeta = document.getElementById("selected_faculty_meta");
-    const clearFacultyBtn = document.getElementById("clear_faculty_btn");
-    const facultyMatchStatusPill = document.getElementById("faculty_match_status_pill");
-    const facultyMatchCount = document.getElementById("faculty_match_count");
-    const facultyHintText = document.getElementById("faculty_hint_text");
-
-    function filterFacultyBySelectedCourses() {
-        const selectedCategories = getSelectedCategories();
-        const selectedCourseNames = getSelectedCourseNames();
-        let matchCount = 0;
-
-        facultyItems.forEach(item => {
-            const facDept = item.getAttribute("data-department") || "";
-            const facCourses = item.getAttribute("data-courses") || "";
-            const matchTag = item.querySelector(".faculty-match-tag");
-
-            let isMatch = false;
-            // Check category match
-            if (selectedCategories.includes(facDept)) {
-                isMatch = true;
-            }
-            // Check course keyword match
-            if (!isMatch && selectedCourseNames.length > 0) {
-                for (let c of selectedCourseNames) {
-                    if (facCourses.toLowerCase().includes(c.toLowerCase())) {
-                        isMatch = true;
-                        break;
-                    }
-                }
-            }
-
-            if (isMatch && selectedCourseNames.length > 0) {
-                matchCount++;
-                if (matchTag) matchTag.style.display = "inline-flex";
-                item.style.backgroundColor = "rgba(79, 70, 229, 0.03)";
-                // Elevate matching faculties in DOM order
-                facultyList.insertBefore(item, facultyList.firstChild);
-            } else {
-                if (matchTag) matchTag.style.display = "none";
-                item.style.backgroundColor = "";
-            }
-        });
-
-        if (selectedCourseNames.length > 0 && matchCount > 0) {
-            facultyMatchStatusPill.style.display = "inline-flex";
-            facultyMatchCount.textContent = matchCount;
-            facultyHintText.innerHTML = `Highlighted <strong style="color: var(--success);">${matchCount} specialist instructor(s)</strong> matching your enrolled course(s).`;
-        } else if (selectedCourseNames.length > 0) {
-            facultyMatchStatusPill.style.display = "none";
-            facultyHintText.textContent = "All faculty members are available for selection.";
-        } else {
-            facultyMatchStatusPill.style.display = "none";
-            facultyHintText.textContent = "Select courses above to automatically highlight specialist faculty.";
-        }
-    }
-
-    function selectFaculty(id, name, courses) {
-        selectedFacultyIdHidden.value = id;
-        selectedFacultyNameHidden.value = name;
-        if (!id || !name) {
-            selectedFacultyChip.style.display = "none";
-            facultyInput.value = "";
-            facultyList.style.display = "none";
-            return;
-        }
-        selectedFacultyAvatar.textContent = name.charAt(0).toUpperCase();
-        selectedFacultyName.textContent = name;
-        if (courses) {
-            selectedFacultyMeta.textContent = courses;
-            selectedFacultyMeta.style.display = "block";
-        } else {
-            selectedFacultyMeta.textContent = "";
-            selectedFacultyMeta.style.display = "none";
-        }
-        selectedFacultyChip.style.display = "flex";
-        facultyInput.value = "";
-        facultyList.style.display = "none";
-    }
-
-    clearFacultyBtn.addEventListener("click", function() {
-        selectedFacultyIdHidden.value = "";
-        selectedFacultyNameHidden.value = "";
-        selectedFacultyChip.style.display = "none";
-    });
-
-    facultyInput.addEventListener("focus", () => facultyList.style.display = "block");
-    facultyInput.addEventListener("click", (e) => {
-        e.stopPropagation();
-        facultyList.style.display = "block";
-    });
-
-    facultyInput.addEventListener("input", function() {
-        const q = facultyInput.value.toLowerCase().trim();
-        facultyList.style.display = "block";
-        facultyItems.forEach(item => {
-            const name = (item.getAttribute("data-name") || "").toLowerCase();
-            const courses = (item.getAttribute("data-courses") || "").toLowerCase();
-            if (!q || name.includes(q) || courses.includes(q)) {
-                item.style.display = "flex";
-            } else {
-                item.style.display = "none";
-            }
-        });
-    });
-
-    facultyItems.forEach(item => {
-        item.addEventListener("click", function() {
-            const id = item.getAttribute("data-id");
-            const name = item.getAttribute("data-name");
-            const courses = item.getAttribute("data-courses") || "";
-            selectFaculty(id, name, courses);
-        });
-    });
-
     // -------------------------------------------------------------------------
     // 4. GLOBAL CLICK TO CLOSE DROPDOWNS
     // -------------------------------------------------------------------------
@@ -536,9 +452,7 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!batchInput.contains(e.target) && !batchList.contains(e.target)) {
             batchList.style.display = "none";
         }
-        if (!facultyInput.contains(e.target) && !facultyList.contains(e.target)) {
-            facultyList.style.display = "none";
-        }
+
     });
 
     // Form submission validation

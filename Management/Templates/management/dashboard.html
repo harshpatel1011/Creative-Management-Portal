@@ -165,17 +165,17 @@
         </div>
     </div>
     <div class="dashboard-panel-body" style="padding: 0;">
-        <div class="table-responsive" style="border: none; border-radius: 0; margin: 0;">
-            <table class="data-table" style="min-width: 840px; margin: 0;">
+        <div class="table-responsive" style="border: none; border-radius: 0; margin: 0; overflow-x: hidden;">
+            <table class="data-table" style="width: 100%; table-layout: fixed; margin: 0; min-width: 0;">
                 <thead>
                     <tr style="background: var(--bg-main);">
-                        <th style="min-width: 180px; padding: 12px 16px; font-weight: 700; color: var(--text-primary); border-bottom: 2px solid var(--border-color);">
+                        <th style="width: 22%; padding: 10px 14px; font-weight: 700; color: var(--text-primary); border-bottom: 2px solid var(--border-color);">
                             <i class="fa-solid fa-layer-group" style="color: var(--primary); margin-right: 6px;"></i> Batches
                         </th>
                         {% for slot in time_slots %}
-                        <th style="text-align: center; padding: 10px 12px; border-bottom: 2px solid var(--border-color); min-width: 110px;">
-                            <span style="display: block; font-weight: 700; color: var(--text-primary); font-size: 0.88rem;">{{ slot.short }}</span>
-                            <small style="display: block; font-size: 0.68rem; color: var(--text-muted); font-weight: normal; margin-top: 1px;">{{ slot.full }}</small>
+                        <th style="width: 13%; text-align: center; padding: 8px 2px; border-bottom: 2px solid var(--border-color); overflow: hidden;">
+                            <span style="display: block; font-weight: 700; color: var(--text-primary); font-size: 0.82rem; white-space: nowrap;">{{ slot.short }}</span>
+                            <small style="display: block; font-size: 0.62rem; color: var(--text-muted); font-weight: normal; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ slot.full }}">{{ slot.full }}</small>
                         </th>
                         {% endfor %}
                     </tr>
@@ -183,35 +183,33 @@
                 <tbody>
                     {% for row in faculty_batch_matrix %}
                     <tr style="transition: background 0.15s ease;">
-                        <td style="padding: 12px 16px; border-right: 1px solid var(--border-color); background: var(--bg-card);">
-                            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                <div class="card-avatar" style="width: 36px; height: 36px; font-size: 0.85rem; flex-shrink: 0;">
+                        <td style="width: 22%; padding: 10px 14px; border-right: 1px solid var(--border-color); background: var(--bg-card); overflow: hidden;">
+                            <div style="display: flex; align-items: center; gap: 0.65rem; min-width: 0;">
+                                <div class="card-avatar" style="width: 34px; height: 34px; font-size: 0.82rem; flex-shrink: 0;">
                                     {{ row.faculty_name|slice:":1"|upper }}
                                 </div>
-                                <div style="min-width: 0;">
-                                    <strong style="color: var(--text-primary); font-size: 0.9rem; display: block; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">
+                                <div style="min-width: 0; overflow: hidden; flex: 1;">
+                                    <strong style="color: var(--text-primary); font-size: 0.86rem; display: block; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;" title="{{ row.faculty_name }}">
                                         {{ row.faculty_name }}
                                     </strong>
-                                    <small style="color: var(--text-muted); font-size: 0.72rem; display: block; white-space: nowrap;">
+                                    <small style="color: var(--text-muted); font-size: 0.7rem; display: block; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">
                                         {{ row.faculty_dept|default:"Instructor" }}
                                     </small>
                                 </div>
                             </div>
                         </td>
                         {% for cell in row.slots %}
-                        <td style="text-align: center; padding: 10px 8px; vertical-align: middle; border-right: 1px solid var(--border-color);">
+                        <td style="width: 13%; text-align: center; padding: 8px 2px; vertical-align: middle; border-right: 1px solid var(--border-color); overflow: hidden;">
                             {% if cell.has_batches %}
-                            <div style="display: flex; gap: 6px; align-items: center; justify-content: center; flex-wrap: wrap;">
-                                {% for b in cell.batches %}
-                                <a href="{% url 'admin_attendance_batch' %}?batch={{ b.time_slot|urlencode }}&batch_id={{ b.id }}" style="text-decoration: none;" title="Batch {{ b.batch_number }} ({{ b.student_count }} student{{ b.student_count|pluralize }}) &bull; Click to open attendance">
-                                    <span class="badge badge-primary" style="font-size: 0.88rem; min-width: 32px; height: 32px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; padding: 0 8px; box-shadow: var(--shadow-sm); cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease;">
-                                        {{ b.batch_number }}
+                            <div style="display: flex; align-items: center; justify-content: center;">
+                                <a href="{% url 'admin_attendance_batch' %}?batch={{ cell.slot|urlencode }}{% if cell.batches|length == 1 %}&batch_id={{ cell.batches.0.id }}{% endif %}" style="text-decoration: none;" title="{% for b in cell.batches %}{{ b.name }}{% if not forloop.last %}, {% endif %}{% endfor %} ({{ cell.batches|length }} batch{{ cell.batches|length|pluralize:'es' }}) &bull; Click to open attendance">
+                                    <span class="badge badge-primary" style="font-size: 0.82rem; min-width: 28px; height: 28px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; padding: 0 6px; box-shadow: var(--shadow-sm); cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease;">
+                                        {{ cell.batches|length }}
                                     </span>
                                 </a>
-                                {% endfor %}
                             </div>
                             {% else %}
-                            <span style="color: var(--text-muted); opacity: 0.35; font-size: 1.1rem; display: inline-block;">&mdash;</span>
+                            <span style="color: var(--text-muted); opacity: 0.35; font-size: 1.05rem; display: inline-block;">&mdash;</span>
                             {% endif %}
                         </td>
                         {% endfor %}
@@ -230,185 +228,4 @@
     </div>
 </div>
 
-<!-- 2-Column Split Activity Grid -->
-<div class="dashboard-split-grid">
-    <!-- Left Column: Recent Student Projects -->
-    <div class="dashboard-panel">
-        <div class="dashboard-panel-header">
-            <div>
-                <h2 class="dashboard-panel-title">Recent Project Submissions</h2>
-                <small style="color: var(--text-muted); font-size: 0.78rem;">Latest portfolios submitted for review</small>
-            </div>
-            <a href="{% url 'admin_projects' %}" class="btn-secondary" style="height: 32px; padding: 0 0.75rem; font-size: 0.78rem;">
-                View All <i class="fa-solid fa-arrow-right" style="margin-left: 4px; font-size: 0.7rem;"></i>
-            </a>
-        </div>
-        <div class="dashboard-panel-body">
-            <div class="table-responsive" style="border: none; border-radius: 0;">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Student</th>
-                            <th>Project Title</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                            <th style="text-align: right;">Review</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for p in recent_projects %}
-                        <tr onclick="window.location.href='{% url 'admin_project_detail' p.id %}';" style="cursor: pointer;">
-                            <td>
-                                <strong style="color: var(--text-primary); font-weight: 600;">{{ p.student.name }}</strong>
-                                <small style="display: block; color: var(--text-muted); font-size: 0.75rem; margin-top: 1px;">{{ p.student.course }}</small>
-                            </td>
-                            <td>
-                                <a href="{% url 'admin_project_detail' p.id %}" style="color: var(--text-primary); font-weight: 600; text-decoration: none;">
-                                    {{ p.title|truncatewords:5 }}
-                                </a>
-                            </td>
-                            <td>
-                                {% if p.status == 'Approved' %}
-                                <span class="dossier-btn-dark success" style="padding: 0.2rem 0.55rem; font-size: 0.72rem;">
-                                    <i class="fa-solid fa-circle-check"></i> Approved
-                                </span>
-                                {% elif p.status == 'Rejected' %}
-                                <span class="dossier-btn-dark danger" style="padding: 0.2rem 0.55rem; font-size: 0.72rem;">
-                                    <i class="fa-solid fa-circle-xmark"></i> Rejected
-                                </span>
-                                {% else %}
-                                <span class="dossier-btn-dark" style="padding: 0.2rem 0.55rem; font-size: 0.72rem; background: var(--warning-light); color: var(--warning-text); border-color: var(--warning-border);">
-                                    <i class="fa-solid fa-clock"></i> Submitted
-                                </span>
-                                {% endif %}
-                            </td>
-                            <td><small style="color: var(--text-muted); font-size: 0.78rem;">{{ p.submitted_at|date:"M d, Y" }}</small></td>
-                            <td style="text-align: right;" onclick="event.stopPropagation();">
-                                <a href="{% url 'admin_project_detail' p.id %}" class="btn-secondary" style="height: 30px; padding: 0 0.65rem; font-size: 0.75rem;">
-                                    Review
-                                </a>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 3rem 1.5rem;">
-                                <i class="fa-solid fa-diagram-project" style="font-size: 2rem; color: var(--border-color); display: block; margin-bottom: 0.5rem;"></i>
-                                No projects submitted yet.
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- Right Column: Recently Enrolled Students -->
-    <div class="dashboard-panel">
-        <div class="dashboard-panel-header">
-            <div>
-                <h2 class="dashboard-panel-title">Recent Students</h2>
-                <small style="color: var(--text-muted); font-size: 0.78rem;">Newly registered student accounts</small>
-            </div>
-            <a href="{% url 'admin_student_list' %}" class="btn-secondary" style="height: 32px; padding: 0 0.75rem; font-size: 0.78rem;">
-                View All <i class="fa-solid fa-arrow-right" style="margin-left: 4px; font-size: 0.7rem;"></i>
-            </a>
-        </div>
-        <div class="dashboard-panel-body">
-            {% for s in recent_students %}
-            <div class="student-list-item" onclick="window.location.href='{% url 'admin_student_detail' s.id %}';">
-                <div style="display: flex; align-items: center; gap: 0.85rem; min-width: 0;">
-                    <div class="card-avatar" style="width: 38px; height: 38px; font-size: 0.95rem;">
-                        {{ s.name|slice:":1"|upper }}
-                    </div>
-                    <div style="min-width: 0;">
-                        <div style="font-weight: 600; font-size: 0.88rem; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
-                            {{ s.name }}
-                        </div>
-                        <small style="color: var(--text-muted); font-size: 0.75rem; display: block; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
-                            {{ s.course }}
-                        </small>
-                        {% if s.class_time %}
-                        <small style="color: var(--text-secondary); font-size: 0.72rem; display: flex; align-items: center; gap: 0.3rem; margin-top: 2px;">
-                            <i class="fa-solid fa-clock" style="font-size: 0.68rem; color: var(--primary);"></i> {{ s.class_time }}
-                        </small>
-                        {% endif %}
-                    </div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 0.65rem; flex-shrink: 0;">
-                    <small style="color: var(--text-muted); font-size: 0.75rem;">{{ s.created_at|date:"M d" }}</small>
-                    <i class="fa-solid fa-chevron-right" style="color: #cbd5e1; font-size: 0.75rem;"></i>
-                </div>
-            </div>
-            {% empty %}
-            <div style="padding: 3rem 1.5rem; text-align: center; color: var(--text-muted);">
-                <i class="fa-solid fa-user-graduate" style="font-size: 2rem; color: var(--border-color); display: block; margin-bottom: 0.5rem;"></i>
-                No students enrolled yet.
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-</div>
-
-<!-- Bottom Section: Scheduled & Evaluated Exams -->
-<div class="dashboard-panel" style="margin-bottom: 2rem;">
-    <div class="dashboard-panel-header">
-        <div>
-            <h2 class="dashboard-panel-title">Scheduled & Evaluated Assessments</h2>
-            <small style="color: var(--text-muted); font-size: 0.78rem;">Recent examination schedules and grading status</small>
-        </div>
-        <a href="{% url 'admin_exam_list' %}" class="btn-secondary" style="height: 32px; padding: 0 0.75rem; font-size: 0.78rem;">
-            View All Exams <i class="fa-solid fa-arrow-right" style="margin-left: 4px; font-size: 0.7rem;"></i>
-        </a>
-    </div>
-    <div class="dashboard-panel-body">
-        <div class="table-responsive" style="border: none; border-radius: 0;">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Assessment Details</th>
-                        <th>Date & Time</th>
-                        <th>Total Marks</th>
-                        <th>Enrolled Students</th>
-                        <th style="text-align: right;">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for exam in recent_exams %}
-                    <tr onclick="window.location.href='{% url 'admin_exam_detail' exam.id %}';" style="cursor: pointer;">
-                        <td>
-                            <strong style="color: var(--text-primary); font-size: 0.9rem;">{{ exam.title }}</strong>
-                            <br><small style="color: var(--text-muted); font-size: 0.75rem;"><i class="fa-solid fa-book-open" style="color: var(--primary);"></i> {{ exam.subject }}</small>
-                        </td>
-                        <td>
-                            <span style="font-weight: 500;">{{ exam.exam_date|date:"M d, Y" }}</span>
-                            {% if exam.exam_time %}
-                            <br><small style="color: var(--text-muted); font-size: 0.75rem;"><i class="fa-solid fa-clock" style="font-size: 0.7rem;"></i> {{ exam.exam_time }}</small>
-                            {% endif %}
-                        </td>
-                        <td><strong style="color: var(--text-primary);">{{ exam.total_marks }}</strong></td>
-                        <td>
-                            <span class="dossier-btn-dark" style="font-size: 0.75rem; padding: 0.15rem 0.5rem;">
-                                <i class="fa-solid fa-users" style="color: var(--primary);"></i> {{ exam.students.count }} student{{ exam.students.count|pluralize }}
-                            </span>
-                        </td>
-                        <td style="text-align: right;" onclick="event.stopPropagation();">
-                            <a href="{% url 'admin_exam_detail' exam.id %}" class="btn-primary" style="height: 32px; padding: 0 0.85rem; font-size: 0.78rem;">
-                                <i class="fa-solid fa-clipboard-check"></i> Evaluate Marks
-                            </a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 3rem 1.5rem;">
-                            <i class="fa-solid fa-file-signature" style="font-size: 2rem; color: var(--border-color); display: block; margin-bottom: 0.5rem;"></i>
-                            No exams created yet. Click <a href="{% url 'admin_exam_create' %}" style="color: var(--primary); font-weight: 600; text-decoration: underline;">Create Exam</a> to schedule an assessment.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
 {% endblock %}

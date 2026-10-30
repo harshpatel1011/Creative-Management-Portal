@@ -298,6 +298,8 @@ def student_register_view(request):
     class_time_choices = [c[0] for c in Student.CLASS_TIME_CHOICES]
     course_categories = Student.COURSE_CATEGORIES
     faculties = Faculty.objects.filter(is_active=True).order_by("department", "name")
+    all_students = Student.objects.all().order_by("name")
+    all_staff = Faculty.objects.filter(is_active=True).order_by("name")
 
     if request.method == "POST":
         name = request.POST.get("name")
@@ -320,6 +322,20 @@ def student_register_view(request):
         class_time_str = ", ".join(selected_batches)
         phone = request.POST.get("phone", "")
 
+        reference = request.POST.get("reference", "").strip()
+        if reference == "Internet":
+            reference_detail = request.POST.get("reference_internet", "").strip()
+        elif reference == "Student":
+            reference_detail = request.POST.get("reference_student", "").strip()
+        elif reference == "Staff":
+            reference_detail = request.POST.get("reference_staff", "").strip()
+        elif reference == "Seminar":
+            reference_detail = request.POST.get("reference_seminar", "").strip()
+        elif reference == "Other":
+            reference_detail = request.POST.get("reference_other", "").strip()
+        else:
+            reference_detail = request.POST.get("reference_detail", "").strip()
+
         faculty_id = request.POST.get("faculty_id", "").strip() or request.POST.get("faculty", "").strip()
         faculty_member = None
         if faculty_id and faculty_id.isdigit():
@@ -336,6 +352,8 @@ def student_register_view(request):
                     "class_time_choices": class_time_choices,
                     "course_categories": course_categories,
                     "faculties": faculties,
+                    "all_students": all_students,
+                    "all_staff": all_staff,
                 },
             )
 
@@ -349,6 +367,8 @@ def student_register_view(request):
                     "class_time_choices": class_time_choices,
                     "course_categories": course_categories,
                     "faculties": faculties,
+                    "all_students": all_students,
+                    "all_staff": all_staff,
                 },
             )
 
@@ -361,6 +381,8 @@ def student_register_view(request):
             faculty=faculty_name,
             faculty_member=faculty_member,
             phone=phone,
+            reference=reference,
+            reference_detail=reference_detail,
         )
 
         for b in selected_batches:
@@ -386,6 +408,8 @@ def student_register_view(request):
             "class_time_choices": class_time_choices,
             "course_categories": course_categories,
             "faculties": faculties,
+            "all_students": all_students,
+            "all_staff": all_staff,
         },
     )
 
@@ -536,6 +560,8 @@ def student_edit_view(request, student_id):
     class_time_choices = [c[0] for c in Student.CLASS_TIME_CHOICES]
     course_categories = Student.COURSE_CATEGORIES
     faculties = Faculty.objects.filter(is_active=True).order_by("department", "name")
+    all_students = Student.objects.exclude(id=student.id).order_by("name")
+    all_staff = Faculty.objects.filter(is_active=True).order_by("name")
     next_url = request.GET.get("next") or request.POST.get("next") or "detail"
 
     if request.method == "POST":
@@ -593,6 +619,20 @@ def student_edit_view(request, student_id):
         if faculty_id and faculty_id.isdigit():
             faculty_member = Faculty.objects.filter(id=int(faculty_id)).first()
 
+        reference = request.POST.get("reference", "").strip()
+        if reference == "Internet":
+            reference_detail = request.POST.get("reference_internet", "").strip()
+        elif reference == "Student":
+            reference_detail = request.POST.get("reference_student", "").strip()
+        elif reference == "Staff":
+            reference_detail = request.POST.get("reference_staff", "").strip()
+        elif reference == "Seminar":
+            reference_detail = request.POST.get("reference_seminar", "").strip()
+        elif reference == "Other":
+            reference_detail = request.POST.get("reference_other", "").strip()
+        else:
+            reference_detail = request.POST.get("reference_detail", "").strip()
+
         student.name = request.POST.get("name")
         student.email = email
         student.course = ", ".join(selected_courses)
@@ -600,6 +640,8 @@ def student_edit_view(request, student_id):
         student.faculty_member = faculty_member
         student.faculty = faculty_member.name if faculty_member else request.POST.get("faculty_name", "").strip()
         student.phone = request.POST.get("phone")
+        student.reference = reference
+        student.reference_detail = reference_detail
         student.save()
 
         # Sync StudentBatch
@@ -629,6 +671,8 @@ def student_edit_view(request, student_id):
             "class_time_choices": class_time_choices,
             "course_categories": course_categories,
             "faculties": faculties,
+            "all_students": all_students,
+            "all_staff": all_staff,
             "next_url": next_url,
         },
     )
@@ -2192,6 +2236,10 @@ def admin_batch_transfer_view(request):
         )
     students = list(students_qs)
 
+    target_batch_obj = None
+    if target_batch_param and target_batch_param != "unassign" and target_batch_param.isdigit():
+        target_batch_obj = Batch.objects.filter(id=int(target_batch_param), is_active=True).first()
+
     context = {
         "user": user,
         "all_batches": all_batches,
@@ -2199,6 +2247,7 @@ def admin_batch_transfer_view(request):
         "source_batch_id": source_batch_id,
         "source_batch_obj": source_batch_obj,
         "target_batch_id": target_batch_param,
+        "target_batch_obj": target_batch_obj,
         "students": students,
         "total_source_students": len(students),
         "q": q,

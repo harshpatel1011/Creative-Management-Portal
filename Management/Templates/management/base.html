@@ -60,11 +60,11 @@
                 </a>
 
                 <div class="nav-section-title">Academic Management</div>
-                <a href="{% url 'admin_student_list' %}" class="dossier-btn {% if 'student' in request.resolver_match.url_name %}active{% endif %}">
+                <a href="{% url 'admin_student_list' %}" class="dossier-btn {% if 'student' in request.resolver_match.url_name and 'batch' not in request.resolver_match.url_name and 'exam' not in request.resolver_match.url_name %}active{% endif %}">
                     <i class="fa-solid fa-user-graduate"></i>
                     <span>Students</span>
                 </a>
-                <a href="{% url 'admin_batch_list' %}" class="dossier-btn {% if 'batch' in request.resolver_match.url_name %}active{% endif %}">
+                <a href="{% url 'admin_batch_list' %}" class="dossier-btn {% if 'batch' in request.resolver_match.url_name and 'attendance' not in request.resolver_match.url_name %}active{% endif %}">
                     <i class="fa-solid fa-layer-group"></i>
                     <span>Batches</span>
                 </a>

@@ -291,6 +291,11 @@
                                 {% endif %}
                             </div>
                             <small style="color: var(--text-muted); font-size: 0.78rem;">{{ s.email }}</small>
+                            {% if s.reference %}
+                            <small style="color: var(--text-muted); font-size: 0.72rem; display: block; margin-top: 1px;" title="Reference: {{ s.reference_display }}">
+                                <i class="fa-solid fa-bullhorn" style="font-size: 0.65rem; color: var(--primary);"></i> Ref: {{ s.reference_display }}
+                            </small>
+                            {% endif %}
                         </div>
                     </div>
                 </td>
@@ -407,11 +412,27 @@ document.addEventListener("DOMContentLoaded", function() {
         const categoryHeaders = isCourse ? list.querySelectorAll(".category-header") : [];
 
         function show() {
+            document.querySelectorAll('.searchable-list').forEach(l => {
+                if (l !== list) l.style.display = 'none';
+            });
+            document.querySelectorAll('.searchable-select-container').forEach(c => {
+                if (!c.contains(list)) c.classList.remove('open');
+            });
             list.style.display = "block";
+            const container = input.closest(".searchable-select-container");
+            if (container) container.classList.add("open");
         }
         function hide() {
             list.style.display = "none";
+            const container = input.closest(".searchable-select-container");
+            if (container) container.classList.remove("open");
         }
+
+        let wasOpenOnMousedown = false;
+
+        input.addEventListener("mousedown", function() {
+            wasOpenOnMousedown = (list.style.display === "block");
+        });
 
         input.addEventListener("focus", function() {
             show();
@@ -421,7 +442,14 @@ document.addEventListener("DOMContentLoaded", function() {
         });
         input.addEventListener("click", function(e) {
             e.stopPropagation();
-            show();
+            if (wasOpenOnMousedown) {
+                hide();
+            } else {
+                show();
+                if (!input.readOnly && input.value) {
+                    input.select();
+                }
+            }
         });
         input.addEventListener("keydown", function(e) {
             if (e.key === "Enter") {
