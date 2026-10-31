@@ -10,6 +10,19 @@ class Admin(models.Model):
     faculty_specialization = models.CharField(max_length=255, blank=True, default='')
     faculty_courses = models.TextField(blank=True, default='')
     phone = models.CharField(max_length=20, blank=True, default='')
+    pending_faculty_courses = models.TextField(blank=True, default='')
+    course_request_status = models.CharField(max_length=20, blank=True, default='')
+    course_request_date = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def pending_courses_list(self):
+        if self.pending_faculty_courses:
+            return [c.strip() for c in self.pending_faculty_courses.split(',') if c.strip()]
+        return []
+
+    @property
+    def has_pending_course_request(self):
+        return self.course_request_status == 'Pending' and bool(self.pending_faculty_courses.strip())
 
     def __str__(self):
         roles = []

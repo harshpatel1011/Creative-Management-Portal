@@ -142,7 +142,7 @@
                     <div>
                         <small style="display: block; font-size: 0.68rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.05em;">Enrolled</small>
                         <span class="badge" style="background: rgba(79, 70, 229, 0.1); color: var(--primary); font-size: 0.76rem; font-weight: 700;">
-                            {{ b.student_count }} Student{{ b.student_count|pluralize }}
+                            {% if b.display_student_count is not None %}{{ b.display_student_count }} Student{{ b.display_student_count|pluralize }}{% else %}{{ b.student_count }} Student{{ b.student_count|pluralize }}{% endif %}
                         </span>
                     </div>
                 </div>
@@ -167,9 +167,9 @@
             <span style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;">
                 <i class="fa-solid fa-users" style="color: var(--primary); font-size: 0.75rem;"></i> Enrolled Students:
             </span>
-            {% if b.students.all %}
+            {% if b.display_students %}
             <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
-                {% for s in b.students.all %}
+                {% for s in b.display_students %}
                 <a href="{% url 'admin_student_detail' s.id %}" class="badge badge-secondary" style="font-size: 0.78rem; text-decoration: none; padding: 4px 10px; border-radius: 6px; color: var(--text-primary); border: 1px solid var(--border-color); display: inline-flex; align-items: center; gap: 6px; transition: background 0.15s ease;" title="{{ s.email }}{% if s.course %} &bull; {{ s.course }}{% endif %}">
                     <i class="fa-solid fa-user" style="font-size: 0.65rem; color: var(--primary);"></i>
                     <strong>{{ s.name }}</strong>
@@ -180,7 +180,9 @@
                 {% endfor %}
             </div>
             {% else %}
-            <span style="color: var(--text-muted); font-size: 0.8rem; font-style: italic;">No students assigned to this batch yet.</span>
+            <span style="color: var(--text-muted); font-size: 0.8rem; font-style: italic;">
+                {% if not user.is_superuser %}No students enrolled in your courses for this batch.{% else %}No students assigned to this batch yet.{% endif %}
+            </span>
             {% endif %}
         </div>
     </div>

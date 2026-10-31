@@ -15,6 +15,12 @@
     <div class="header-text">
         <h1>Students Directory</h1>
         <p>Comprehensive roster of all registered students, courses, and schedules</p>
+        {% if is_only_faculty and faculty_courses %}
+        <div style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.85rem; background: rgba(79, 70, 229, 0.08); border: 1px solid rgba(79, 70, 229, 0.2); border-radius: var(--border-radius-full); font-size: 0.8rem; color: var(--primary); margin-top: 0.45rem;">
+            <i class="fa-solid fa-graduation-cap"></i>
+            <span>Assigned Course Roster: <strong>{{ faculty_courses|join:", " }}</strong></span>
+        </div>
+        {% endif %}
     </div>
     <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
         <form method="GET" action="{% url 'admin_student_list' %}" class="search-form">
@@ -26,10 +32,12 @@
             {% if selected_batch_obj %}<input type="hidden" name="batch_id" value="{{ selected_batch_obj.id }}">{% elif batch_filter %}<input type="hidden" name="batch_id" value="{{ batch_filter }}">{% endif %}
             <button type="submit" class="btn-search" aria-label="Submit search"><i class="fa-solid fa-magnifying-glass"></i></button>
         </form>
+        {% if user.is_superuser %}
         <a href="{% url 'admin_student_register' %}" class="btn-primary">
             <i class="fa-solid fa-user-plus"></i>
             <span>Register Student</span>
         </a>
+        {% endif %}
     </div>
 </div>
 
@@ -379,15 +387,19 @@
                             <i class="fa-brands fa-whatsapp" style="font-size: 1.15rem; -webkit-text-stroke: 0.7px currentColor; font-weight: 700;"></i>
                         </a>
                         {% endif %}
+                        {% if user.is_superuser %}
                         <a href="{% url 'admin_student_edit' s.id %}?next=list" class="btn-icon" title="Edit Student">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </a>
+                        {% endif %}
                         <button type="button" class="btn-icon" {% if s.is_on_leave or s.status == 'On Leave' %}style="background: rgba(245, 158, 11, 0.15); color: #d97706; border-color: rgba(245, 158, 11, 0.4);"{% endif %} title="Update Status (Currently: {{ s.status_display }})" onclick="openStatusModal('{{ s.id }}', '{{ s.name|escapejs }}', '{{ s.status|default:'Running'|escapejs }}', '{{ s.leave_reason|escapejs }}', '{{ s.leave_start_date|date:'Y-m-d'|default:'' }}', '{{ s.leave_end_date|date:'Y-m-d'|default:'' }}');">
                             <i class="fa-solid fa-sliders"></i>
                         </button>
+                        {% if user.is_superuser %}
                         <a href="{% url 'admin_student_delete' s.id %}" class="btn-icon btn-delete" onclick="return confirm('Are you sure you want to delete {{ s.name }}? All associated records will also be deleted.');" title="Delete Student">
                             <i class="fa-solid fa-trash"></i>
                         </a>
+                        {% endif %}
                     </div>
                 </td>
             </tr>
@@ -414,9 +426,11 @@
         <i class="fa-solid fa-xmark"></i> Clear Filters
     </a>
     {% else %}
+    {% if user.is_superuser %}
     <a href="{% url 'admin_student_register' %}" class="btn-primary" style="display: inline-flex; align-items: center; gap: 0.4rem;">
         <i class="fa-solid fa-user-plus"></i> Register First Student
     </a>
+    {% endif %}
     {% endif %}
 </div>
 {% endif %}

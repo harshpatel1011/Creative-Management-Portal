@@ -93,6 +93,24 @@
     </div>
 </div>
 
+<!-- Pending Course Requests Alert Banner (for Superusers) -->
+{% if user.is_superuser and pending_course_requests_count > 0 %}
+<div style="padding: 1rem 1.25rem; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: var(--border-radius-md); margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+    <div style="display: flex; align-items: center; gap: 0.85rem;">
+        <span style="width: 38px; height: 38px; border-radius: 50%; background: rgba(245, 158, 11, 0.25); color: #b45309; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0;">
+            <i class="fa-solid fa-bell"></i>
+        </span>
+        <div>
+            <strong style="color: var(--text-primary); font-size: 0.95rem;">Pending Faculty Course Updates ({{ pending_course_requests_count }})</strong>
+            <p style="margin: 0.15rem 0 0 0; font-size: 0.82rem; color: var(--text-secondary);">Faculty member(s) have submitted course qualification requests awaiting your review and approval.</p>
+        </div>
+    </div>
+    <span class="badge" style="background: rgba(245, 158, 11, 0.2); color: #b45309; font-weight: 700; padding: 0.35rem 0.75rem; font-size: 0.8rem;">
+        <i class="fa-solid fa-clock"></i> Action Needed
+    </span>
+</div>
+{% endif %}
+
 <!-- Quick Role Filter Pills -->
 <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap; align-items: center;">
     <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-right: 0.25rem;">Filter by Role:</span>
@@ -127,33 +145,33 @@
     </span>
 </div>
 
-<!-- Administrators Card Grid -->
-<div class="projects-grid" style="margin-bottom: 2.5rem;">
+<!-- Administrators List: 1-Grid Card Layout with Perfect Spacing -->
+<div style="display: flex; flex-direction: column; gap: 0.85rem; margin-bottom: 2.5rem; width: 100%;">
     {% for admin_item in admins %}
-    <div class="student-card project-card-item">
+    <div class="student-card" style="padding: 1.15rem 1.4rem; border-left: 4px solid {% if admin_item.is_admin %}var(--primary){% elif admin_item.is_faculty %}#10b981{% else %}var(--accent-violet){% endif %}; width: 100%; box-sizing: border-box; transition: transform 0.15s ease, box-shadow 0.15s ease;">
         <div>
             <!-- Top Profile Area -->
-            <div class="card-top" style="justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
-                <div style="display: flex; align-items: center; gap: 0.85rem; flex: 1; min-width: 0;">
-                    <div class="card-avatar" style="width: 48px; height: 48px; font-size: 1.15rem; background: var(--primary-gradient);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 0.85rem; flex: 1; min-width: 220px;">
+                    <div class="card-avatar" style="width: 44px; height: 44px; font-size: 1.15rem; background: {% if admin_item.is_admin %}var(--primary-gradient){% elif admin_item.is_faculty %}linear-gradient(135deg, #10b981 0%, #059669 100%){% else %}linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%){% endif %}; color: #ffffff; flex-shrink: 0; border-radius: 10px;">
                         {% if admin_item.first_name %}
                             {{ admin_item.first_name|slice:":1"|upper }}
                         {% else %}
                             {{ admin_item.username|slice:":1"|upper }}
                         {% endif %}
                     </div>
-                    <div style="flex: 1; min-width: 0;">
+                    <div>
                         <div style="display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;">
-                            <h3 style="font-size: 1.05rem; margin: 0; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                            <h3 style="font-size: 1.05rem; margin: 0; color: var(--text-primary); font-weight: 700; line-height: 1.2;">
                                 {{ admin_item.username }}
                             </h3>
                             {% if admin_item.id == user.id %}
-                            <span class="dossier-btn-dark success" style="padding: 0.15rem 0.45rem; font-size: 0.68rem; font-weight: 700;">
+                            <span class="dossier-btn-dark success" style="padding: 0.15rem 0.45rem; font-size: 0.65rem; font-weight: 700;">
                                 YOU
                             </span>
                             {% endif %}
                         </div>
-                        <p style="margin: 0; font-size: 0.78rem; color: var(--text-muted);">
+                        <p style="margin: 0.2rem 0 0 0; font-size: 0.78rem; color: var(--text-muted);">
                             {% if admin_item.first_name or admin_item.last_name %}
                                 {{ admin_item.first_name }} {{ admin_item.last_name }} &bull;
                             {% endif %}
@@ -179,40 +197,40 @@
                 </div>
                 
                 <!-- Role Badges (Admin, Faculty, Staff) -->
-                <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; justify-content: flex-end; max-width: 160px;">
+                <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; justify-content: flex-end; align-items: center;">
                     {% if admin_item.is_admin %}
-                    <span class="dossier-btn-dark primary" style="font-size: 0.72rem; padding: 0.2rem 0.55rem;" title="System Administrator">
+                    <span class="dossier-btn-dark primary" style="font-size: 0.72rem; padding: 0.22rem 0.6rem;" title="System Administrator">
                         <i class="fa-solid fa-shield-halved"></i> Admin
                     </span>
                     {% endif %}
                     {% if admin_item.is_faculty %}
-                    <span class="dossier-btn-dark success" style="font-size: 0.72rem; padding: 0.2rem 0.55rem; background: rgba(16, 185, 129, 0.12); color: #059669; border-color: rgba(16, 185, 129, 0.3);" title="Faculty Instructor">
+                    <span class="dossier-btn-dark success" style="font-size: 0.72rem; padding: 0.22rem 0.6rem; background: rgba(16, 185, 129, 0.12); color: #059669; border-color: rgba(16, 185, 129, 0.3);" title="Faculty Instructor">
                         <i class="fa-solid fa-chalkboard-user"></i> Faculty
                     </span>
                     {% endif %}
                     {% if admin_item.is_staff %}
-                    <span class="dossier-btn-dark" style="font-size: 0.72rem; padding: 0.2rem 0.55rem;" title="Staff Operations">
+                    <span class="dossier-btn-dark" style="font-size: 0.72rem; padding: 0.22rem 0.6rem;" title="Staff Operations">
                         <i class="fa-solid fa-user-tie"></i> Staff
                     </span>
                     {% endif %}
                 </div>
             </div>
 
-            <!-- Card Details -->
-            <div style="display: flex; flex-direction: column; gap: 0.65rem; margin-bottom: 1rem; font-size: 0.85rem;">
-                <div style="display: flex; align-items: center; gap: 0.65rem; color: var(--text-secondary);">
-                    <i class="fa-solid fa-envelope" style="width: 16px; color: var(--primary);"></i>
-                    <span style="word-break: break-all;">{{ admin_item.email|default:"No email registered" }}</span>
+            <!-- Details Bar (Email, Joined, Last Login) -->
+            <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; padding: 0.5rem 0.85rem; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.82rem; margin-bottom: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary);">
+                    <i class="fa-solid fa-envelope" style="color: var(--primary); font-size: 0.82rem;"></i>
+                    <span style="font-weight: 500;">{{ admin_item.email|default:"No email registered" }}</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 0.65rem; color: var(--text-secondary);">
-                    <i class="fa-solid fa-calendar-check" style="width: 16px; color: var(--primary);"></i>
-                    <span>Joined: {{ admin_item.date_joined|date:"M d, Y" }}</span>
+                <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary);">
+                    <i class="fa-solid fa-calendar-check" style="color: var(--primary); font-size: 0.82rem;"></i>
+                    <span>Joined: <strong>{{ admin_item.date_joined|date:"M d, Y" }}</strong></span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 0.65rem; color: var(--text-secondary);">
-                    <i class="fa-solid fa-clock" style="width: 16px; color: var(--primary);"></i>
+                <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary);">
+                    <i class="fa-solid fa-clock" style="color: var(--primary); font-size: 0.82rem;"></i>
                     <span>
                         {% if admin_item.id == user.id %}
-                            <span style="color: var(--success-text); font-weight: 600;"><i class="fa-solid fa-circle" style="font-size: 0.55rem;"></i> Active Session</span>
+                            <span style="color: var(--success-text); font-weight: 600;"><i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> Active Session</span>
                         {% elif admin_item.last_login %}
                             Last Login: {{ admin_item.last_login|date:"M d, Y - h:i A" }}
                         {% else %}
@@ -224,16 +242,16 @@
 
             <!-- Assigned Teaching Courses Section (for Faculty members) -->
             {% if admin_item.is_faculty %}
-            <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--border-color);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
-                    <span style="font-size: 0.74rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">
-                        <i class="fa-solid fa-graduation-cap" style="color: #10b981; margin-right: 4px;"></i> Assigned Courses ({{ admin_item.total_courses }})
+            <div style="padding-top: 0.65rem; border-top: 1px dashed var(--border-color); margin-bottom: 0.75rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                    <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; display: inline-flex; align-items: center; gap: 5px;">
+                        <i class="fa-solid fa-graduation-cap" style="color: #10b981;"></i> ASSIGNED COURSES ({{ admin_item.total_courses }})
                     </span>
                 </div>
                 {% if admin_item.courses_list %}
-                <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; max-height: 85px; overflow-y: auto;">
+                <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
                     {% for c in admin_item.courses_list %}
-                    <span class="badge" style="font-size: 0.72rem; padding: 0.15rem 0.5rem; background: rgba(79, 70, 229, 0.08); color: var(--primary); border: 1px solid rgba(79, 70, 229, 0.2);">
+                    <span class="badge" style="font-size: 0.72rem; padding: 0.18rem 0.55rem; background: rgba(79, 70, 229, 0.08); color: var(--primary); border: 1px solid rgba(79, 70, 229, 0.2);">
                         {{ c }}
                     </span>
                     {% endfor %}
@@ -245,11 +263,46 @@
                 {% endif %}
             </div>
             {% endif %}
+
+            <!-- Pending Course Request Alert Box (if applicable) -->
+            {% if admin_item.has_pending_course_request %}
+            <div style="padding: 0.65rem 0.85rem; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; margin-bottom: 0.75rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; flex-wrap: wrap; gap: 0.35rem;">
+                    <span style="font-size: 0.74rem; font-weight: 700; color: #b45309; display: inline-flex; align-items: center; gap: 5px;">
+                        <i class="fa-solid fa-clock"></i> Course Request Pending
+                    </span>
+                    {% if admin_item.course_request_date %}
+                    <small style="color: var(--text-muted); font-size: 0.7rem;">{{ admin_item.course_request_date|date:"M d, H:i" }}</small>
+                    {% endif %}
+                </div>
+                <div style="display: flex; gap: 0.3rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+                    {% for c in admin_item.pending_courses_list %}
+                    <span class="badge" style="font-size: 0.68rem; padding: 0.12rem 0.45rem; background: rgba(245, 158, 11, 0.2); color: #92400e; border: 1px solid rgba(245, 158, 11, 0.4);">
+                        + {{ c }}
+                    </span>
+                    {% endfor %}
+                </div>
+                {% if user.is_superuser %}
+                <div style="display: flex; gap: 0.45rem; justify-content: flex-end; align-items: center;">
+                    <a href="{% url 'admin_faculty_course_request_approve' admin_item.id %}" class="btn-primary" style="height: 26px; padding: 0 0.7rem; font-size: 0.7rem; background: #10b981; border-color: #10b981;" title="Approve these courses">
+                        <i class="fa-solid fa-check"></i> Approve
+                    </a>
+                    <a href="{% url 'admin_faculty_course_request_reject' admin_item.id %}" class="btn-danger" style="height: 26px; padding: 0 0.7rem; font-size: 0.7rem;" onclick="return confirm('Reject course update request for {{ admin_item.username }}?');" title="Reject request">
+                        <i class="fa-solid fa-xmark"></i> Reject
+                    </a>
+                </div>
+                {% else %}
+                <div style="font-size: 0.72rem; color: #b45309; font-style: italic;">
+                    <i class="fa-solid fa-hourglass-half"></i> Awaiting Administrator approval.
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
         </div>
 
         <!-- Action / Status Footer -->
         {% if user.is_superuser %}
-        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.85rem; border-top: 1px solid var(--border-color); gap: 0.5rem; flex-wrap: wrap;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.65rem; border-top: 1px solid var(--border-color); gap: 0.5rem; flex-wrap: wrap;">
             <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
                 <button type="button" class="btn-secondary" style="height: 32px; padding: 0 0.85rem; font-size: 0.78rem;"
                         onclick="openEditAdminModal('{{ admin_item.id }}', '{{ admin_item.username|escapejs }}', '{{ admin_item.email|escapejs }}', '{{ admin_item.first_name|escapejs }}', '{{ admin_item.last_name|escapejs }}', {% if admin_item.is_admin %}true{% else %}false{% endif %}, {% if admin_item.is_faculty %}true{% else %}false{% endif %}, {% if admin_item.is_staff %}true{% else %}false{% endif %});">
@@ -264,7 +317,7 @@
             </div>
             <div>
                 {% if admin_item.id == user.id %}
-                <span class="dossier-btn-dark" style="padding: 0.35rem 0.75rem; font-size: 0.75rem; opacity: 0.6; cursor: not-allowed;" title="You cannot delete your own logged-in account">
+                <span class="dossier-btn-dark" style="padding: 0.3rem 0.7rem; font-size: 0.74rem; opacity: 0.6; cursor: not-allowed;" title="You cannot delete your own logged-in account">
                     <i class="fa-solid fa-lock"></i> Protected
                 </span>
                 {% else %}
@@ -276,7 +329,7 @@
             </div>
         </div>
         {% else %}
-        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.75rem; border-top: 1px solid var(--border-color); font-size: 0.75rem; color: var(--text-muted);">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.65rem; border-top: 1px solid var(--border-color); font-size: 0.78rem; color: var(--text-muted);">
             <div>
                 {% if admin_item.is_faculty and admin_item.id == user.id %}
                 <button type="button" class="btn-secondary" style="height: 30px; padding: 0 0.75rem; font-size: 0.75rem; color: #059669; border-color: rgba(16, 185, 129, 0.3);"
@@ -284,19 +337,19 @@
                     <i class="fa-solid fa-graduation-cap"></i> Update My Courses
                 </button>
                 {% else %}
-                <span><i class="fa-solid fa-shield-halved" style="color: var(--primary);"></i> Directory Account</span>
+                <span><i class="fa-solid fa-shield-halved" style="color: var(--primary); margin-right: 4px;"></i> Directory Account</span>
                 {% endif %}
             </div>
             {% if admin_item.id == user.id %}
             <span class="dossier-btn-dark success" style="padding: 0.15rem 0.5rem; font-size: 0.7rem; font-weight: 700;">YOUR ACCOUNT</span>
             {% else %}
-            <span style="font-style: italic; color: var(--text-muted);"><i class="fa-solid fa-lock" style="font-size: 0.7rem;"></i> View Only</span>
+            <span style="font-style: italic; color: var(--text-muted);"><i class="fa-solid fa-lock" style="font-size: 0.7rem; margin-right: 4px;"></i> View Only</span>
             {% endif %}
         </div>
         {% endif %}
     </div>
     {% empty %}
-    <div class="student-card" style="grid-column: 1 / -1; padding: 4rem 2rem; text-align: center;">
+    <div class="student-card" style="padding: 4rem 2rem; text-align: center; width: 100%; box-sizing: border-box;">
         <i class="fa-solid fa-users-slash" style="font-size: 2.5rem; color: var(--border-color); margin-bottom: 0.75rem; display: block;"></i>
         <h3 style="color: var(--text-primary); margin-bottom: 0.25rem;">No Members Found</h3>
         <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.88rem;">No records matched your search query "{{ query }}".</p>
@@ -578,7 +631,11 @@
             <div class="modal-footer-custom">
                 <button type="button" class="btn-secondary" onclick="closeFacultyCoursesModal();">Cancel</button>
                 <button type="submit" class="btn-primary" style="background: #10b981; border-color: #059669;">
+                    {% if user.is_superuser %}
                     <i class="fa-solid fa-floppy-disk"></i> Save Courses
+                    {% else %}
+                    <i class="fa-solid fa-paper-plane"></i> Submit for Admin Approval
+                    {% endif %}
                 </button>
             </div>
         </form>

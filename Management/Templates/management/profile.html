@@ -220,13 +220,33 @@
                         {% endif %}
 
                         {% if faculty_courses_list %}
-                        <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.35rem;">Qualified / Assigned Courses:</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                            <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">Qualified / Assigned Courses:</div>
+                            <a href="{% url 'admin_list' %}" class="btn-outline" style="font-size: 0.72rem; padding: 0.15rem 0.55rem; color: #10b981; border-color: rgba(16, 185, 129, 0.4); text-decoration: none;">
+                                <i class="fa-solid fa-graduation-cap"></i> Update Courses
+                            </a>
+                        </div>
                         <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
                             {% for c in faculty_courses_list %}
                             <span class="badge badge-primary" style="font-size: 0.75rem; padding: 0.2rem 0.55rem;">
                                 <i class="fa-solid fa-check" style="font-size: 0.65rem;"></i> {{ c }}
                             </span>
                             {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        {% if admin_prof.has_pending_course_request %}
+                        <div style="margin-top: 0.75rem; padding: 0.65rem 0.85rem; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: var(--border-radius-sm);">
+                            <div style="font-size: 0.75rem; font-weight: 700; color: #b45309; margin-bottom: 0.35rem;">
+                                <i class="fa-solid fa-clock"></i> Course Update Request (Awaiting Admin Approval):
+                            </div>
+                            <div style="display: flex; gap: 0.3rem; flex-wrap: wrap;">
+                                {% for c in admin_prof.pending_courses_list %}
+                                <span class="badge" style="font-size: 0.72rem; padding: 0.15rem 0.5rem; background: rgba(245, 158, 11, 0.2); color: #92400e; border: 1px solid rgba(245, 158, 11, 0.4);">
+                                    + {{ c }}
+                                </span>
+                                {% endfor %}
+                            </div>
                         </div>
                         {% endif %}
                     </div>

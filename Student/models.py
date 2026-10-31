@@ -15,6 +15,9 @@ class Faculty(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     password = models.CharField(max_length=255, blank=True, default='')
+    pending_courses = models.TextField(blank=True, default='')
+    course_request_status = models.CharField(max_length=20, blank=True, default='')
+    course_request_date = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['name']
@@ -29,6 +32,16 @@ class Faculty(models.Model):
         if self.courses:
             return [c.strip() for c in self.courses.split(',') if c.strip()]
         return []
+
+    @property
+    def pending_courses_list(self):
+        if self.pending_courses:
+            return [c.strip() for c in self.pending_courses.split(',') if c.strip()]
+        return []
+
+    @property
+    def has_pending_course_request(self):
+        return self.course_request_status == 'Pending' and bool(self.pending_courses.strip())
 
 
 class Student(models.Model):

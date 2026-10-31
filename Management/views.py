@@ -42,6 +42,99 @@ def get_admin_profile(user):
         )
     return admin_prof
 
+def get_user_faculty_courses(user):
+    """
+    Returns list of course names taught by the given user if they are a faculty member.
+    Inspects both Management.Admin profile and Student.Faculty record.
+    """
+    if not user:
+        return []
+    admin_prof = get_admin_profile(user)
+    courses = []
+    if admin_prof and admin_prof.faculty_courses:
+        for c in admin_prof.faculty_courses.split(","):
+            c = c.strip()
+            if c and c not in courses:
+                courses.append(c)
+    fac = Faculty.objects.filter(
+        Q(admin_account=admin_prof) | Q(email__iexact=user.email),
+        is_active=True
+    ).first()
+    if fac and fac.courses:
+        for c in fac.courses_list:
+            c = c.strip()
+            if c and c not in courses:
+                courses.append(c)
+    return courses
+
+
+def filter_students_for_faculty(queryset, user):
+    """
+    If user is superuser (Admin), returns the full student queryset.
+    If user is only Faculty (non-superuser), restricts the queryset to only students
+    enrolled in courses taught by this faculty, or assigned to this faculty member.
+    """
+    if not user or user.is_superuser:
+        return queryset
+    faculty_courses = get_user_faculty_courses(user)
+    admin_prof = get_admin_profile(user)
+    fac = Faculty.objects.filter(
+        Q(admin_account=admin_prof) | Q(email__iexact=user.email),
+        is_active=True
+    ).first()
+
+    if not faculty_courses and not fac:
+        return queryset.none()
+
+    q_filter = Q()
+    for c in faculty_courses:
+        q_filter |= Q(course__icontains=c) | Q(enrolled_courses__course_name__icontains=c)
+        clean_name = c
+        for prefix in ["Master In ", "Master in ", "Advance ", "Diploma In ", "Diploma in "]:
+            if clean_name.startswith(prefix):
+                clean_name = clean_name[len(prefix):].strip()
+                break
+        if clean_name and clean_name != c and len(clean_name) >= 3:
+            q_filter |= Q(course__icontains=clean_name) | Q(enrolled_courses__course_name__icontains=clean_name)
+
+    if fac:
+        q_filter |= Q(faculty_member=fac) | Q(assigned_batch__faculty=fac) | Q(assigned_batches__faculty=fac)
+
+    return queryset.filter(q_filter).distinct()
+
+
+def filter_batches_for_faculty(batches_qs, user):
+    """
+    If user is superuser (Admin), returns full batches queryset.
+    If user is only Faculty (non-superuser), restricts batches to those taught by this
+    faculty member, or matching their course, or containing their students.
+    """
+    if not user or user.is_superuser:
+        return batches_qs
+    faculty_courses = get_user_faculty_courses(user)
+    admin_prof = get_admin_profile(user)
+    fac = Faculty.objects.filter(
+        Q(admin_account=admin_prof) | Q(email__iexact=user.email),
+        is_active=True
+    ).first()
+    faculty_students = filter_students_for_faculty(Student.objects.all(), user)
+
+    b_q = Q(students__in=faculty_students)
+    if fac:
+        b_q |= Q(faculty=fac)
+    for c in faculty_courses:
+        b_q |= Q(course__icontains=c)
+        clean = c
+        for p in ["Master In ", "Master in ", "Advance ", "Diploma In ", "Diploma in "]:
+            if clean.startswith(p):
+                clean = clean[len(p):].strip()
+                break
+        if clean and clean != c and len(clean) >= 3:
+            b_q |= Q(course__icontains=clean)
+
+    return batches_qs.filter(b_q).distinct()
+
+
 
 # --- ADMIN AUTH & PROFILE VIEWS ---
 
@@ -189,15 +282,22 @@ def admin_dashboard_view(request):
         return redirect("admin_login")
 
     students = Student.objects.all().order_by("-created_at")
+    students = filter_students_for_faculty(students, user)
     projects = Project.objects.all().order_by("-submitted_at")
     exams = Exam.objects.all().order_by("-exam_date")
+    if not user.is_superuser:
+        projects = projects.filter(student__in=students)
+        exams = exams.filter(students__in=students).distinct()
+
     admins = User.objects.filter(Q(is_superuser=True) | Q(is_staff=True), is_active=True)
 
-    pending_projects_count = Project.objects.filter(status="Submitted").count()
-    approved_projects_count = Project.objects.filter(status="Approved").count()
+    pending_projects_count = projects.filter(status="Submitted").count()
+    approved_projects_count = projects.filter(status="Approved").count()
 
     today = datetime.date.today()
     today_records = Attendance.objects.filter(date=today)
+    if not user.is_superuser:
+        today_records = today_records.filter(student__in=students)
     today_present = today_records.filter(status="Present").count()
     today_absent = today_records.filter(status="Absent").count()
     today_late = today_records.filter(status="Late").count()
@@ -294,6 +394,9 @@ def student_register_view(request):
     user = get_current_admin(request)
     if not user:
         return redirect("admin_login")
+    if not user.is_superuser:
+        messages.error(request, "Permission denied: Faculty members cannot create students.")
+        return redirect("admin_student_list")
 
     class_time_choices = [c[0] for c in Student.CLASS_TIME_CHOICES]
     course_categories = Student.COURSE_CATEGORIES
@@ -428,6 +531,11 @@ def student_list_view(request):
         return redirect("admin_login")
 
     students = Student.objects.all().order_by("-created_at")
+    is_only_faculty = not user.is_superuser
+    faculty_courses = get_user_faculty_courses(user) if is_only_faculty else []
+    if is_only_faculty:
+        students = filter_students_for_faculty(students, user)
+    base_students = students
     q = request.GET.get("q", "").strip()
     course_filter = request.GET.get("course", "").strip()
     class_time_filter = request.GET.get("class_time", "").strip()
@@ -505,6 +613,16 @@ def student_list_view(request):
         students = students.filter(Q(assigned_batch__isnull=False) | Q(assigned_batches__isnull=False)).distinct()
 
     course_categories = Student.COURSE_CATEGORIES
+    if is_only_faculty and faculty_courses:
+        fc_lower = [fc.lower() for fc in faculty_courses]
+        filtered_cats = {}
+        for cat, c_list in Student.COURSE_CATEGORIES.items():
+            matched = [c for c in c_list if any(c.lower() in fc or fc in c.lower() for fc in fc_lower)]
+            if matched:
+                filtered_cats[cat] = matched
+        if filtered_cats:
+            course_categories = filtered_cats
+
     class_time_choices = [c[0] for c in Student.CLASS_TIME_CHOICES]
     faculties = Faculty.objects.filter(is_active=True).order_by("department", "name")
 
@@ -524,11 +642,13 @@ def student_list_view(request):
         "batch_id_filter": batch_id_filter,
         "selected_batch_obj": selected_batch_obj,
         "all_batches": Batch.objects.filter(is_active=True).select_related('faculty').order_by('time_slot', 'name'),
-        "unassigned_batch_count": Student.objects.filter(assigned_batch__isnull=True, assigned_batches__isnull=True).count(),
-        "on_leave_count": Student.objects.filter(is_on_leave=True).count(),
-        "active_students_count": Student.objects.filter(is_on_leave=False).count(),
-        "total_students_count": Student.objects.count(),
+        "unassigned_batch_count": base_students.filter(assigned_batch__isnull=True, assigned_batches__isnull=True).count(),
+        "on_leave_count": base_students.filter(is_on_leave=True).count(),
+        "active_students_count": base_students.filter(is_on_leave=False).count(),
+        "total_students_count": base_students.count(),
         "status_choices": [c[0] for c in Student.STUDENT_STATUS_CHOICES],
+        "is_only_faculty": is_only_faculty,
+        "faculty_courses": faculty_courses,
     }
 
     return render(request, "management/student_list.html", context)
@@ -543,6 +663,19 @@ def student_detail_view(request, student_id):
     if not student:
         messages.error(request, "Student not found.")
         return redirect("admin_student_list")
+
+    if not user.is_superuser:
+        faculty_courses = get_user_faculty_courses(user)
+        fc_lower = [fc.lower() for fc in faculty_courses]
+        student_courses = [c.lower() for c in student.courses_list]
+        student_raw = (student.course or "").lower()
+        has_course = any(
+            any(fc in sc or sc in fc for sc in student_courses) or (fc in student_raw)
+            for fc in fc_lower
+        )
+        if not has_course:
+            messages.error(request, "Permission denied: You do not have permission to view students outside your assigned courses.")
+            return redirect("admin_student_list")
 
     projects = Project.objects.filter(student=student).prefetch_related("files", "links").order_by("-submitted_at")
     marks_records = ExamMarks.objects.filter(student=student).order_by("-exam__exam_date")
@@ -576,6 +709,9 @@ def student_edit_view(request, student_id):
     user = get_current_admin(request)
     if not user:
         return redirect("admin_login")
+    if not user.is_superuser:
+        messages.error(request, "Permission denied: Faculty members cannot edit student information.")
+        return redirect("admin_student_list")
 
     student = Student.objects.filter(id=student_id).first()
     if not student:
@@ -726,6 +862,9 @@ def student_delete_view(request, student_id):
     user = get_current_admin(request)
     if not user:
         return redirect("admin_login")
+    if not user.is_superuser:
+        messages.error(request, "Permission denied: Faculty members cannot delete students.")
+        return redirect("admin_student_list")
 
     student = Student.objects.filter(id=student_id).first()
     if not student:
@@ -1011,12 +1150,17 @@ def admin_projects_view(request):
     student_id = request.GET.get("student_id")
 
     projects = Project.objects.select_related("student").prefetch_related("files", "links").order_by("-submitted_at")
+    if not user.is_superuser:
+        faculty_students = filter_students_for_faculty(Student.objects.all(), user)
+        projects = projects.filter(student__in=faculty_students)
+        students = faculty_students.order_by("name")
+    else:
+        students = Student.objects.all().order_by("name")
+
     total_projects_count = projects.count()
 
     if student_id:
         projects = projects.filter(student_id=student_id)
-
-    students = Student.objects.all().order_by("name")
 
     context = {
         "user": user,
@@ -1037,6 +1181,12 @@ def admin_project_detail_view(request, project_id):
     if not project:
         messages.error(request, "Project not found.")
         return redirect("admin_projects")
+
+    if not user.is_superuser:
+        faculty_students = filter_students_for_faculty(Student.objects.all(), user)
+        if not faculty_students.filter(id=project.student_id).exists():
+            messages.error(request, "Permission denied: You do not have access to projects for this student.")
+            return redirect("admin_projects")
 
     context = {
         "user": user,
@@ -1101,12 +1251,10 @@ def exam_list_view(request):
     batch_param = request.GET.get("batch_id", "").strip() or request.GET.get("batch", "").strip()
     status_filter = request.GET.get("status", "").strip()
 
-    all_batches = list(
-        Batch.objects.filter(is_active=True)
-        .select_related("faculty")
-        .prefetch_related("students")
-        .order_by("time_slot", "name")
-    )
+    all_batches_qs = Batch.objects.filter(is_active=True).select_related("faculty").prefetch_related("students").order_by("time_slot", "name")
+    if not user.is_superuser:
+        all_batches_qs = filter_batches_for_faculty(all_batches_qs, user)
+    all_batches = list(all_batches_qs)
 
     batch_id_filter = ""
     selected_batch_obj = None
@@ -1124,6 +1272,9 @@ def exam_list_view(request):
         .all()
         .order_by("-exam_date", "-id")
     )
+    if not user.is_superuser:
+        faculty_students = filter_students_for_faculty(Student.objects.all(), user)
+        exams_qs = exams_qs.filter(Q(students__in=faculty_students) | Q(batches__in=all_batches)).distinct()
 
     if q:
         exams_qs = exams_qs.filter(
@@ -1152,9 +1303,15 @@ def exam_list_view(request):
 
     # Build individual exam cards with stats
     exam_cards = []
+    faculty_students = filter_students_for_faculty(Student.objects.all(), user) if not user.is_superuser else None
     for exam in all_filtered_exams:
-        total_students = exam.students.count()
-        marks_records = exam.marks_records.all()
+        if not user.is_superuser:
+            exam_students = exam.students.filter(id__in=faculty_students)
+            total_students = exam_students.count()
+            marks_records = exam.marks_records.filter(student__in=faculty_students)
+        else:
+            total_students = exam.students.count()
+            marks_records = exam.marks_records.all()
         graded_count = sum(1 for m in marks_records if m.marks_obtained is not None and not m.is_absent)
         absent_count = sum(1 for m in marks_records if m.is_absent)
         pending_count = total_students - (graded_count + absent_count)
@@ -1261,12 +1418,10 @@ def exam_create_view(request):
     if not user:
         return redirect("admin_login")
 
-    all_batches = list(
-        Batch.objects.filter(is_active=True)
-        .select_related("faculty")
-        .prefetch_related("students")
-        .order_by("time_slot", "name")
-    )
+    all_batches_qs = Batch.objects.filter(is_active=True).select_related("faculty").prefetch_related("students").order_by("time_slot", "name")
+    if not user.is_superuser:
+        all_batches_qs = filter_batches_for_faculty(all_batches_qs, user)
+    all_batches = list(all_batches_qs)
 
     preselected_batch_id = request.GET.get("batch_id", "").strip()
     preselected_batch = None
@@ -1373,6 +1528,9 @@ def exam_detail_view(request, exam_id):
         .prefetch_related("student__assigned_batches")
         .order_by("student__name")
     )
+    if not user.is_superuser:
+        faculty_students = filter_students_for_faculty(Student.objects.all(), user)
+        marks_records = marks_records.filter(student__in=faculty_students)
 
     graded_records = [m for m in marks_records if m.marks_obtained is not None and not m.is_absent]
     absent_records = [m for m in marks_records if m.is_absent]
@@ -1385,12 +1543,10 @@ def exam_detail_view(request, exam_id):
     if graded_count > 0:
         avg_marks = round(sum(float(m.marks_obtained) for m in graded_records) / graded_count, 2)
 
-    all_batches = list(
-        Batch.objects.filter(is_active=True)
-        .select_related("faculty")
-        .prefetch_related("students")
-        .order_by("time_slot", "name")
-    )
+    all_batches_qs = Batch.objects.filter(is_active=True).select_related("faculty").prefetch_related("students").order_by("time_slot", "name")
+    if not user.is_superuser:
+        all_batches_qs = filter_batches_for_faculty(all_batches_qs, user)
+    all_batches = list(all_batches_qs)
 
     batch_marks_groups = []
     accounted_student_ids = set()
@@ -1620,12 +1776,10 @@ def exam_edit_view(request, exam_id):
         messages.error(request, "Exam not found.")
         return redirect("admin_exam_list")
 
-    all_batches = list(
-        Batch.objects.filter(is_active=True)
-        .select_related("faculty")
-        .prefetch_related("students")
-        .order_by("time_slot", "name")
-    )
+    all_batches_qs = Batch.objects.filter(is_active=True).select_related("faculty").prefetch_related("students").order_by("time_slot", "name")
+    if not user.is_superuser:
+        all_batches_qs = filter_batches_for_faculty(all_batches_qs, user)
+    all_batches = list(all_batches_qs)
     assigned_batch_ids = set(exam.batches.values_list("id", flat=True))
 
     if request.method == "POST":
@@ -1733,52 +1887,214 @@ def admin_faculty_courses_update_view(request, admin_id):
         messages.error(request, "User account not found.")
         return redirect("admin_list")
 
-    # Only superusers or the faculty member themselves can update their courses
+    # Only superusers or the faculty member themselves can update/request courses
     if not (user.is_superuser or user.id == target_user.id):
         messages.error(request, "Permission denied: Only Administrators can update faculty teaching courses.")
         return redirect("admin_list")
 
     admin_prof = get_admin_profile(target_user)
+    fac = Faculty.objects.filter(admin_account=admin_prof, is_active=True).first()
 
     if request.method == "POST":
         selected_courses = request.POST.getlist("courses")
         courses_str = ", ".join(c.strip() for c in selected_courses if c.strip())
-
-        admin_prof.faculty_courses = courses_str
-        admin_prof.is_faculty = True
-        admin_prof.save()
-
-        full_name = f"{target_user.first_name} {target_user.last_name}".strip() or target_user.username
-        fac, _ = Faculty.objects.get_or_create(
-            admin_account=admin_prof,
-            defaults={
-                "name": full_name,
-                "email": target_user.email,
-                "phone": admin_prof.phone or "",
-                "is_admin": target_user.is_superuser,
-                "is_active": True,
-                "courses": courses_str,
-                "password": admin_prof.password or "",
-            }
-        )
-        fac.name = full_name
-        fac.email = target_user.email
-        fac.is_admin = target_user.is_superuser
-        fac.is_active = True
-        fac.courses = courses_str
-        fac.save()
-
         count = len([c for c in selected_courses if c.strip()])
-        messages.success(request, f"Faculty profile updated: {count} course(s) assigned to '{target_user.username}'.")
+
+        if user.is_superuser:
+            # Administrator is directly updating -> immediate effect
+            admin_prof.faculty_courses = courses_str
+            admin_prof.pending_faculty_courses = ""
+            admin_prof.course_request_status = "Approved"
+            admin_prof.is_faculty = True
+            admin_prof.save()
+
+            if fac:
+                fac.courses = courses_str
+                fac.pending_courses = ""
+                fac.course_request_status = "Approved"
+                fac.save()
+            else:
+                full_name = f"{target_user.first_name} {target_user.last_name}".strip() or target_user.username
+                Faculty.objects.create(
+                    admin_account=admin_prof,
+                    name=full_name,
+                    email=target_user.email,
+                    phone=admin_prof.phone or "",
+                    is_admin=target_user.is_superuser,
+                    is_active=True,
+                    courses=courses_str,
+                    password=admin_prof.password or "",
+                )
+
+            messages.success(request, f"Faculty profile updated: {count} course(s) assigned to '{target_user.username}'.")
+        else:
+            # Faculty member requested course update -> REQUIRES ADMIN APPROVAL
+            from django.utils import timezone
+            admin_prof.pending_faculty_courses = courses_str
+            admin_prof.course_request_status = "Pending"
+            admin_prof.course_request_date = timezone.now()
+            admin_prof.save()
+
+            if fac:
+                fac.pending_courses = courses_str
+                fac.course_request_status = "Pending"
+                fac.course_request_date = timezone.now()
+                fac.save()
+
+            messages.info(
+                request,
+                f"Course update request submitted ({count} course(s) selected). Administrator approval is required before changes take effect."
+            )
 
     next_url = request.POST.get("next") or request.META.get("HTTP_REFERER") or reverse("admin_list")
+    return redirect(next_url)
+
+
+def admin_faculty_course_request_approve_view(request, admin_id):
+    user = get_current_admin(request)
+    if not user:
+        return redirect("admin_login")
+    if not user.is_superuser:
+        messages.error(request, "Permission denied: Only Administrators can approve course updates.")
+        return redirect("admin_list")
+
+    target_user = User.objects.filter(id=admin_id).first()
+    if not target_user:
+        messages.error(request, "User account not found.")
+        return redirect("admin_list")
+
+    admin_prof = get_admin_profile(target_user)
+    if not admin_prof or not admin_prof.pending_faculty_courses:
+        messages.warning(request, f"No pending course update request found for '{target_user.username}'.")
+        return redirect("admin_list")
+
+    approved_courses = admin_prof.pending_faculty_courses
+    admin_prof.faculty_courses = approved_courses
+    admin_prof.pending_faculty_courses = ""
+    admin_prof.course_request_status = "Approved"
+    admin_prof.is_faculty = True
+    admin_prof.save()
+
+    fac = Faculty.objects.filter(admin_account=admin_prof, is_active=True).first()
+    if fac:
+        fac.courses = approved_courses
+        fac.pending_courses = ""
+        fac.course_request_status = "Approved"
+        fac.save()
+    else:
+        full_name = f"{target_user.first_name} {target_user.last_name}".strip() or target_user.username
+        Faculty.objects.create(
+            admin_account=admin_prof,
+            name=full_name,
+            email=target_user.email,
+            is_admin=target_user.is_superuser,
+            is_active=True,
+            courses=approved_courses,
+            password=admin_prof.password or "",
+        )
+
+    messages.success(request, f"Course update request approved for '{target_user.username}'. Assigned: {approved_courses}")
+    next_url = request.META.get("HTTP_REFERER") or reverse("admin_list")
+    return redirect(next_url)
+
+
+def admin_faculty_course_request_reject_view(request, admin_id):
+    user = get_current_admin(request)
+    if not user:
+        return redirect("admin_login")
+    if not user.is_superuser:
+        messages.error(request, "Permission denied: Only Administrators can reject course updates.")
+        return redirect("admin_list")
+
+    target_user = User.objects.filter(id=admin_id).first()
+    if not target_user:
+        messages.error(request, "User account not found.")
+        return redirect("admin_list")
+
+    admin_prof = get_admin_profile(target_user)
+    if admin_prof:
+        admin_prof.pending_faculty_courses = ""
+        admin_prof.course_request_status = "Rejected"
+        admin_prof.save()
+
+    fac = Faculty.objects.filter(admin_account=admin_prof, is_active=True).first()
+    if fac:
+        fac.pending_courses = ""
+        fac.course_request_status = "Rejected"
+        fac.save()
+
+    messages.info(request, f"Course update request for '{target_user.username}' was rejected.")
+    next_url = request.META.get("HTTP_REFERER") or reverse("admin_list")
     return redirect(next_url)
 
 
 # --- ADMIN MANAGEMENT OVERVIEW & CRUD ---
 
 
+def sync_faculty_and_admin_users():
+    """
+    Ensures every active Faculty record and Management.Admin record has a corresponding
+    auth.User account (with is_staff=True), so that all faculty instructors and staff
+    seamlessly appear in the Administration directory, have full profile editing capabilities,
+    and can log into the portal.
+    """
+    for fac in Faculty.objects.filter(is_active=True):
+        email = fac.email or f"faculty_{fac.id}@creative.com"
+        adm = fac.admin_account
+        if not adm:
+            adm = Admin.objects.filter(email__iexact=email).first()
+            if not adm:
+                adm = Admin.objects.create(
+                    name=fac.name,
+                    email=email,
+                    phone=fac.phone or "",
+                    is_faculty=True,
+                    faculty_courses=fac.courses or "",
+                    faculty_department=fac.department or "",
+                    faculty_specialization=fac.specialization or "",
+                )
+            fac.admin_account = adm
+            fac.save(update_fields=["admin_account"])
+        else:
+            if not adm.is_faculty:
+                adm.is_faculty = True
+                adm.save(update_fields=["is_faculty"])
+            if fac.courses and not adm.faculty_courses:
+                adm.faculty_courses = fac.courses
+                adm.save(update_fields=["faculty_courses"])
+
+        # Check if auth.User exists for this faculty / admin
+        user_obj = User.objects.filter(Q(email__iexact=email) | Q(username__iexact=fac.name)).first()
+        if not user_obj:
+            base_username = fac.name.strip()
+            username = base_username
+            idx = 1
+            while User.objects.filter(username__iexact=username).exists():
+                username = f"{base_username}_{idx}"
+                idx += 1
+
+            name_parts = fac.name.strip().split(" ", 1)
+            first_name = name_parts[0]
+            last_name = name_parts[1] if len(name_parts) > 1 else ""
+
+            user_obj = User.objects.create(
+                username=username,
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                password=make_password(fac.password or "Faculty@123"),
+                is_staff=True,
+                is_superuser=fac.is_admin,
+                is_active=True,
+            )
+        else:
+            if not user_obj.is_staff:
+                user_obj.is_staff = True
+                user_obj.save(update_fields=["is_staff"])
+
+
 def admin_list_view(request):
+    sync_faculty_and_admin_users()
     user = get_current_admin(request)
     if not user:
         return redirect("admin_login")
@@ -1786,14 +2102,8 @@ def admin_list_view(request):
     q = request.GET.get("q", "").strip()
     role_filter = request.GET.get("role", "").strip()
     
-    # If the user is a superuser, they can see all admins (superusers + staff).
-    # If the user is a staff administrator, they cannot see superuser accounts.
-    if user.is_superuser:
-        admins = User.objects.filter(Q(is_superuser=True) | Q(is_staff=True))
-    else:
-        admins = User.objects.filter(is_staff=True, is_superuser=False)
-
-    admins = admins.order_by("-date_joined")
+    # Show all administration and faculty personnel (superusers, staff, and faculty)
+    admins = User.objects.filter(Q(is_superuser=True) | Q(is_staff=True)).order_by("-is_superuser", "-date_joined")
 
     if q:
         admins = admins.filter(
@@ -1821,8 +2131,8 @@ def admin_list_view(request):
     admin_items = []
     for a in admins:
         prof = get_admin_profile(a)
-        fac_rec = Faculty.objects.filter(admin_account=prof, is_active=True).first()
-        is_fac = bool(prof and prof.is_faculty)
+        fac_rec = Faculty.objects.filter(Q(admin_account=prof) | Q(email__iexact=a.email), is_active=True).first()
+        is_fac = bool((prof and prof.is_faculty) or fac_rec)
         is_adm = a.is_superuser
         is_stf = bool(prof and prof.is_staff_role)
         
@@ -1854,6 +2164,11 @@ def admin_list_view(request):
             "courses_list": courses_list,
             "faculty_courses": raw_courses,
             "total_courses": len(courses_list),
+            "has_pending_course_request": bool(prof and prof.has_pending_course_request),
+            "pending_courses_list": prof.pending_courses_list if prof else [],
+            "pending_courses_str": prof.pending_faculty_courses if prof else "",
+            "course_request_status": prof.course_request_status if prof else "",
+            "course_request_date": prof.course_request_date if prof else None,
         })
 
     context = {
@@ -1867,6 +2182,7 @@ def admin_list_view(request):
         "query": q,
         "role_filter": role_filter,
         "course_categories": Student.COURSE_CATEGORIES,
+        "pending_course_requests_count": Admin.objects.filter(course_request_status='Pending').count(),
     }
     return render(request, "management/admin_list.html", context)
 
@@ -2105,8 +2421,28 @@ def admin_delete_view(request, admin_id):
         return redirect("admin_list")
 
     username = target_admin.username
+    target_email = target_admin.email
+
+    # Find and clean up associated Admin profile and Faculty records
+    admin_prof = Admin.objects.filter(Q(email__iexact=target_email) | Q(name__iexact=username)).first()
+    
+    fac_q = Q(email__iexact=target_email)
+    if admin_prof:
+        fac_q |= Q(admin_account=admin_prof)
+    if username:
+        fac_q |= Q(name__iexact=username)
+
+    faculties_to_del = list(Faculty.objects.filter(fac_q))
+    for fac in faculties_to_del:
+        Batch.objects.filter(faculty=fac).update(faculty=None)
+        Student.objects.filter(faculty_member=fac).update(faculty_member=None)
+        fac.delete()
+
+    if admin_prof:
+        admin_prof.delete()
+
     target_admin.delete()
-    messages.success(request, f"Administrator '{username}' was deleted successfully.")
+    messages.success(request, f"Personnel account '{username}' was deleted successfully.")
     return redirect("admin_list")
 
 
@@ -2141,6 +2477,8 @@ def admin_attendance_hub_view(request):
     for slot_tuple in Student.CLASS_TIME_CHOICES:
         slot = slot_tuple[0]
         slot_students = Student.objects.filter(Q(class_time__icontains=slot) | Q(enrolled_batches__batch_time=slot)).distinct()
+        if not user.is_superuser:
+            slot_students = filter_students_for_faculty(slot_students, user)
         total_students = slot_students.count()
         total_enrolled_all += total_students
 
@@ -2250,6 +2588,9 @@ def admin_attendance_batch_view(request):
             Q(enrolled_batches__batch_time=batch_time) |
             Q(assigned_batches__time_slot=batch_time)
         ).distinct().order_by("name")
+
+    if not user.is_superuser:
+        students = filter_students_for_faculty(students, user)
 
     if request.method == "POST":
         saved_count = 0
@@ -2404,6 +2745,8 @@ def admin_attendance_report_view(request):
     month_name = calendar.month_name[month]
 
     students_qs = Student.objects.all().order_by("class_time", "name")
+    if not user.is_superuser:
+        students_qs = filter_students_for_faculty(students_qs, user)
     if selected_batch and selected_batch != "All" and selected_batch in valid_slots:
         students_qs = students_qs.filter(Q(class_time__icontains=selected_batch) | Q(enrolled_batches__batch_time=selected_batch)).distinct()
 
@@ -2514,13 +2857,16 @@ def admin_batch_transfer_view(request):
     if not user:
         return redirect("admin_login")
 
-    all_batches = (
+    all_batches_qs = (
         Batch.objects.filter(is_active=True)
         .select_related("faculty")
         .prefetch_related("students")
         .order_by("time_slot", "name")
     )
-    unassigned_count = Student.objects.filter(assigned_batch__isnull=True).count()
+    if not user.is_superuser:
+        all_batches_qs = filter_batches_for_faculty(all_batches_qs, user)
+    all_batches = all_batches_qs
+    unassigned_count = filter_students_for_faculty(Student.objects.filter(assigned_batch__isnull=True), user).count()
 
     if request.method == "POST":
         source_batch_param = request.POST.get("source_batch", "").strip()
@@ -2636,6 +2982,9 @@ def admin_batch_transfer_view(request):
     else:
         students_qs = Student.objects.none()
 
+    if not user.is_superuser:
+        students_qs = filter_students_for_faculty(students_qs, user)
+
     if q:
         students_qs = students_qs.filter(
             Q(name__icontains=q) | Q(email__icontains=q) | Q(phone__icontains=q) | Q(course__icontains=q)
@@ -2701,6 +3050,8 @@ def admin_daily_work_report_view(request):
 
     # Query all students matching optional batch filter
     students_scope = Student.objects.all()
+    if not user.is_superuser:
+        students_scope = filter_students_for_faculty(students_scope, user)
     if selected_batch_obj:
         students_scope = students_scope.filter(
             Q(assigned_batch=selected_batch_obj) | Q(assigned_batches=selected_batch_obj)
@@ -2750,6 +3101,8 @@ def admin_daily_work_report_view(request):
 
     # Fetch active batches for batch-wise breakdown & dropdown filter
     all_batches_qs = Batch.objects.filter(is_active=True).prefetch_related('students').select_related('faculty').order_by('time_slot', 'name')
+    if not user.is_superuser:
+        all_batches_qs = filter_batches_for_faculty(all_batches_qs, user)
     all_batches = list(all_batches_qs)
 
     # Determine which batches to show in the Batch-Based view
@@ -2766,6 +3119,8 @@ def admin_daily_work_report_view(request):
 
     for b in target_batches:
         b_students_qs = b.students.all().order_by("name")
+        if not user.is_superuser:
+            b_students_qs = filter_students_for_faculty(b_students_qs, user)
         if course_filter:
             b_students_qs = b_students_qs.filter(course__icontains=course_filter)
         b_students = list(b_students_qs)
@@ -2933,6 +3288,7 @@ def faculty_create_view(request):
             created_by=(f'{user.first_name} {user.last_name}'.strip() or user.username),
         )
 
+        sync_faculty_and_admin_users()
         messages.success(request, f"Faculty instructor '{faculty.name}' created successfully!")
         return redirect("admin_faculty_list")
 
@@ -3031,12 +3387,27 @@ def faculty_delete_view(request, faculty_id):
         return redirect("admin_faculty_list")
 
     name = faculty.name
-    if faculty.admin_account:
-        adm = faculty.admin_account
-        adm.is_faculty = False
-        adm.save()
+    fac_email = faculty.email
+    admin_account = faculty.admin_account
+
+    Batch.objects.filter(faculty=faculty).update(faculty=None)
+    Student.objects.filter(faculty_member=faculty).update(faculty_member=None)
 
     faculty.delete()
+
+    if admin_account:
+        associated_user = User.objects.filter(Q(email__iexact=admin_account.email) | Q(email__iexact=fac_email)).first()
+        if associated_user and not associated_user.is_superuser:
+            associated_user.delete()
+            admin_account.delete()
+        elif admin_account:
+            admin_account.is_faculty = False
+            admin_account.save()
+    elif fac_email:
+        associated_user = User.objects.filter(email__iexact=fac_email).first()
+        if associated_user and not associated_user.is_superuser:
+            associated_user.delete()
+
     messages.success(request, f"Faculty instructor '{name}' removed successfully.")
     return redirect("admin_faculty_list")
 
@@ -3104,6 +3475,8 @@ def admin_batch_list_view(request):
         return redirect("admin_login")
 
     all_batches = Batch.objects.filter(is_active=True).prefetch_related('students').select_related('faculty').order_by('time_slot', 'name')
+    if not user.is_superuser:
+        all_batches = filter_batches_for_faculty(all_batches, user)
     batches = all_batches
     
     # Filter parameters
@@ -3128,6 +3501,13 @@ def admin_batch_list_view(request):
             | Q(faculty__name__icontains=q)
         )
 
+    # Attach display_students to each batch (filtered for faculty)
+    batches_list = list(batches)
+    for b in batches_list:
+        b.display_students = list(filter_students_for_faculty(b.students.all(), user).order_by("name"))
+        b.display_student_count = len(b.display_students)
+    batches = batches_list
+
     # All unassigned students who have a time slot (batch assignment is based on time)
     all_unassigned_students = Student.objects.filter(
         assigned_batch__isnull=True,
@@ -3135,6 +3515,8 @@ def admin_batch_list_view(request):
     ).exclude(
         Q(class_time__isnull=True) | Q(class_time__exact='')
     ).distinct().order_by('class_time', 'name')
+    if not user.is_superuser:
+        all_unassigned_students = filter_students_for_faculty(all_unassigned_students, user)
 
     # Unassigned students for batch list page: based on time
     if slot_filter:
@@ -3303,6 +3685,12 @@ def admin_batch_assign_student_view(request):
         if not student:
             messages.error(request, "Student not found.")
             return redirect(next_url)
+
+        if not user.is_superuser:
+            faculty_students = filter_students_for_faculty(Student.objects.all(), user)
+            if not faculty_students.filter(id=student.id).exists():
+                messages.error(request, "Permission denied: You can only assign batches for your own course students.")
+                return redirect(next_url)
 
         if batch_id == "unassign" or not batch_id:
             for b in student.assigned_batches.all():

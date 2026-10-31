@@ -39,6 +39,8 @@ urlpatterns = [
     path('admins/<int:admin_id>/edit/', views.admin_edit_view, name='admin_edit'),
     path('admins/<int:admin_id>/delete/', views.admin_delete_view, name='admin_delete'),
     path('admins/<int:admin_id>/courses/', views.admin_faculty_courses_update_view, name='admin_faculty_courses_update'),
+    path('admins/<int:admin_id>/courses/approve/', views.admin_faculty_course_request_approve_view, name='admin_faculty_course_request_approve'),
+    path('admins/<int:admin_id>/courses/reject/', views.admin_faculty_course_request_reject_view, name='admin_faculty_course_request_reject'),
     path('profile/', views.admin_profile_view, name='admin_profile'),
     path('change-password/', views.admin_change_password_view, name='admin_change_password'),
 ]
