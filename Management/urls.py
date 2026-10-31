@@ -30,6 +30,7 @@ urlpatterns = [
     path('exams/<int:exam_id>/', views.exam_detail_view, name='admin_exam_detail'),
     path('exams/<int:exam_id>/marks/save/', views.exam_marks_save_view, name='admin_exam_marks_save'),
     path('exams/<int:exam_id>/add-student/', views.exam_add_student_view, name='admin_exam_add_student'),
+    path('exams/<int:exam_id>/add-batch/', views.exam_add_batch_view, name='admin_exam_add_batch'),
     path('exams/<int:exam_id>/remove-student/<int:student_id>/', views.exam_remove_student_view, name='admin_exam_remove_student'),
     path('exams/<int:exam_id>/edit/', views.exam_edit_view, name='admin_exam_edit'),
     path('exams/<int:exam_id>/delete/', views.exam_delete_view, name='admin_exam_delete'),

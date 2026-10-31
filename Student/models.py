@@ -360,6 +360,22 @@ class Batch(models.Model):
         return self.students.count()
 
     @property
+    def active_exam_students(self):
+        """Returns students belonging to this batch eligible for exams (excludes Dropped, On Leave, Suspend)."""
+        from django.db.models import Q
+        return Student.objects.filter(
+            Q(assigned_batch=self) | Q(assigned_batches=self)
+        ).exclude(
+            status__in=['Dropped', 'On Leave', 'Suspend']
+        ).exclude(
+            is_on_leave=True
+        ).distinct()
+
+    @property
+    def active_exam_students_count(self):
+        return self.active_exam_students.count()
+
+    @property
     def faculty_display(self):
         return self.faculty.name if self.faculty else "Unassigned Faculty"
 
@@ -614,12 +630,40 @@ class Exam(models.Model):
     exam_date = models.DateField()
     exam_time = models.CharField(max_length=50, blank=True, null=True)
     total_marks = models.DecimalField(max_digits=5, decimal_places=2, default=100.00)
+    batches = models.ManyToManyField(Batch, blank=True, related_name='exams')
     students = models.ManyToManyField(Student, related_name='exams', blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         time_str = f" at {self.exam_time}" if self.exam_time else ""
         return f"{self.title} - {self.subject} ({self.exam_date}{time_str})"
+
+    @property
+    def batches_display(self):
+        batch_list = list(self.batches.all())
+        if batch_list:
+            return ", ".join([b.name for b in batch_list])
+        student_batches = set()
+        for s in self.students.all():
+            if s.assigned_batch:
+                student_batches.add(s.assigned_batch.name)
+            for b in s.assigned_batches.all():
+                student_batches.add(b.name)
+        if student_batches:
+            return ", ".join(sorted(student_batches))
+        return "All / Unassigned"
+
+    @property
+    def batch_names_list(self):
+        names = [b.name for b in self.batches.all()]
+        if not names:
+            for s in self.students.all():
+                if s.assigned_batch and s.assigned_batch.name not in names:
+                    names.append(s.assigned_batch.name)
+                for b in s.assigned_batches.all():
+                    if b.name not in names:
+                        names.append(b.name)
+        return names
 
 
 class ExamMarks(models.Model):

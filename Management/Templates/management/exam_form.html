@@ -1,20 +1,53 @@
 {% extends 'management/base.html' %}
 {% load static %}
 
-{% block title %}{% if is_edit %}Edit Assessment - {{ exam.title }}{% else %}Create New Exam{% endif %} - Creative Management{% endblock %}
+{% block title %}{% if is_edit %}Edit Assessment - {{ exam.title }}{% else %}Schedule New Exam{% endif %} - Creative Management{% endblock %}
 
 {% block breadcrumbs %}
 <a href="{% url 'admin_exam_list' %}">Exams</a>
 <span class="breadcrumb-separator">/</span>
-<span class="breadcrumb-current">{% if is_edit %}Edit {{ exam.title|truncatewords:3 }}{% else %}New Exam{% endif %}</span>
+<span class="breadcrumb-current">{% if is_edit %}Edit {{ exam.title|truncatewords:3 }}{% else %}Schedule Exam{% endif %}</span>
 {% endblock %}
 
 {% block content %}
+<style>
+.batch-selector-card {
+    background: var(--bg-surface);
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: 1.15rem 1.25rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: flex-start;
+    gap: 0.95rem;
+    position: relative;
+    user-select: none;
+}
+.batch-selector-card:hover {
+    border-color: var(--primary);
+    background: rgba(79, 70, 229, 0.03);
+}
+.batch-selector-card.selected {
+    border-color: var(--primary);
+    background: rgba(79, 70, 229, 0.06);
+    box-shadow: 0 0 0 1px var(--primary);
+}
+.batch-selector-card input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--primary);
+    cursor: pointer;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+</style>
+
 <!-- Top Header & Actions -->
 <div class="page-header">
     <div class="header-text">
         <h1>{% if is_edit %}Edit Assessment{% else %}Schedule New Exam{% endif %}</h1>
-        <p>Set assessment specifications, scoring weights, and assign enrolled student candidates</p>
+        <p>Set assessment specifications and select the target batch(es)</p>
     </div>
     <a href="{% url 'admin_exam_list' %}" class="back-btn">
         <i class="fa-solid fa-arrow-left"></i>
@@ -23,25 +56,25 @@
 </div>
 
 <!-- Exam Form Card -->
-<div class="student-card" style="padding: 2.25rem 2.5rem; max-width: 900px; margin: 0 auto;">
+<div class="student-card" style="padding: 2.25rem 2.5rem; max-width: 960px; margin: 0 auto 3rem auto;">
     <div style="margin-bottom: 1.5rem; padding-bottom: 0.85rem; border-bottom: 1px solid var(--border-color);">
         <h2 style="font-size: 1.25rem; color: var(--text-primary); margin-bottom: 0.25rem;">
             <i class="fa-solid fa-file-signature" style="color: var(--primary); margin-right: 6px;"></i> Examination Specifications
         </h2>
-        <small style="color: var(--text-muted); font-size: 0.82rem;">Configure assessment title, subject, schedule, and candidate enrollment</small>
+        <small style="color: var(--text-muted); font-size: 0.82rem;">Configure assessment details and select the batch(es) taking this exam</small>
     </div>
 
-    <form method="POST" action="">
+    <form method="POST" action="" id="examForm" onsubmit="return validateExamForm();">
         {% csrf_token %}
         <div class="form-grid">
             <div class="form-group" style="grid-column: span 2;">
                 <label class="form-label" for="title">Assessment Title *</label>
-                <input type="text" id="title" name="title" value="{{ exam.title|default:'' }}" class="form-input" placeholder="e.g. Midterm Full-Stack Web Assessment" required autofocus>
+                <input type="text" id="title" name="title" value="{{ exam.title|default:'' }}" class="form-input" placeholder="e.g. Midterm Practical Evaluation" required autofocus>
             </div>
 
             <div class="form-group">
                 <label class="form-label" for="subject">Subject / Module *</label>
-                <input type="text" id="subject" name="subject" value="{{ exam.subject|default:'' }}" class="form-input" placeholder="e.g. Python Programming" required>
+                <input type="text" id="subject" name="subject" value="{% if exam %}{{ exam.subject }}{% elif preselected_batch and preselected_batch.course %}{{ preselected_batch.course }}{% endif %}" class="form-input" placeholder="e.g. Flutter & Dart Programming" required>
             </div>
 
             <div class="form-group">
@@ -56,107 +89,171 @@
 
             <div class="form-group">
                 <label class="form-label" for="exam_time">Time Slot (Optional)</label>
-                <input type="text" id="exam_time" name="exam_time" value="{{ exam.exam_time|default:'' }}" class="form-input" placeholder="e.g. 10:00 AM - 12:00 PM">
+                <input type="text" id="exam_time" name="exam_time" value="{% if exam %}{{ exam.exam_time|default:'' }}{% elif preselected_batch %}{{ preselected_batch.time_slot }}{% endif %}" class="form-input" placeholder="e.g. 10:00 AM - 12:00 PM">
             </div>
         </div>
 
-        <!-- Student Candidate Enrollment Section -->
+        <!-- Target Batch(es) Selection -->
         <div style="margin-top: 2rem; margin-bottom: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; flex-wrap: wrap; gap: 0.75rem;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
                 <div>
-                    <h3 style="font-size: 1.1rem; color: var(--text-primary); margin: 0 0 0.2rem 0;">
-                        <i class="fa-solid fa-users" style="color: var(--primary); margin-right: 6px;"></i> Enroll Students for this Exam
+                    <h3 style="font-size: 1.15rem; color: var(--text-primary); margin: 0 0 0.25rem 0;">
+                        <i class="fa-solid fa-layer-group" style="color: var(--primary); margin-right: 6px;"></i> Select Target Batch(es) *
                     </h3>
-                    <small style="color: var(--text-muted); font-size: 0.8rem;">Select students who will be taking this assessment</small>
+                    <small style="color: var(--text-muted); font-size: 0.82rem;">
+                        Select one or multiple batches. Eligible students in the selected batch(es) will automatically be enrolled (students with Dropped, On Leave, or Suspended status are excluded).
+                    </small>
                 </div>
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
-                    <button type="button" class="btn-secondary" onclick="toggleSelectAll(true)" style="height: 32px; padding: 0 0.75rem; font-size: 0.75rem;">Select All</button>
-                    <button type="button" class="btn-secondary" onclick="toggleSelectAll(false)" style="height: 32px; padding: 0 0.75rem; font-size: 0.75rem;">Deselect All</button>
+                    <button type="button" class="btn-secondary" onclick="toggleAllBatches(true);" style="height: 32px; padding: 0 0.75rem; font-size: 0.75rem;">
+                        <i class="fa-solid fa-check-double"></i> Select All Batches
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="toggleAllBatches(false);" style="height: 32px; padding: 0 0.75rem; font-size: 0.75rem;">
+                        Deselect All
+                    </button>
                 </div>
             </div>
 
-            {% if students %}
-            <!-- Search Filter Bar for Candidate Selection -->
-            <div style="position: relative; margin-bottom: 0.85rem;">
-                <input type="text" id="student-search-input" class="form-input" placeholder="Search candidate students by name or course..." autocomplete="off" style="height: 38px; padding-left: 2.2rem; font-size: 0.85rem;">
-                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.82rem; pointer-events: none;"></i>
+            <!-- Live Selection Summary Banner -->
+            <div id="selectionSummaryBanner" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1.15rem; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); margin-bottom: 1.25rem; font-size: 0.85rem;">
+                <span style="color: var(--text-secondary);">
+                    <i class="fa-solid fa-circle-info" style="color: var(--primary); margin-right: 6px;"></i>
+                    <span id="summaryText">No batches selected yet.</span>
+                </span>
+                <span id="summaryCountBadge" class="dossier-btn-dark primary" style="font-size: 0.75rem; padding: 0.2rem 0.65rem;">
+                    0 Batches Selected
+                </span>
             </div>
 
-            <div id="students-grid" class="custom-scrollbar" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 0.85rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.75rem; background: var(--bg-main);">
-                {% for s in students %}
-                <label class="student-select-item" style="display: flex; align-items: center; gap: 0.75rem; background: var(--bg-surface); padding: 0.75rem 0.85rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); cursor: pointer; transition: all var(--transition-fast);">
-                    <input type="checkbox" name="student_ids" value="{{ s.id }}" class="student-checkbox" {% if is_edit and s.id in enrolled_student_ids %}checked{% endif %} style="width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer;">
+            {% if all_batches %}
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                {% for b in all_batches %}
+                <label class="batch-selector-card {% if is_edit and b.id in assigned_batch_ids %}selected{% elif preselected_batch and preselected_batch.id == b.id %}selected{% endif %}" id="batch_card_{{ b.id }}">
+                    <input type="checkbox" name="batch_ids" value="{{ b.id }}" data-batch-id="{{ b.id }}" data-batch-name="{{ b.name }}" data-batch-time="{{ b.time_slot }}" data-batch-course="{{ b.course }}" data-student-count="{{ b.active_exam_students_count }}" class="batch-checkbox" {% if is_edit and b.id in assigned_batch_ids %}checked{% elif preselected_batch and preselected_batch.id == b.id %}checked{% endif %}>
                     <div style="flex: 1; min-width: 0;">
-                        <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ s.name }}</div>
-                        <div style="font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                            {{ s.course }}{% if s.class_time %} &bull; {{ s.class_time }}{% endif %}
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.35rem;">
+                            <strong style="color: var(--text-primary); font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                {{ b.name }}
+                            </strong>
+                            <span class="badge badge-secondary" style="font-size: 0.7rem; padding: 0.15rem 0.5rem; white-space: nowrap;">
+                                {{ b.active_exam_students_count }} Student{{ b.active_exam_students_count|pluralize }}
+                            </span>
+                        </div>
+                        <div style="font-size: 0.78rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 3px;">
+                            <span><i class="fa-solid fa-clock" style="color: var(--primary); font-size: 0.72rem; margin-right: 4px;"></i> {{ b.time_slot }}</span>
+                            {% if b.course %}
+                            <span><i class="fa-solid fa-graduation-cap" style="color: var(--primary); font-size: 0.72rem; margin-right: 4px;"></i> {{ b.course }}</span>
+                            {% endif %}
+                            <span><i class="fa-solid fa-chalkboard-user" style="font-size: 0.72rem; margin-right: 4px;"></i> {{ b.faculty.name|default:'Unassigned' }}</span>
                         </div>
                     </div>
                 </label>
                 {% endfor %}
             </div>
-            <div id="no-students-found" style="display: none; padding: 2rem; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: var(--border-radius-sm); margin-top: 0.5rem;">
-                <i class="fa-solid fa-user-slash" style="font-size: 1.5rem; margin-bottom: 0.5rem; display: block;"></i>
-                No matching students found.
-            </div>
             {% else %}
-            <div style="padding: 2.5rem; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: var(--border-radius-sm);">
-                <i class="fa-solid fa-user-slash" style="font-size: 1.75rem; color: var(--border-color); display: block; margin-bottom: 0.5rem;"></i>
-                No students enrolled yet. <a href="{% url 'admin_student_register' %}" style="color: var(--primary); font-weight: 600; text-decoration: underline;">Register students first</a> to assign them to exams.
+            <div style="padding: 2.5rem; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: var(--border-radius-md);">
+                <i class="fa-solid fa-layer-group" style="font-size: 2rem; color: var(--border-color); display: block; margin-bottom: 0.5rem;"></i>
+                No active batches found in the portal. Please create batches first before scheduling exams.
             </div>
             {% endif %}
         </div>
 
+        <!-- Form Actions -->
         <div style="display: flex; gap: 0.85rem; justify-content: flex-end; padding-top: 1.25rem; border-top: 1px solid var(--border-color);">
             <a href="{% url 'admin_exam_list' %}" class="btn-secondary">Cancel</a>
-            <button type="submit" class="btn-primary">
+            <button type="submit" class="btn-primary" style="padding: 0 1.5rem;">
                 <i class="fa-solid fa-floppy-disk"></i> {% if is_edit %}Save Changes{% else %}Schedule Exam & Proceed to Marks{% endif %}
             </button>
         </div>
     </form>
 </div>
 
-<!-- Candidate Filter & Toggle Script -->
+<!-- Interactive Batch Selection Script -->
 <script>
-function toggleSelectAll(select) {
-    const items = document.querySelectorAll('.student-select-item');
-    items.forEach(item => {
-        if (item.style.display !== 'none') {
-            const cb = item.querySelector('.student-checkbox');
-            if (cb) cb.checked = select;
+function updateBatchSummary() {
+    const checked = document.querySelectorAll('.batch-checkbox:checked');
+    let totalStudents = 0;
+    const names = [];
+
+    checked.forEach(chk => {
+        const count = parseInt(chk.getAttribute('data-student-count') || '0', 10);
+        totalStudents += count;
+        names.push(chk.getAttribute('data-batch-name'));
+    });
+
+    const summaryText = document.getElementById('summaryText');
+    const summaryBadge = document.getElementById('summaryCountBadge');
+
+    if (checked.length === 0) {
+        if (summaryText) summaryText.textContent = "Please select at least one batch to enroll for this exam.";
+        if (summaryBadge) {
+            summaryBadge.textContent = "0 Batches Selected";
+            summaryBadge.style.background = "";
+        }
+    } else {
+        if (summaryText) summaryText.innerHTML = `Selected: <strong>${names.join(', ')}</strong> &bull; Total <strong>${totalStudents}</strong> student${totalStudents !== 1 ? 's' : ''} will be enrolled.`;
+        if (summaryBadge) {
+            summaryBadge.textContent = `${checked.length} Batch${checked.length !== 1 ? 'es' : ''} Selected (${totalStudents} Students)`;
+            summaryBadge.style.background = "var(--primary)";
+            summaryBadge.style.color = "#ffffff";
+        }
+    }
+}
+
+function toggleAllBatches(select) {
+    const checkboxes = document.querySelectorAll('.batch-checkbox');
+    checkboxes.forEach(chk => {
+        chk.checked = select;
+        const card = document.getElementById('batch_card_' + chk.getAttribute('data-batch-id'));
+        if (card) {
+            if (select) card.classList.add('selected');
+            else card.classList.remove('selected');
         }
     });
+    updateBatchSummary();
+}
+
+function validateExamForm() {
+    const checked = document.querySelectorAll('.batch-checkbox:checked');
+    if (checked.length === 0) {
+        alert("Please select at least one batch for the examination.");
+        return false;
+    }
+    return true;
 }
 
 document.addEventListener("DOMContentLoaded", function() {
-    const searchInput = document.getElementById("student-search-input");
-    const items = document.querySelectorAll(".student-select-item");
-    const noResults = document.getElementById("no-students-found");
-    const grid = document.getElementById("students-grid");
+    const batchCheckboxes = document.querySelectorAll('.batch-checkbox');
+    const subjectInput = document.getElementById('subject');
+    const timeInput = document.getElementById('exam_time');
 
-    if (searchInput) {
-        searchInput.addEventListener("input", function() {
-            const query = searchInput.value.toLowerCase().trim();
-            let visibleCount = 0;
+    batchCheckboxes.forEach(chk => {
+        chk.addEventListener('change', function() {
+            const batchId = this.getAttribute('data-batch-id');
+            const card = document.getElementById('batch_card_' + batchId);
+            const isChecked = this.checked;
 
-            items.forEach(item => {
-                const text = item.textContent.toLowerCase();
-                if (text.includes(query)) {
-                    item.style.display = "flex";
-                    visibleCount++;
-                } else {
-                    item.style.display = "none";
+            if (card) {
+                if (isChecked) card.classList.add('selected');
+                else card.classList.remove('selected');
+            }
+
+            if (isChecked) {
+                const bCourse = this.getAttribute('data-batch-course');
+                const bTime = this.getAttribute('data-batch-time');
+                if (subjectInput && !subjectInput.value.trim() && bCourse) {
+                    subjectInput.value = bCourse;
                 }
-            });
+                if (timeInput && !timeInput.value.trim() && bTime) {
+                    timeInput.value = bTime;
+                }
+            }
 
-            if (noResults) {
-                noResults.style.display = visibleCount === 0 ? "block" : "none";
-            }
-            if (grid) {
-                grid.style.display = visibleCount === 0 ? "none" : "grid";
-            }
+            updateBatchSummary();
         });
-    }
+    });
+
+    updateBatchSummary();
 });
 </script>
 {% endblock %}

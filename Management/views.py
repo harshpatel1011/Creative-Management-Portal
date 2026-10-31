@@ -1069,7 +1069,27 @@ def project_status_update_view(request, project_id):
     return redirect("admin_projects")
 
 
-# --- EXAMS & MARKS WORKFLOW VIEWS ---
+# --- EXAMS & MARKS WORKFLOW VIEWS (BATCH-CENTRIC) ---
+EXCLUDED_EXAM_STUDENT_STATUSES = ['Dropped', 'On Leave', 'Suspend']
+
+def get_eligible_exam_students_for_batches(batches):
+    """
+    Returns eligible students for given batches, excluding students whose
+    status is 'Dropped', 'On Leave', or 'Suspend', or who are currently on leave.
+    Checks both direct assigned_batch and ManyToMany assigned_batches.
+    """
+    if not batches:
+        return []
+    return list(
+        Student.objects.filter(
+            Q(assigned_batch__in=batches) | Q(assigned_batches__in=batches)
+        ).exclude(
+            status__in=EXCLUDED_EXAM_STUDENT_STATUSES
+        ).exclude(
+            is_on_leave=True
+        ).distinct()
+    )
+
 
 
 def exam_list_view(request):
@@ -1077,32 +1097,159 @@ def exam_list_view(request):
     if not user:
         return redirect("admin_login")
 
-    q = request.GET.get("q")
-    exams = Exam.objects.prefetch_related("students", "marks_records").all().order_by("-exam_date")
-    total_exams_count = exams.count()
+    q = request.GET.get("q", "").strip()
+    batch_param = request.GET.get("batch_id", "").strip() or request.GET.get("batch", "").strip()
+    status_filter = request.GET.get("status", "").strip()
+
+    all_batches = list(
+        Batch.objects.filter(is_active=True)
+        .select_related("faculty")
+        .prefetch_related("students")
+        .order_by("time_slot", "name")
+    )
+
+    batch_id_filter = ""
+    selected_batch_obj = None
+    if batch_param.isdigit():
+        batch_id_filter = batch_param
+        selected_batch_obj = next((b for b in all_batches if b.id == int(batch_param)), None)
+        if not selected_batch_obj:
+            selected_batch_obj = Batch.objects.filter(id=int(batch_param)).first()
+    elif batch_param.startswith("batch_"):
+        batch_id_filter = batch_param.replace("batch_", "")
+        selected_batch_obj = next((b for b in all_batches if str(b.id) == batch_id_filter), None)
+
+    exams_qs = (
+        Exam.objects.prefetch_related("students", "marks_records", "batches")
+        .all()
+        .order_by("-exam_date", "-id")
+    )
 
     if q:
-        exams = exams.filter(Q(title__icontains=q) | Q(subject__icontains=q))
+        exams_qs = exams_qs.filter(
+            Q(title__icontains=q)
+            | Q(subject__icontains=q)
+            | Q(batches__name__icontains=q)
+            | Q(batches__course__icontains=q)
+        ).distinct()
 
-    # Prepare stats for each exam
+    if selected_batch_obj:
+        exams_qs = exams_qs.filter(
+            Q(batches=selected_batch_obj)
+            | Q(students__assigned_batch=selected_batch_obj)
+            | Q(students__assigned_batches=selected_batch_obj)
+        ).distinct()
+    elif batch_param:
+        exams_qs = exams_qs.filter(
+            Q(batches__time_slot__icontains=batch_param)
+            | Q(batches__name__icontains=batch_param)
+            | Q(students__class_time__icontains=batch_param)
+            | Q(students__assigned_batches__time_slot__icontains=batch_param)
+        ).distinct()
+
+    all_filtered_exams = list(exams_qs)
+    total_exams_count = len(all_filtered_exams)
+
+    # Build individual exam cards with stats
     exam_cards = []
-    for exam in exams:
+    for exam in all_filtered_exams:
         total_students = exam.students.count()
         marks_records = exam.marks_records.all()
-        graded_count = marks_records.filter(marks_obtained__isnull=False, is_absent=False).count()
-        absent_count = marks_records.filter(is_absent=True).count()
+        graded_count = sum(1 for m in marks_records if m.marks_obtained is not None and not m.is_absent)
+        absent_count = sum(1 for m in marks_records if m.is_absent)
         pending_count = total_students - (graded_count + absent_count)
-        exam_cards.append({
+
+        graded_marks = [float(m.marks_obtained) for m in marks_records if m.marks_obtained is not None and not m.is_absent]
+        avg_score = round(sum(graded_marks) / len(graded_marks), 1) if graded_marks else None
+
+        card_data = {
             "exam": exam,
             "total_students": total_students,
             "graded_count": graded_count,
             "absent_count": absent_count,
             "pending_count": pending_count,
+            "avg_score": avg_score,
+            "is_complete": total_students > 0 and pending_count == 0,
+        }
+
+        if status_filter == "completed" and not card_data["is_complete"]:
+            continue
+        elif status_filter == "pending" and (pending_count == 0 or total_students == 0):
+            continue
+        elif status_filter == "empty" and total_students > 0:
+            continue
+
+        exam_cards.append(card_data)
+
+    # -----------------------------------------------------------------
+    # Build Batch Groups for the "By Batches" tab
+    # -----------------------------------------------------------------
+    if selected_batch_obj:
+        target_batches = [selected_batch_obj]
+    elif batch_param:
+        target_batches = [
+            b for b in all_batches
+            if batch_param.lower() in b.time_slot.lower() or batch_param.lower() in b.name.lower()
+        ]
+    else:
+        target_batches = all_batches
+
+    batch_groups = []
+    covered_exam_ids = set()
+
+    for b in target_batches:
+        b_student_ids = set(b.active_exam_students.values_list("id", flat=True))
+
+        b_exams = []
+        for card in exam_cards:
+            exam = card["exam"]
+            is_linked = exam.batches.filter(id=b.id).exists()
+            has_students = any(s.id in b_student_ids for s in exam.students.all())
+            if is_linked or has_students:
+                b_exams.append(card)
+                covered_exam_ids.add(exam.id)
+
+        total_evaluations = sum(c["total_students"] for c in b_exams)
+        total_graded = sum(c["graded_count"] for c in b_exams)
+        total_pending = sum(c["pending_count"] for c in b_exams)
+
+        batch_groups.append({
+            "batch": b,
+            "exams": b_exams,
+            "total_exams": len(b_exams),
+            "total_students": len(b_student_ids),
+            "total_evaluations": total_evaluations,
+            "total_graded": total_graded,
+            "total_pending": total_pending,
+            "has_exams": len(b_exams) > 0,
         })
+
+    # Group any assessments not associated with active named batches
+    unassigned_exams = [c for c in exam_cards if c["exam"].id not in covered_exam_ids]
+    unassigned_group = None
+    if unassigned_exams:
+        unassigned_group = {
+            "title": "General & Cross-Batch Assessments",
+            "exams": unassigned_exams,
+            "total_exams": len(unassigned_exams),
+            "total_students": sum(c["total_students"] for c in unassigned_exams),
+            "total_graded": sum(c["graded_count"] for c in unassigned_exams),
+            "total_pending": sum(c["pending_count"] for c in unassigned_exams),
+        }
+
+    class_time_choices = [c[0] for c in Student.CLASS_TIME_CHOICES]
 
     context = {
         "user": user,
         "exam_cards": exam_cards,
+        "batch_groups": batch_groups,
+        "unassigned_group": unassigned_group,
+        "all_batches": all_batches,
+        "batch_filter": batch_param,
+        "batch_id_filter": batch_id_filter,
+        "selected_batch_obj": selected_batch_obj,
+        "class_time_choices": class_time_choices,
+        "status_filter": status_filter,
         "query": q,
         "total_exams_count": total_exams_count,
     }
@@ -1114,22 +1261,50 @@ def exam_create_view(request):
     if not user:
         return redirect("admin_login")
 
-    students = Student.objects.all().order_by("name")
+    all_batches = list(
+        Batch.objects.filter(is_active=True)
+        .select_related("faculty")
+        .prefetch_related("students")
+        .order_by("time_slot", "name")
+    )
+
+    preselected_batch_id = request.GET.get("batch_id", "").strip()
+    preselected_batch = None
+    if preselected_batch_id.isdigit():
+        preselected_batch = next((b for b in all_batches if b.id == int(preselected_batch_id)), None)
 
     if request.method == "POST":
-        title = request.POST.get("title")
-        subject = request.POST.get("subject")
+        title = request.POST.get("title", "").strip()
+        subject = request.POST.get("subject", "").strip()
         exam_date = request.POST.get("exam_date")
         exam_time = request.POST.get("exam_time", "").strip()
         total_marks = request.POST.get("total_marks", "100")
-        student_ids = request.POST.getlist("student_ids")
+        batch_ids = request.POST.getlist("batch_ids")
 
         if not (title and subject and exam_date and total_marks):
             messages.error(request, "Please fill in all required exam fields!")
             return render(
                 request,
                 "management/exam_form.html",
-                {"user": user, "students": students, "is_edit": False},
+                {
+                    "user": user,
+                    "all_batches": all_batches,
+                    "preselected_batch": preselected_batch,
+                    "is_edit": False,
+                },
+            )
+
+        if not batch_ids:
+            messages.error(request, "Please select at least one batch for this exam!")
+            return render(
+                request,
+                "management/exam_form.html",
+                {
+                    "user": user,
+                    "all_batches": all_batches,
+                    "preselected_batch": preselected_batch,
+                    "is_edit": False,
+                },
             )
 
         exam = Exam.objects.create(
@@ -1140,21 +1315,34 @@ def exam_create_view(request):
             total_marks=float(total_marks),
         )
 
-        if student_ids:
-            selected_students = Student.objects.filter(id__in=student_ids)
-            exam.students.set(selected_students)
-            for s in selected_students:
+        sel_batches = list(Batch.objects.filter(id__in=batch_ids))
+        exam.batches.set(sel_batches)
+
+        # Automatically enroll eligible students from selected batches (exclude Dropped, On Leave, Suspend)
+        unique_students = get_eligible_exam_students_for_batches(sel_batches)
+
+        if unique_students:
+            exam.students.set(unique_students)
+            for s in unique_students:
                 ExamMarks.objects.get_or_create(exam=exam, student=s)
 
-        messages.success(request, f"Exam '{title}' created successfully! Now add marks for enrolled students.")
+        batch_names_str = ", ".join(b.name for b in sel_batches)
+        messages.success(
+            request,
+            f"Exam '{title}' scheduled for batch(es) [{batch_names_str}] ({len(unique_students)} students enrolled)!"
+        )
         return redirect("admin_exam_detail", exam_id=exam.id)
 
     return render(
         request,
         "management/exam_form.html",
-        {"user": user, "students": students, "is_edit": False},
+        {
+            "user": user,
+            "all_batches": all_batches,
+            "preselected_batch": preselected_batch,
+            "is_edit": False,
+        },
     )
-
 
 def exam_detail_view(request, exam_id):
     user = get_current_admin(request)
@@ -1166,11 +1354,25 @@ def exam_detail_view(request, exam_id):
         messages.error(request, "Exam not found.")
         return redirect("admin_exam_list")
 
-    # Ensure all enrolled students have an ExamMarks record
-    for student in exam.students.all():
+    # Automatically purge/remove any students whose status is Dropped, On Leave, or Suspend
+    excluded_students = exam.students.filter(
+        Q(status__in=EXCLUDED_EXAM_STUDENT_STATUSES) | Q(is_on_leave=True)
+    )
+    if excluded_students.exists():
+        exam.students.remove(*excluded_students)
+        ExamMarks.objects.filter(exam=exam, student__in=excluded_students).delete()
+
+    for student in exam.students.exclude(status__in=EXCLUDED_EXAM_STUDENT_STATUSES).exclude(is_on_leave=True):
         ExamMarks.objects.get_or_create(exam=exam, student=student)
 
-    marks_records = ExamMarks.objects.filter(exam=exam).select_related("student").order_by("student__name")
+    marks_records = (
+        ExamMarks.objects.filter(exam=exam)
+        .exclude(student__status__in=EXCLUDED_EXAM_STUDENT_STATUSES)
+        .exclude(student__is_on_leave=True)
+        .select_related("student", "student__assigned_batch")
+        .prefetch_related("student__assigned_batches")
+        .order_by("student__name")
+    )
 
     graded_records = [m for m in marks_records if m.marks_obtained is not None and not m.is_absent]
     absent_records = [m for m in marks_records if m.is_absent]
@@ -1183,14 +1385,76 @@ def exam_detail_view(request, exam_id):
     if graded_count > 0:
         avg_marks = round(sum(float(m.marks_obtained) for m in graded_records) / graded_count, 2)
 
-    all_students = Student.objects.all().order_by("name")
-    enrolled_ids = set(exam.students.values_list("id", flat=True))
-    available_students = [s for s in all_students if s.id not in enrolled_ids]
+    all_batches = list(
+        Batch.objects.filter(is_active=True)
+        .select_related("faculty")
+        .prefetch_related("students")
+        .order_by("time_slot", "name")
+    )
+
+    batch_marks_groups = []
+    accounted_student_ids = set()
+
+    for b in all_batches:
+        b_records = [
+            m for m in marks_records
+            if m.student.assigned_batch_id == b.id or b in m.student.assigned_batches.all()
+        ]
+        if b_records or exam.batches.filter(id=b.id).exists():
+            accounted_student_ids.update(m.student_id for m in b_records)
+            b_graded = [m for m in b_records if m.marks_obtained is not None and not m.is_absent]
+            b_absent = [m for m in b_records if m.is_absent]
+            b_avg = (
+                round(sum(float(m.marks_obtained) for m in b_graded) / len(b_graded), 1)
+                if b_graded else 0
+            )
+            batch_marks_groups.append({
+                "batch": b,
+                "records": b_records,
+                "total_students": len(b_records),
+                "graded_count": len(b_graded),
+                "absent_count": len(b_absent),
+                "pending_count": len(b_records) - len(b_graded) - len(b_absent),
+                "avg_marks": b_avg,
+                "is_complete": len(b_records) > 0 and (len(b_graded) + len(b_absent)) == len(b_records),
+            })
+
+    unassigned_records = [m for m in marks_records if m.student_id not in accounted_student_ids]
+    unassigned_batch_group = None
+    if unassigned_records:
+        u_graded = [m for m in unassigned_records if m.marks_obtained is not None and not m.is_absent]
+        u_absent = [m for m in unassigned_records if m.is_absent]
+        u_avg = (
+            round(sum(float(m.marks_obtained) for m in u_graded) / len(u_graded), 1)
+            if u_graded else 0
+        )
+        unassigned_batch_group = {
+            "title": "Flexible / Other Students",
+            "records": unassigned_records,
+            "total_students": len(unassigned_records),
+            "graded_count": len(u_graded),
+            "absent_count": len(u_absent),
+            "pending_count": len(unassigned_records) - len(u_graded) - len(u_absent),
+            "avg_marks": u_avg,
+            "is_complete": len(unassigned_records) > 0 and (len(u_graded) + len(u_absent)) == len(unassigned_records),
+        }
+
+    existing_exam_batch_ids = set(exam.batches.values_list("id", flat=True))
+    available_batches = [
+        {"batch": b, "unenrolled_count": b.active_exam_students_count}
+        for b in all_batches
+        if b.id not in existing_exam_batch_ids
+    ]
+    available_students = []
 
     context = {
         "user": user,
         "exam": exam,
         "marks_records": marks_records,
+        "batch_marks_groups": batch_marks_groups,
+        "unassigned_batch_group": unassigned_batch_group,
+        "available_batches": available_batches,
+        "all_batches": all_batches,
         "total_students": total_students,
         "graded_count": graded_count,
         "absent_count": absent_count,
@@ -1212,8 +1476,35 @@ def exam_marks_save_view(request, exam_id):
         return redirect("admin_exam_list")
 
     if request.method == "POST":
-        student_id = request.POST.get("student_id")
         action = request.POST.get("action", "save")
+
+        if action == "save_all":
+            saved_count = 0
+            for key, val in request.POST.items():
+                if key.startswith("marks_"):
+                    s_id = key.replace("marks_", "")
+                    if s_id.isdigit():
+                        mark_record = ExamMarks.objects.filter(exam=exam, student_id=int(s_id)).first()
+                        if mark_record:
+                            if val.strip() != "":
+                                try:
+                                    f_val = float(val)
+                                    if 0 <= f_val <= float(exam.total_marks):
+                                        mark_record.is_absent = False
+                                        mark_record.marks_obtained = f_val
+                                        mark_record.save()
+                                        saved_count += 1
+                                except ValueError:
+                                    pass
+                            else:
+                                if mark_record.marks_obtained is not None and not mark_record.is_absent:
+                                    mark_record.marks_obtained = None
+                                    mark_record.grade = None
+                                    mark_record.save()
+            messages.success(request, f"Evaluations saved for {saved_count} student{{'s' if saved_count != 1 else ''}}.")
+            return redirect("admin_exam_detail", exam_id=exam.id)
+
+        student_id = request.POST.get("student_id")
         marks_val = request.POST.get("marks_obtained")
 
         student = Student.objects.filter(id=student_id).first()
@@ -1273,7 +1564,33 @@ def exam_add_student_view(request, exam_id):
         if student:
             exam.students.add(student)
             ExamMarks.objects.get_or_create(exam=exam, student=student)
-            messages.success(request, f"Added {student.name} to exam {exam.title}.")
+            messages.success(request, f"Enrolled {student.name} into {exam.title}.")
+
+    return redirect("admin_exam_detail", exam_id=exam.id)
+
+
+def exam_add_batch_view(request, exam_id):
+    user = get_current_admin(request)
+    if not user:
+        return redirect("admin_login")
+
+    exam = Exam.objects.filter(id=exam_id).first()
+    if not exam:
+        messages.error(request, "Exam not found.")
+        return redirect("admin_exam_list")
+
+    if request.method == "POST":
+        batch_id = request.POST.get("batch_id")
+        batch = Batch.objects.filter(id=batch_id).first()
+        if batch:
+            exam.batches.add(batch)
+            eligible_students = get_eligible_exam_students_for_batches([batch])
+            for s in eligible_students:
+                exam.students.add(s)
+                ExamMarks.objects.get_or_create(exam=exam, student=s)
+            messages.success(request, f"Enrolled batch '{batch.name}' ({len(eligible_students)} students) into {exam.title}!")
+        else:
+            messages.error(request, "Batch not found.")
 
     return redirect("admin_exam_detail", exam_id=exam.id)
 
@@ -1303,33 +1620,79 @@ def exam_edit_view(request, exam_id):
         messages.error(request, "Exam not found.")
         return redirect("admin_exam_list")
 
-    students = Student.objects.all().order_by("name")
-    enrolled_student_ids = list(exam.students.values_list("id", flat=True))
+    all_batches = list(
+        Batch.objects.filter(is_active=True)
+        .select_related("faculty")
+        .prefetch_related("students")
+        .order_by("time_slot", "name")
+    )
+    assigned_batch_ids = set(exam.batches.values_list("id", flat=True))
 
     if request.method == "POST":
-        exam.title = request.POST.get("title")
-        exam.subject = request.POST.get("subject")
-        exam.exam_date = request.POST.get("exam_date")
-        exam.exam_time = request.POST.get("exam_time", "").strip()
-        exam.total_marks = float(request.POST.get("total_marks", "100"))
+        title = request.POST.get("title", "").strip()
+        subject = request.POST.get("subject", "").strip()
+        exam_date = request.POST.get("exam_date")
+        exam_time = request.POST.get("exam_time", "").strip()
+        total_marks = request.POST.get("total_marks", "100")
+        batch_ids = request.POST.getlist("batch_ids")
+
+        if not (title and subject and exam_date and total_marks):
+            messages.error(request, "Please fill in all required fields!")
+            return render(
+                request,
+                "management/exam_form.html",
+                {
+                    "user": user,
+                    "exam": exam,
+                    "all_batches": all_batches,
+                    "assigned_batch_ids": assigned_batch_ids,
+                    "is_edit": True,
+                },
+            )
+
+        if not batch_ids:
+            messages.error(request, "Please select at least one batch for this exam!")
+            return render(
+                request,
+                "management/exam_form.html",
+                {
+                    "user": user,
+                    "exam": exam,
+                    "all_batches": all_batches,
+                    "assigned_batch_ids": assigned_batch_ids,
+                    "is_edit": True,
+                },
+            )
+
+        exam.title = title
+        exam.subject = subject
+        exam.exam_date = exam_date
+        exam.exam_time = exam_time
+        exam.total_marks = float(total_marks)
         exam.save()
 
-        student_ids = request.POST.getlist("student_ids")
-        selected_students = Student.objects.filter(id__in=student_ids)
-        exam.students.set(selected_students)
+        sel_batches = list(Batch.objects.filter(id__in=batch_ids))
+        exam.batches.set(sel_batches)
 
-        # Create marks records for newly added students
-        for s in selected_students:
+        # Automatically update enrolled students from selected batches (exclude Dropped, On Leave, Suspend)
+        unique_students = get_eligible_exam_students_for_batches(sel_batches)
+        exam.students.set(unique_students)
+
+        for s in unique_students:
             ExamMarks.objects.get_or_create(exam=exam, student=s)
 
-        # Remove marks records for removed students
-        ExamMarks.objects.filter(exam=exam).exclude(student__in=selected_students).delete()
+        # Remove marks records for any students who are not in eligible unique_students
+        # (purges any students who became Dropped, On Leave, Suspend or whose batch was deselected)
+        ExamMarks.objects.filter(exam=exam).exclude(student__in=unique_students).delete()
 
-        # Recalculate grades for existing marks in case total_marks changed
         for m in exam.marks_records.filter(marks_obtained__isnull=False):
             m.save()
 
-        messages.success(request, f"Exam '{exam.title}' updated successfully!")
+        batch_names_str = ", ".join(b.name for b in sel_batches)
+        messages.success(
+            request,
+            f"Exam '{exam.title}' updated for batch(es) [{batch_names_str}] ({len(unique_students)} students enrolled)!"
+        )
         return redirect("admin_exam_detail", exam_id=exam.id)
 
     return render(
@@ -1338,12 +1701,11 @@ def exam_edit_view(request, exam_id):
         {
             "user": user,
             "exam": exam,
-            "students": students,
-            "enrolled_student_ids": enrolled_student_ids,
+            "all_batches": all_batches,
+            "assigned_batch_ids": assigned_batch_ids,
             "is_edit": True,
         },
     )
-
 
 def exam_delete_view(request, exam_id):
     user = get_current_admin(request)

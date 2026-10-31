@@ -6,153 +6,694 @@
 {% block breadcrumbs %}
 <a href="{% url 'admin_exam_list' %}">Exams</a>
 <span class="breadcrumb-separator">/</span>
-<span class="breadcrumb-current">Assessments</span>
+<span class="breadcrumb-current">Assessments & Marks</span>
 {% endblock %}
 
 {% block content %}
+<style>
+.exam-filters-grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 1.8fr) minmax(220px, 1.4fr) minmax(180px, 1.1fr) auto;
+    gap: 1rem;
+    align-items: flex-end;
+}
+
+.filter-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.search-form-unified {
+    position: relative;
+    width: 100%;
+}
+
+.search-prefix-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    pointer-events: none;
+}
+
+.search-input-field {
+    width: 100%;
+    height: 42px;
+    padding: 0.6rem 2.2rem 0.6rem 2.45rem;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    font-size: 0.88rem;
+    border-radius: var(--border-radius-sm);
+    outline: none;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    box-sizing: border-box;
+}
+
+.search-input-field:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.search-clear-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: var(--border-radius-sm) !important;
+}
+
+.filter-col-actions {
+    display: flex;
+    gap: 0.65rem;
+    align-items: center;
+    justify-content: flex-end;
+    height: 42px;
+}
+
+.filter-btn {
+    height: 42px !important;
+    padding: 0 1rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    font-size: 0.82rem !important;
+    white-space: nowrap !important;
+}
+
+.filter-badge {
+    height: 42px !important;
+    padding: 0 1rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    font-size: 0.82rem !important;
+    white-space: nowrap !important;
+}
+
+@media (max-width: 1200px) {
+    .exam-filters-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    .filter-col-actions {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 640px) {
+    .exam-filters-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
 <!-- Top Header & Actions -->
 <div class="page-header">
     <div class="header-text">
         <h1>Exams & Marks</h1>
-        <p>Schedule academic examinations, enroll student cohorts, and evaluate performance scores</p>
+        <p>Schedule academic examinations, organize assessments by batches, and evaluate student marks</p>
     </div>
     <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
-        <form method="GET" action="{% url 'admin_exam_list' %}" class="search-form">
-            <input type="text" name="q" value="{{ query|default:'' }}" class="search-input" placeholder="Search by exam title, subject..." aria-label="Search exams">
-            <button type="submit" class="btn-search" aria-label="Submit search"><i class="fa-solid fa-magnifying-glass"></i></button>
-        </form>
-        <a href="{% url 'admin_exam_create' %}" class="btn-primary">
+        <a href="{% url 'admin_exam_create' %}{% if selected_batch_obj %}?batch_id={{ selected_batch_obj.id }}{% endif %}" class="btn-primary">
             <i class="fa-solid fa-plus"></i>
-            <span>Create Exam</span>
+            <span>Schedule Exam</span>
         </a>
     </div>
 </div>
 
-<!-- Secondary Info & Filter Bar -->
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-    <span class="dossier-btn-dark">
-        Showing <strong>{{ exam_cards|length }}</strong> of <strong>{{ total_exams_count|default:exam_cards|length }}</strong> assessment{{ exam_cards|length|pluralize }}
-    </span>
-    {% if query %}
-    <div>
-        <a href="{% url 'admin_exam_list' %}" class="btn-secondary" style="height: 36px; padding: 0 0.85rem; font-size: 0.8rem;">
-            <i class="fa-solid fa-xmark"></i> Clear Search
+<!-- Search & Filter Toolbar -->
+<div class="student-card" style="padding: 1.25rem 1.5rem; margin-bottom: 2rem;">
+    <form method="GET" action="{% url 'admin_exam_list' %}" id="examFilterForm">
+        <div class="exam-filters-grid">
+            <!-- 1. Search Query Input -->
+            <div class="filter-col">
+                <label class="form-label" for="search_query" style="display: flex; align-items: center; gap: 0.45rem; font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.45rem;">
+                    <i class="fa-solid fa-magnifying-glass" style="color: var(--primary);"></i> Search Assessments
+                </label>
+                <div class="search-form-unified">
+                    <i class="fa-solid fa-magnifying-glass search-prefix-icon"></i>
+                    <input type="text" name="q" id="search_query" value="{{ query|default:'' }}" class="search-input-field" placeholder="Search by title, subject, batch...">
+                    {% if query %}
+                    <a href="{% url 'admin_exam_list' %}{% if batch_filter %}?batch={{ batch_filter|urlencode }}{% endif %}{% if status_filter %}&status={{ status_filter|urlencode }}{% endif %}" class="search-clear-btn" title="Clear search">
+                        <i class="fa-solid fa-xmark"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 2. Filter by Batch (Custom Dropdown) -->
+            <div class="filter-col">
+                <label class="form-label" style="display: flex; align-items: center; gap: 0.45rem; font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.45rem;">
+                    <i class="fa-solid fa-layer-group" style="color: var(--primary);"></i> Filter by Batch
+                </label>
+                <div class="searchable-select-container">
+                    <input type="text" id="exam_batch_input" class="searchable-select-input" placeholder="All Batches..." autocomplete="off" readonly onselectstart="return false;" style="cursor: pointer; height: 42px; user-select: none; -webkit-user-select: none;" value="{% if selected_batch_obj %}{{ selected_batch_obj.name }} ({{ selected_batch_obj.time_slot }}){% elif batch_filter %}{{ batch_filter }}{% else %}All Batches (Show All){% endif %}">
+                    <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
+                    <ul id="exam_batch_list" class="searchable-list custom-scrollbar" style="max-height: 280px;">
+                        <li data-value="" data-text="All Batches (Show All)" class="all-option" style="padding: 9px 14px; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border-color);">
+                            <span><i class="fa-solid fa-layer-group" style="margin-right: 6px;"></i> All Batches (Show All)</span>
+                        </li>
+
+                        <!-- Active Batches Group -->
+                        {% if all_batches %}
+                        <li class="category-header" style="background: var(--bg-main); font-weight: 700; color: var(--primary); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 14px; cursor: default; border-bottom: 1px solid var(--border-color); pointer-events: none;">
+                            <i class="fa-solid fa-layer-group" style="margin-right: 5px;"></i> Active Batches
+                        </li>
+                        {% for b in all_batches %}
+                        <li data-value="{{ b.id }}" data-text="{{ b.name }} ({{ b.time_slot }})" class="exam-batch-item {% if selected_batch_obj.id == b.id %}active-option{% endif %}" style="padding: 9px 14px; font-size: 0.85rem; border-bottom: 1px solid var(--border-color-light); display: flex; flex-direction: column; gap: 2px;">
+                            <strong><i class="fa-solid fa-graduation-cap" style="color: var(--primary); margin-right: 6px; font-size: 0.75rem;"></i>{{ b.name }} ({{ b.time_slot }})</strong>
+                            <small style="color: var(--text-muted); font-size: 0.72rem;">{{ b.active_exam_students_count }} Students &bull; {{ b.course|default:'All Courses' }} &bull; {{ b.faculty.name|default:'Unassigned' }}</small>
+                        </li>
+                        {% endfor %}
+                        {% endif %}
+
+                        <!-- Timing Slots Group -->
+                        <li class="category-header" style="background: var(--bg-main); font-weight: 700; color: var(--text-secondary); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 14px; cursor: default; border-bottom: 1px solid var(--border-color); pointer-events: none;">
+                            <i class="fa-solid fa-clock" style="margin-right: 5px;"></i> Timing Slots
+                        </li>
+                        {% for slot in class_time_choices %}
+                        <li data-value="{{ slot }}" data-text="{{ slot }}" class="exam-batch-item {% if batch_filter == slot and not selected_batch_obj %}active-option{% endif %}" style="padding: 9px 14px; font-size: 0.85rem; border-bottom: 1px solid var(--border-color-light);">
+                            <strong><i class="fa-solid fa-clock" style="color: var(--primary); margin-right: 6px; font-size: 0.75rem;"></i>{{ slot }}</strong>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <input type="hidden" name="batch" id="exam_hidden_batch" value="{% if selected_batch_obj %}{{ selected_batch_obj.id }}{% elif batch_filter %}{{ batch_filter }}{% endif %}">
+                </div>
+            </div>
+
+            <!-- 3. Status Filter (Custom Dropdown) -->
+            <div class="filter-col">
+                <label class="form-label" style="display: flex; align-items: center; gap: 0.45rem; font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.45rem;">
+                    <i class="fa-solid fa-sliders" style="color: var(--primary);"></i> Evaluation Status
+                </label>
+                <div class="searchable-select-container">
+                    <input type="text" id="exam_status_input" class="searchable-select-input" placeholder="All Status..." autocomplete="off" readonly onselectstart="return false;" style="cursor: pointer; height: 42px; user-select: none; -webkit-user-select: none;" value="{% if status_filter == 'completed' %}Complete (100% Graded){% elif status_filter == 'pending' %}Pending Evaluation{% elif status_filter == 'empty' %}0 Enrolled{% else %}All Status{% endif %}">
+                    <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
+                    <ul id="exam_status_list" class="searchable-list custom-scrollbar" style="max-height: 200px;">
+                        <li data-value="" data-text="All Status" class="status-option" style="padding: 9px 14px; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border-color);">
+                            <span><i class="fa-solid fa-list-check" style="margin-right: 6px;"></i> All Status</span>
+                        </li>
+                        <li data-value="completed" data-text="Complete (100% Graded)" class="status-option" style="padding: 9px 14px; font-size: 0.85rem; border-bottom: 1px solid var(--border-color-light);">
+                            <strong><i class="fa-solid fa-circle-check" style="color: #10b981; margin-right: 6px;"></i> Complete (100% Graded)</strong>
+                        </li>
+                        <li data-value="pending" data-text="Pending Evaluation" class="status-option" style="padding: 9px 14px; font-size: 0.85rem; border-bottom: 1px solid var(--border-color-light);">
+                            <strong><i class="fa-solid fa-clock" style="color: #f59e0b; margin-right: 6px;"></i> Pending Evaluation</strong>
+                        </li>
+                        <li data-value="empty" data-text="0 Enrolled" class="status-option" style="padding: 9px 14px; font-size: 0.85rem;">
+                            <strong><i class="fa-solid fa-user-slash" style="color: var(--text-muted); margin-right: 6px;"></i> 0 Enrolled</strong>
+                        </li>
+                    </ul>
+                    <input type="hidden" name="status" id="exam_hidden_status" value="{{ status_filter }}">
+                </div>
+            </div>
+
+            <!-- 4. Filter Actions & Status Badge -->
+            <div class="filter-col-actions">
+                {% if batch_filter or status_filter or query %}
+                <a href="{% url 'admin_exam_list' %}" class="btn-secondary filter-btn" title="Reset all active filters">
+                    <i class="fa-solid fa-xmark"></i> Clear Filters
+                </a>
+                {% endif %}
+                <div class="dossier-btn-dark filter-badge">
+                    Showing <strong>&nbsp;{{ exam_cards|length }}&nbsp;</strong> assessment{{ exam_cards|length|pluralize }}
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- View Navigation Tabs: By Batches vs All Assessments -->
+<div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; flex-wrap: wrap;">
+    <button type="button" id="tab_btn_batches" class="btn-secondary" onclick="switchExamTab('batches');" style="border-radius: var(--border-radius-full); font-weight: 600; padding: 0.45rem 1.15rem; background: var(--primary); color: #ffffff;">
+        <i class="fa-solid fa-layer-group"></i> By Batches ({{ batch_groups|length }})
+    </button>
+    <button type="button" id="tab_btn_all" class="btn-secondary" onclick="switchExamTab('all');" style="border-radius: var(--border-radius-full); font-weight: 600; padding: 0.45rem 1.15rem;">
+        <i class="fa-solid fa-file-signature"></i> All Assessments ({{ exam_cards|length }})
+    </button>
+</div>
+
+<!-- ================= TAB 1: BATCH-WISE ASSESSMENTS VIEW ================= -->
+<div id="tab_pane_batches" style="display: block;">
+    {% if batch_groups %}
+    <div style="display: flex; flex-direction: column; gap: 2rem; margin-bottom: 3rem;">
+        {% for bg in batch_groups %}
+        <div class="student-card" style="padding: 1.5rem; border-top: 4px solid {% if bg.total_exams > 0 and bg.total_pending == 0 %}#10b981{% elif bg.total_exams > 0 %}var(--primary){% else %}var(--border-color){% endif %};">
+            <!-- Batch Header -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.85rem;">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(79, 70, 229, 0.08); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+                            <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin: 0;">
+                                {{ bg.batch.name }}
+                            </h3>
+                            <span class="badge badge-secondary" style="font-size: 0.75rem;">
+                                <i class="fa-regular fa-clock"></i> {{ bg.batch.time_slot }}
+                            </span>
+                            {% if bg.batch.course %}
+                            <span class="badge badge-primary" style="font-size: 0.72rem;">
+                                <i class="fa-solid fa-graduation-cap"></i> {{ bg.batch.course }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 3px; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+                            <span><i class="fa-solid fa-chalkboard-user" style="color: var(--primary);"></i> Faculty: <strong>{{ bg.batch.faculty.name|default:"Unassigned" }}</strong></span>
+                            <span>&bull;</span>
+                            <span><i class="fa-solid fa-users"></i> <strong>{{ bg.total_students }}</strong> Student{{ bg.total_students|pluralize }} in Batch</span>
+                            <span>&bull;</span>
+                            <span><i class="fa-solid fa-file-signature"></i> <strong>{{ bg.total_exams }}</strong> Assessment{{ bg.total_exams|pluralize }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schedule Exam for this Batch Button -->
+                <div style="display: flex; align-items: center; gap: 0.6rem;">
+                    <a href="{% url 'admin_exam_create' %}?batch_id={{ bg.batch.id }}" class="btn-primary" style="height: 36px; padding: 0 0.95rem; font-size: 0.8rem;">
+                        <i class="fa-solid fa-plus"></i> Schedule Exam for Batch
+                    </a>
+                </div>
+            </div>
+
+            <!-- Assessments Grid under this Batch -->
+            {% if bg.exams %}
+            <div class="exams-grid" style="grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));">
+                {% for card in bg.exams %}
+                <div class="student-card exam-card-item" style="background: var(--bg-surface); border: 1px solid var(--border-color); box-shadow: none;">
+                    <div class="card-top" style="justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                        <div style="flex: 1; min-width: 0;">
+                            <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: var(--text-muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                {{ card.exam.subject }}
+                            </span>
+                            <div style="margin-top: 0.2rem;">
+                                <span class="dossier-btn-dark primary" style="font-size: 0.72rem; padding: 0.15rem 0.55rem;">
+                                    <i class="fa-solid fa-award"></i> {{ card.exam.total_marks }} Marks
+                                </span>
+                            </div>
+                        </div>
+                        <div>
+                            {% if card.total_students == 0 %}
+                            <span class="dossier-btn-dark" style="font-size: 0.7rem; padding: 0.15rem 0.5rem; color: var(--text-muted);">0 Enrolled</span>
+                            {% elif card.pending_count == 0 %}
+                            <span class="dossier-btn-dark success" style="font-size: 0.7rem; padding: 0.15rem 0.5rem;"><i class="fa-solid fa-circle-check"></i> Complete</span>
+                            {% else %}
+                            <span class="dossier-btn-dark" style="font-size: 0.7rem; padding: 0.15rem 0.5rem; background: var(--warning-light); color: var(--warning-text); border-color: var(--warning-border);">{{ card.pending_count }} Pending</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem;">
+                        <a href="{% url 'admin_exam_detail' card.exam.id %}" style="color: var(--text-primary); text-decoration: none; font-weight: 700; font-size: 1rem; line-height: 1.35;">
+                            {{ card.exam.title }}
+                        </a>
+                        <div style="font-size: 0.78rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+                            <span><i class="fa-regular fa-calendar" style="color: var(--primary);"></i> {{ card.exam.exam_date|date:"M d, Y" }}</span>
+                            {% if card.exam.exam_time %}
+                            <span>&bull;</span>
+                            <span><i class="fa-solid fa-clock" style="color: var(--primary);"></i> {{ card.exam.exam_time }}</span>
+                            {% endif %}
+                        </div>
+                        <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; margin-top: 0.2rem;">
+                            <span class="dossier-btn-dark" style="padding: 0.15rem 0.5rem; font-size: 0.72rem;">
+                                <i class="fa-solid fa-users"></i> {{ card.total_students }} Enrolled
+                            </span>
+                            <span class="dossier-btn-dark success" style="padding: 0.15rem 0.5rem; font-size: 0.72rem;">
+                                <i class="fa-solid fa-check"></i> {{ card.graded_count }} Graded
+                            </span>
+                            {% if card.avg_score %}
+                            <span class="dossier-btn-dark primary" style="padding: 0.15rem 0.5rem; font-size: 0.72rem;">
+                                <i class="fa-solid fa-chart-line"></i> Avg: {{ card.avg_score }}/{{ card.exam.total_marks }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div style="border-top: 1px solid var(--border-color); padding-top: 0.65rem; display: flex; justify-content: space-between; align-items: center;">
+                        <a href="{% url 'admin_exam_detail' card.exam.id %}" class="btn-primary" style="height: 32px; padding: 0 0.75rem; font-size: 0.75rem;">
+                            <i class="fa-solid fa-clipboard-check"></i> Evaluate Marks
+                        </a>
+                        <div style="display: inline-flex; gap: 0.35rem; align-items: center;">
+                            <a href="{% url 'admin_exam_edit' card.exam.id %}" class="btn-icon" title="Edit Assessment">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </a>
+                            <a href="{% url 'admin_exam_delete' card.exam.id %}" class="btn-icon btn-delete" onclick="return confirm('Delete exam {{ card.exam.title }} and all its marks?');" title="Delete Assessment">
+                                <i class="fa-solid fa-trash"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="padding: 2rem 1.5rem; text-align: center; color: var(--text-muted); background: var(--bg-main); border: 1px dashed var(--border-color); border-radius: var(--border-radius-md);">
+                <i class="fa-solid fa-file-signature" style="font-size: 1.5rem; color: var(--border-color); display: block; margin-bottom: 0.4rem;"></i>
+                No examinations scheduled for {{ bg.batch.name }} yet.
+                <div style="margin-top: 0.6rem;">
+                    <a href="{% url 'admin_exam_create' %}?batch_id={{ bg.batch.id }}" class="btn-secondary" style="height: 32px; padding: 0 0.85rem; font-size: 0.78rem;">
+                        <i class="fa-solid fa-plus"></i> Schedule First Exam for Batch
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Unassigned / Cross-Batch Group -->
+    {% if unassigned_group and unassigned_group.exams %}
+    <div class="student-card" style="padding: 1.5rem; border-top: 4px solid var(--text-muted); margin-bottom: 3rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+            <div>
+                <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.2rem 0;">
+                    <i class="fa-solid fa-globe" style="color: var(--primary); margin-right: 6px;"></i> {{ unassigned_group.title }}
+                </h3>
+                <small style="color: var(--text-muted); font-size: 0.8rem;">Assessments with cross-batch enrollment or custom candidate cohorts</small>
+            </div>
+            <span class="dossier-btn-dark">{{ unassigned_group.total_exams }} assessment{{ unassigned_group.total_exams|pluralize }}</span>
+        </div>
+
+        <div class="exams-grid" style="grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));">
+            {% for card in unassigned_group.exams %}
+            <div class="student-card exam-card-item" style="background: var(--bg-surface); border: 1px solid var(--border-color); box-shadow: none;">
+                <div class="card-top" style="justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                    <div style="flex: 1; min-width: 0;">
+                        <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: var(--text-muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            {{ card.exam.subject }}
+                        </span>
+                        <div style="margin-top: 0.2rem;">
+                            <span class="dossier-btn-dark primary" style="font-size: 0.72rem; padding: 0.15rem 0.55rem;">
+                                <i class="fa-solid fa-award"></i> {{ card.exam.total_marks }} Marks
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="flex: 1; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem;">
+                    <a href="{% url 'admin_exam_detail' card.exam.id %}" style="color: var(--text-primary); text-decoration: none; font-weight: 700; font-size: 1rem; line-height: 1.35;">
+                        {{ card.exam.title }}
+                    </a>
+                    <div style="font-size: 0.78rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+                        <span><i class="fa-regular fa-calendar" style="color: var(--primary);"></i> {{ card.exam.exam_date|date:"M d, Y" }}</span>
+                        {% if card.exam.exam_time %}
+                        <span>&bull;</span>
+                        <span><i class="fa-solid fa-clock" style="color: var(--primary);"></i> {{ card.exam.exam_time }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div style="border-top: 1px solid var(--border-color); padding-top: 0.65rem; display: flex; justify-content: space-between; align-items: center;">
+                    <a href="{% url 'admin_exam_detail' card.exam.id %}" class="btn-primary" style="height: 32px; padding: 0 0.75rem; font-size: 0.75rem;">
+                        <i class="fa-solid fa-clipboard-check"></i> Evaluate Marks
+                    </a>
+                    <div style="display: inline-flex; gap: 0.35rem; align-items: center;">
+                        <a href="{% url 'admin_exam_edit' card.exam.id %}" class="btn-icon" title="Edit Assessment">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </a>
+                        <a href="{% url 'admin_exam_delete' card.exam.id %}" class="btn-icon btn-delete" onclick="return confirm('Delete exam {{ card.exam.title }} and all its marks?');" title="Delete Assessment">
+                            <i class="fa-solid fa-trash"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="student-card" style="padding: 4rem 2rem; text-align: center;">
+        <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: inline-flex; align-items: center; justify-content: center; font-size: 1.75rem; margin-bottom: 1.25rem;">
+            <i class="fa-solid fa-layer-group"></i>
+        </div>
+        <h3 style="font-size: 1.35rem; color: var(--text-primary); margin-bottom: 0.5rem;">No Batches Found</h3>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">
+            No active batches matching the selected filter criteria.
+        </p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ================= TAB 2: ALL ASSESSMENTS GRID ================= -->
+<div id="tab_pane_all" style="display: none;">
+    {% if exam_cards %}
+    <div class="exams-grid">
+        {% for card in exam_cards %}
+        <div class="student-card exam-card-item">
+            <!-- Card Header: Subject & Total Marks -->
+            <div class="card-top" style="justify-content: space-between; align-items: flex-start;">
+                <div style="display: flex; align-items: center; gap: 0.85rem; flex: 1; min-width: 0;">
+                    <div class="card-avatar" style="width: 44px; height: 44px; font-size: 1.1rem; background: var(--primary-gradient);">
+                        <i class="fa-solid fa-file-signature"></i>
+                    </div>
+                    <div style="min-width: 0; flex: 1;">
+                        <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: var(--text-muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            {{ card.exam.subject }}
+                        </span>
+                        <div style="margin-top: 0.2rem; display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+                            <span class="dossier-btn-dark primary" style="font-size: 0.72rem; padding: 0.15rem 0.55rem;">
+                                <i class="fa-solid fa-award"></i> {{ card.exam.total_marks }} Marks
+                            </span>
+                            <span class="badge badge-primary" style="font-size: 0.7rem; padding: 0.15rem 0.5rem;">
+                                <i class="fa-solid fa-layer-group"></i> {{ card.exam.batches_display }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="flex-shrink: 0; margin-left: 0.5rem;">
+                    {% if card.total_students == 0 %}
+                    <span class="dossier-btn-dark" style="font-size: 0.72rem; padding: 0.2rem 0.6rem; color: var(--text-muted);">
+                        <i class="fa-solid fa-user-slash"></i> 0 Enrolled
+                    </span>
+                    {% elif card.pending_count == 0 %}
+                    <span class="dossier-btn-dark success" style="font-size: 0.72rem; padding: 0.2rem 0.6rem;">
+                        <i class="fa-solid fa-circle-check"></i> Complete
+                    </span>
+                    {% else %}
+                    <span class="dossier-btn-dark" style="font-size: 0.72rem; padding: 0.2rem 0.6rem; background: var(--warning-light); color: var(--warning-text); border-color: var(--warning-border);">
+                        <i class="fa-solid fa-clock"></i> {{ card.pending_count }} Pending
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Card Body: Exam Title & Details -->
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 0.75rem;">
+                <div>
+                    <a href="{% url 'admin_exam_detail' card.exam.id %}" style="color: var(--text-primary); text-decoration: none; font-weight: 700; font-size: 1.1rem; line-height: 1.35; display: block; margin-bottom: 0.35rem;">
+                        {{ card.exam.title }}
+                    </a>
+                </div>
+
+                <!-- Exam Schedule Details -->
+                <div style="font-size: 0.8rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.85rem; flex-wrap: wrap;">
+                    <span style="display: inline-flex; align-items: center; gap: 0.35rem;">
+                        <i class="fa-regular fa-calendar" style="color: var(--primary);"></i> {{ card.exam.exam_date|date:"M d, Y" }}
+                    </span>
+                    {% if card.exam.exam_time %}
+                    <span style="display: inline-flex; align-items: center; gap: 0.35rem; color: var(--text-muted);">
+                        &bull; <i class="fa-solid fa-clock" style="color: var(--primary);"></i> {{ card.exam.exam_time }}
+                    </span>
+                    {% endif %}
+                </div>
+
+                <!-- Enrollment & Grading Breakdown Badges -->
+                <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; padding-top: 0.25rem;">
+                    <span class="dossier-btn-dark" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">
+                        <i class="fa-solid fa-users" style="color: var(--primary);"></i> {{ card.total_students }} Enrolled
+                    </span>
+                    <span class="dossier-btn-dark success" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">
+                        <i class="fa-solid fa-check"></i> {{ card.graded_count }} Graded
+                    </span>
+                    {% if card.absent_count %}
+                    <span class="dossier-btn-dark danger" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">
+                        <i class="fa-solid fa-user-xmark"></i> {{ card.absent_count }} Absent
+                    </span>
+                    {% endif %}
+                    {% if card.pending_count > 0 %}
+                    <span class="dossier-btn-dark" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; background: var(--warning-light); color: var(--warning-text); border-color: var(--warning-border);">
+                        <i class="fa-solid fa-hourglass-half"></i> {{ card.pending_count }} Unmarked
+                    </span>
+                    {% endif %}
+                    {% if card.avg_score %}
+                    <span class="dossier-btn-dark primary" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">
+                        <i class="fa-solid fa-chart-line"></i> Avg: {{ card.avg_score }}/{{ card.exam.total_marks }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Card Footer: Quick Actions -->
+            <div style="border-top: 1px solid var(--border-color); padding-top: 0.85rem; margin-top: 0.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                <a href="{% url 'admin_exam_detail' card.exam.id %}" class="btn-primary" style="height: 34px; padding: 0 0.85rem; font-size: 0.78rem;">
+                    <i class="fa-solid fa-clipboard-check"></i> Evaluate Marks
+                </a>
+
+                <div style="display: inline-flex; gap: 0.35rem; align-items: center;">
+                    <a href="{% url 'admin_exam_edit' card.exam.id %}" class="btn-icon" title="Edit Assessment">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </a>
+                    <a href="{% url 'admin_exam_delete' card.exam.id %}" class="btn-icon btn-delete" onclick="return confirm('Delete exam {{ card.exam.title }} and all its marks?');" title="Delete Assessment">
+                        <i class="fa-solid fa-trash"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="student-card" style="padding: 4rem 2rem; text-align: center;">
+        <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: inline-flex; align-items: center; justify-content: center; font-size: 1.75rem; margin-bottom: 1.25rem;">
+            <i class="fa-solid fa-file-signature"></i>
+        </div>
+        <h3 style="font-size: 1.35rem; color: var(--text-primary); margin-bottom: 0.5rem;">No Assessments Found</h3>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">
+            {% if query or batch_filter or status_filter %}No examinations matched your filter settings.{% else %}No assessments scheduled yet.{% endif %}
+        </p>
+        <a href="{% url 'admin_exam_create' %}" class="btn-primary" style="display: inline-flex;">
+            <i class="fa-solid fa-plus"></i> Schedule First Assessment
         </a>
     </div>
     {% endif %}
 </div>
 
-{% if exam_cards %}
-<!-- Responsive Exam Cards Grid -->
-<div class="exams-grid">
-    {% for card in exam_cards %}
-    <div class="student-card exam-card-item">
-        <!-- Card Header: Subject & Total Marks -->
-        <div class="card-top" style="justify-content: space-between; align-items: flex-start;">
-            <div style="display: flex; align-items: center; gap: 0.85rem; flex: 1; min-width: 0;">
-                <div class="card-avatar" style="width: 44px; height: 44px; font-size: 1.1rem; background: var(--primary-gradient);">
-                    <i class="fa-solid fa-file-signature"></i>
-                </div>
-                <div style="min-width: 0; flex: 1;">
-                    <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: var(--text-muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        {{ card.exam.subject }}
-                    </span>
-                    <div style="margin-top: 0.2rem;">
-                        <span class="dossier-btn-dark primary" style="font-size: 0.72rem; padding: 0.15rem 0.55rem;">
-                            <i class="fa-solid fa-award"></i> {{ card.exam.total_marks }} Total Marks
-                        </span>
-                    </div>
-                </div>
-            </div>
-            
-            <div style="flex-shrink: 0; margin-left: 0.5rem;">
-                {% if card.total_students == 0 %}
-                <span class="dossier-btn-dark" style="font-size: 0.72rem; padding: 0.2rem 0.6rem; color: var(--text-muted);">
-                    <i class="fa-solid fa-user-slash"></i> 0 Enrolled
-                </span>
-                {% elif card.pending_count == 0 %}
-                <span class="dossier-btn-dark success" style="font-size: 0.72rem; padding: 0.2rem 0.6rem;">
-                    <i class="fa-solid fa-circle-check"></i> Complete
-                </span>
-                {% else %}
-                <span class="dossier-btn-dark" style="font-size: 0.72rem; padding: 0.2rem 0.6rem; background: var(--warning-light); color: var(--warning-text); border-color: var(--warning-border);">
-                    <i class="fa-solid fa-clock"></i> {{ card.pending_count }} Pending
-                </span>
-                {% endif %}
-            </div>
-        </div>
+<!-- Scripts for Dropdowns and Tab Switching -->
+<script>
+function setupFilterDropdown(inputId, listId, hiddenId, itemSelector) {
+    const input = document.getElementById(inputId);
+    const list = document.getElementById(listId);
+    const hidden = document.getElementById(hiddenId);
+    const form = document.getElementById("examFilterForm");
+    if (!input || !list || !hidden || !form) return;
 
-        <!-- Card Body: Exam Title & Details -->
-        <div style="flex: 1; display: flex; flex-direction: column; gap: 0.75rem;">
-            <div>
-                <a href="{% url 'admin_exam_detail' card.exam.id %}" style="color: var(--text-primary); text-decoration: none; font-weight: 700; font-size: 1.1rem; line-height: 1.35; display: block; margin-bottom: 0.35rem;">
-                    {{ card.exam.title }}
-                </a>
-            </div>
+    const items = list.querySelectorAll(itemSelector);
+    let originalValue = input.value;
 
-            <!-- Exam Schedule Details -->
-            <div style="font-size: 0.8rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.85rem; flex-wrap: wrap;">
-                <span style="display: inline-flex; align-items: center; gap: 0.35rem;">
-                    <i class="fa-regular fa-calendar" style="color: var(--primary);"></i> {{ card.exam.exam_date|date:"M d, Y" }}
-                </span>
-                {% if card.exam.exam_time %}
-                <span style="display: inline-flex; align-items: center; gap: 0.35rem; color: var(--text-muted);">
-                    &bull; <i class="fa-solid fa-clock" style="color: var(--primary);"></i> {{ card.exam.exam_time }}
-                </span>
-                {% endif %}
-            </div>
+    function show() {
+        document.querySelectorAll('.searchable-list').forEach(l => {
+            if (l !== list) l.style.display = 'none';
+        });
+        document.querySelectorAll('.searchable-select-container').forEach(c => {
+            if (!c.contains(list)) c.classList.remove('open');
+        });
+        list.style.display = "block";
+        const container = input.closest(".searchable-select-container");
+        if (container) container.classList.add("open");
 
-            <!-- Enrollment & Grading Breakdown Badges -->
-            <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; padding-top: 0.25rem;">
-                <span class="dossier-btn-dark" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">
-                    <i class="fa-solid fa-users" style="color: var(--primary);"></i> {{ card.total_students }} Enrolled
-                </span>
-                <span class="dossier-btn-dark success" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">
-                    <i class="fa-solid fa-check"></i> {{ card.graded_count }} Graded
-                </span>
-                {% if card.absent_count %}
-                <span class="dossier-btn-dark danger" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">
-                    <i class="fa-solid fa-user-xmark"></i> {{ card.absent_count }} Absent
-                </span>
-                {% endif %}
-                {% if card.pending_count > 0 %}
-                <span class="dossier-btn-dark" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; background: var(--warning-light); color: var(--warning-text); border-color: var(--warning-border);">
-                    <i class="fa-solid fa-hourglass-half"></i> {{ card.pending_count }} Unmarked
-                </span>
-                {% endif %}
-            </div>
-        </div>
+        if (!input.readOnly) {
+            originalValue = input.value;
+            input.value = "";
+            items.forEach(it => it.style.display = "");
+        }
+    }
 
-        <!-- Card Footer: Quick Actions -->
-        <div style="border-top: 1px solid var(--border-color); padding-top: 0.85rem; margin-top: 0.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-            <a href="{% url 'admin_exam_detail' card.exam.id %}" class="btn-primary" style="height: 34px; padding: 0 0.85rem; font-size: 0.78rem;">
-                <i class="fa-solid fa-clipboard-check"></i> Evaluate Marks
-            </a>
+    function hide() {
+        list.style.display = "none";
+        const container = input.closest(".searchable-select-container");
+        if (container) container.classList.remove("open");
 
-            <div style="display: inline-flex; gap: 0.35rem; align-items: center;">
-                <a href="{% url 'admin_exam_edit' card.exam.id %}" class="btn-icon" title="Edit Assessment">
-                    <i class="fa-solid fa-pen-to-square"></i>
-                </a>
-                <a href="{% url 'admin_exam_delete' card.exam.id %}" class="btn-icon btn-delete" onclick="return confirm('Delete exam {{ card.exam.title }} and all its marks?');" title="Delete Assessment">
-                    <i class="fa-solid fa-trash"></i>
-                </a>
-            </div>
-        </div>
-    </div>
-    {% endfor %}
-</div>
-{% else %}
-<div class="student-card" style="padding: 4rem 2rem; text-align: center;">
-    <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: inline-flex; align-items: center; justify-content: center; font-size: 1.75rem; margin-bottom: 1.25rem;">
-        <i class="fa-solid fa-file-signature"></i>
-    </div>
-    <h3 style="font-size: 1.35rem; color: var(--text-primary); margin-bottom: 0.5rem;">No Exams Found</h3>
-    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">
-        {% if query %}No exams matched your search query "{{ query }}".{% else %}No examinations have been scheduled yet.{% endif %}
-    </p>
-    <a href="{% url 'admin_exam_create' %}" class="btn-primary" style="display: inline-flex;">
-        <i class="fa-solid fa-plus"></i> Create First Exam
-    </a>
-</div>
-{% endif %}
+        if (!input.readOnly && !input.value) {
+            input.value = originalValue;
+        }
+    }
+
+    let wasOpenOnMousedown = false;
+
+    input.addEventListener("mousedown", function() {
+        wasOpenOnMousedown = (list.style.display === "block");
+    });
+
+    input.addEventListener("focus", function() {
+        show();
+    });
+
+    input.addEventListener("click", function(e) {
+        e.stopPropagation();
+        if (wasOpenOnMousedown) {
+            hide();
+        } else {
+            show();
+        }
+    });
+
+    input.addEventListener("select", function(e) {
+        if (input.readOnly) {
+            e.preventDefault();
+            if (input.setSelectionRange) input.setSelectionRange(0, 0);
+            if (window.getSelection) window.getSelection().removeAllRanges();
+        }
+    });
+
+    input.addEventListener("mouseup", function() {
+        if (input.readOnly && window.getSelection) {
+            window.getSelection().removeAllRanges();
+        }
+    });
+
+    list.addEventListener("click", function(e) {
+        const item = e.target.closest("li");
+        if (!item || item.classList.contains("category-header")) return;
+
+        const val = item.getAttribute("data-value") || "";
+        hidden.value = val;
+        const customText = item.getAttribute("data-text");
+        const textEl = item.querySelector("strong") || item.querySelector("span");
+        input.value = val ? (customText || (textEl ? textEl.textContent.trim() : item.textContent.trim())) : "";
+        originalValue = input.value;
+        hide();
+        form.submit();
+    });
+
+    document.addEventListener("click", function(e) {
+        if (!input.contains(e.target) && !list.contains(e.target)) {
+            hide();
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    setupFilterDropdown("exam_batch_input", "exam_batch_list", "exam_hidden_batch", ".exam-batch-item, .all-option");
+    setupFilterDropdown("exam_status_input", "exam_status_list", "exam_hidden_status", ".status-option");
+});
+
+function switchExamTab(tab) {
+    const paneBatches = document.getElementById("tab_pane_batches");
+    const paneAll = document.getElementById("tab_pane_all");
+    const btnBatches = document.getElementById("tab_btn_batches");
+    const btnAll = document.getElementById("tab_btn_all");
+
+    if (tab === "batches") {
+        if (paneBatches) paneBatches.style.display = "block";
+        if (paneAll) paneAll.style.display = "none";
+        if (btnBatches) {
+            btnBatches.style.background = "var(--primary)";
+            btnBatches.style.color = "#ffffff";
+        }
+        if (btnAll) {
+            btnAll.style.background = "";
+            btnAll.style.color = "";
+        }
+    } else {
+        if (paneBatches) paneBatches.style.display = "none";
+        if (paneAll) paneAll.style.display = "block";
+        if (btnAll) {
+            btnAll.style.background = "var(--primary)";
+            btnAll.style.color = "#ffffff";
+        }
+        if (btnBatches) {
+            btnBatches.style.background = "";
+            btnBatches.style.color = "";
+        }
+    }
+}
+</script>
 {% endblock %}

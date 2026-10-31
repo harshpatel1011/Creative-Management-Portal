@@ -1,7 +1,7 @@
 {% extends 'management/base.html' %}
 {% load static %}
 
-{% block title %}{{ exam.title }} - Evaluation{% endblock %}
+{% block title %}{{ exam.title }} - Assessment Evaluation - Creative Management{% endblock %}
 
 {% block breadcrumbs %}
 <a href="{% url 'admin_exam_list' %}">Exams</a>
@@ -10,6 +10,42 @@
 {% endblock %}
 
 {% block content %}
+<style>
+.batch-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+.batch-kpi-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: 1.15rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 0.75rem;
+    box-shadow: var(--shadow-sm);
+}
+.batch-tab-btn {
+    border-radius: var(--border-radius-full);
+    font-weight: 600;
+    padding: 0.4rem 1rem;
+    font-size: 0.82rem;
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+.batch-tab-btn.active, .batch-tab-btn:hover {
+    background: var(--primary);
+    color: #ffffff;
+    border-color: var(--primary);
+}
+</style>
+
 <!-- Top Header & Actions -->
 <div class="page-header">
     <div class="header-text">
@@ -40,6 +76,9 @@
                 <h2 style="font-size: 1.65rem; margin: 0; color: var(--text-primary);">{{ exam.title }}</h2>
                 <span class="dossier-btn-dark primary" style="padding: 0.25rem 0.65rem; font-size: 0.8rem; font-weight: 600;">
                     <i class="fa-solid fa-book-open"></i> {{ exam.subject }}
+                </span>
+                <span class="badge badge-primary" style="font-size: 0.78rem; padding: 0.25rem 0.65rem;">
+                    <i class="fa-solid fa-layer-group"></i> {{ exam.batches_display }}
                 </span>
             </div>
             <div style="display: flex; gap: 0.85rem 1.25rem; align-items: center; flex-wrap: wrap; color: var(--text-secondary); font-size: 0.88rem;">
@@ -77,203 +116,301 @@
     </div>
 </div>
 
-<!-- Quick Enroll Student Widget -->
-{% if available_students %}
-<div class="student-card" style="padding: 1.25rem 1.75rem; margin-bottom: 2rem; border-left: 4px solid var(--primary);">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-        <div>
-            <h3 style="margin: 0 0 0.2rem 0; font-size: 1rem; color: var(--text-primary);">
-                <i class="fa-solid fa-user-plus" style="color: var(--primary); margin-right: 6px;"></i> Enroll Student in this Assessment
-            </h3>
-            <small style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Quickly append another registered student to this assessment evaluation</small>
-        </div>
-        <form method="POST" action="{% url 'admin_exam_add_student' exam.id %}" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-            {% csrf_token %}
-            <div class="searchable-select-container" style="min-width: 300px; position: relative;">
-                <input type="text" id="enroll-student-search" class="searchable-select-input" placeholder="Search student to enroll..." autocomplete="off">
-                <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
-                <ul id="enroll-student-list" class="searchable-list custom-scrollbar" style="max-height: 240px;">
-                    {% for s in available_students %}
-                    <li data-value="{{ s.id }}">
-                        <strong>{{ s.name }}</strong>
-                        {% if s.course %}
-                        <small style="color: var(--text-muted);">{{ s.course }}</small>
-                        {% endif %}
-                        {% if s.class_time %}
-                        <small style="color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
-                            <i class="fa-solid fa-clock" style="font-size: 0.72rem; color: var(--primary);"></i> {{ s.class_time }}
-                        </small>
-                        {% endif %}
-                    </li>
-                    {% endfor %}
-                </ul>
-                <input type="hidden" name="student_id" id="hidden-enroll-student" required>
+<!-- Batch Performance Breakdown Cards -->
+{% if batch_marks_groups %}
+<div style="margin-bottom: 2rem;">
+    <div style="margin-bottom: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin: 0;">
+            <i class="fa-solid fa-layer-group" style="color: var(--primary); margin-right: 6px;"></i> Batch Performance Breakdown
+        </h3>
+        <span class="dossier-btn-dark" style="font-size: 0.75rem;">{{ batch_marks_groups|length }} Active Batch{{ batch_marks_groups|length|pluralize }}</span>
+    </div>
+
+    <div class="batch-kpi-grid">
+        {% for bg in batch_marks_groups %}
+        <div class="batch-kpi-card" style="border-left: 4px solid {% if bg.is_complete %}#10b981{% elif bg.graded_count > 0 %}var(--primary){% else %}#f59e0b{% endif %};">
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.4rem;">
+                    <strong style="color: var(--text-primary); font-size: 0.95rem;">{{ bg.batch.name }}</strong>
+                    {% if bg.is_complete %}
+                    <span class="badge badge-success" style="font-size: 0.68rem;"><i class="fa-solid fa-check"></i> Complete</span>
+                    {% elif bg.graded_count > 0 %}
+                    <span class="badge badge-primary" style="font-size: 0.68rem;">{{ bg.graded_count }}/{{ bg.total_students }} Graded</span>
+                    {% else %}
+                    <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #d97706; font-size: 0.68rem;">Pending</span>
+                    {% endif %}
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 2px;">
+                    <span><i class="fa-solid fa-clock" style="font-size: 0.7rem; color: var(--primary);"></i> {{ bg.batch.time_slot }}</span>
+                    <span><i class="fa-solid fa-chalkboard-user" style="font-size: 0.7rem;"></i> Faculty: {{ bg.batch.faculty.name|default:'Unassigned' }}</span>
+                </div>
             </div>
-            <button type="submit" class="btn-primary" style="height: 40px; padding: 0 1.15rem; font-size: 0.85rem;">
-                <i class="fa-solid fa-plus"></i> Enroll
+
+            <div style="border-top: 1px solid var(--border-color-light); padding-top: 0.5rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+                <span style="color: var(--text-secondary);">
+                    <strong>{{ bg.total_students }}</strong> Student{{ bg.total_students|pluralize }}
+                </span>
+                <span style="font-weight: 700; color: var(--primary);">
+                    Avg: {{ bg.avg_marks }} / {{ exam.total_marks }}
+                </span>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if unassigned_batch_group %}
+        <div class="batch-kpi-card" style="border-left: 4px solid var(--text-muted);">
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.4rem;">
+                    <strong style="color: var(--text-primary); font-size: 0.95rem;">{{ unassigned_batch_group.title }}</strong>
+                    {% if unassigned_batch_group.is_complete %}
+                    <span class="badge badge-success" style="font-size: 0.68rem;"><i class="fa-solid fa-check"></i> Complete</span>
+                    {% else %}
+                    <span class="badge badge-secondary" style="font-size: 0.68rem;">{{ unassigned_batch_group.graded_count }}/{{ unassigned_batch_group.total_students }} Graded</span>
+                    {% endif %}
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">
+                    <span>Cross-batch & unassigned student evaluations</span>
+                </div>
+            </div>
+            <div style="border-top: 1px solid var(--border-color-light); padding-top: 0.5rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+                <span style="color: var(--text-secondary);">
+                    <strong>{{ unassigned_batch_group.total_students }}</strong> Student{{ unassigned_batch_group.total_students|pluralize }}
+                </span>
+                <span style="font-weight: 700; color: var(--primary);">
+                    Avg: {{ unassigned_batch_group.avg_marks }} / {{ exam.total_marks }}
+                </span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Quick Batch Enrollment Panel -->
+{% if available_batches %}
+<div class="student-card" style="padding: 1.25rem 1.75rem; margin-bottom: 2rem; border-left: 4px solid var(--primary);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.25rem;">
+        <div>
+            <h3 style="margin: 0 0 0.25rem 0; font-size: 1.05rem; color: var(--text-primary);">
+                <i class="fa-solid fa-layer-group" style="color: var(--primary); margin-right: 6px;"></i> Enroll Another Batch
+            </h3>
+            <small style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Append another active batch and all its enrolled students into this assessment</small>
+        </div>
+
+        <form method="POST" action="{% url 'admin_exam_add_batch' exam.id %}" style="display: flex; gap: 0.45rem; align-items: center; margin: 0; flex-wrap: wrap;">
+            {% csrf_token %}
+            <select name="batch_id" required class="form-input" style="height: 38px; min-width: 250px; padding: 0.35rem 0.75rem; font-size: 0.85rem; cursor: pointer;">
+                <option value="">-- Select Batch to Enroll --</option>
+                {% for ab in available_batches %}
+                <option value="{{ ab.batch.id }}">{{ ab.batch.name }} ({{ ab.unenrolled_count }} students &bull; {{ ab.batch.time_slot }})</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn-primary" style="height: 38px; padding: 0 1.15rem; font-size: 0.82rem; white-space: nowrap;">
+                <i class="fa-solid fa-plus"></i> Enroll Batch
             </button>
         </form>
     </div>
 </div>
 {% endif %}
-
-<!-- Enrolled Students & Marks Entry Table -->
-<div class="student-card" style="padding: 0; overflow: hidden; margin-bottom: 2rem;">
-    <div style="padding: 1.25rem 1.75rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; background: linear-gradient(180deg, #ffffff 0%, var(--bg-main) 100%);">
-        <div>
-            <h3 style="font-size: 1.15rem; color: var(--text-primary); margin: 0 0 0.2rem 0;">Marks Entry & Assessment</h3>
-            <small style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">Enter marks obtained out of <strong>{{ exam.total_marks }}</strong> or record student attendance status</small>
+<!-- ================= MARKS ENTRY TABLE (BATCH-FILTERABLE) ================= -->
+<div class="student-card" style="padding: 0; overflow: hidden; margin-bottom: 2.5rem;">
+    <!-- Table Header & Batch Filter Tabs -->
+    <div style="padding: 1.25rem 1.75rem; border-bottom: 1px solid var(--border-color); background: linear-gradient(180deg, #ffffff 0%, var(--bg-main) 100%);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
+            <div>
+                <h3 style="font-size: 1.15rem; color: var(--text-primary); margin: 0 0 0.2rem 0;">Marks Entry & Assessment Evaluation</h3>
+                <small style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">Enter marks obtained out of <strong>{{ exam.total_marks }}</strong> or record student attendance status</small>
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <span class="dossier-btn-dark">
+                    <strong>{{ graded_count }}</strong> graded{% if absent_count %}, <strong style="color: var(--danger);">{{ absent_count }}</strong> absent{% endif %} ({{ total_students }} total)
+                </span>
+                {% if marks_records %}
+                <button type="button" onclick="submitBulkMarks();" class="btn-primary" style="height: 34px; padding: 0 0.85rem; font-size: 0.8rem;">
+                    <i class="fa-solid fa-floppy-disk"></i> Save All Marks
+                </button>
+                {% endif %}
+            </div>
         </div>
-        <span class="dossier-btn-dark">
-            <strong>{{ graded_count }}</strong> graded{% if absent_count %}, <strong style="color: var(--danger);">{{ absent_count }}</strong> absent{% endif %} ({{ total_students }} total)
-        </span>
+
+        <!-- Batch Filter Tabs for Roster Table -->
+        {% if batch_marks_groups|length > 1 or unassigned_batch_group %}
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; padding-top: 0.5rem; border-top: 1px solid var(--border-color-light);">
+            <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); margin-right: 0.35rem;">
+                <i class="fa-solid fa-filter"></i> View Batch:
+            </span>
+            <button type="button" class="batch-tab-btn active" data-batch-id="all" onclick="filterMarksByBatch('all', this);">
+                All Batches ({{ total_students }})
+            </button>
+            {% for bg in batch_marks_groups %}
+            <button type="button" class="batch-tab-btn" data-batch-id="{{ bg.batch.id }}" onclick="filterMarksByBatch('{{ bg.batch.id }}', this);">
+                {{ bg.batch.name }} ({{ bg.total_students }})
+            </button>
+            {% endfor %}
+            {% if unassigned_batch_group %}
+            <button type="button" class="batch-tab-btn" data-batch-id="unassigned" onclick="filterMarksByBatch('unassigned', this);">
+                Flexible / Other ({{ unassigned_batch_group.total_students }})
+            </button>
+            {% endif %}
+        </div>
+        {% endif %}
     </div>
 
-    <div class="table-responsive" style="border: none; border-radius: 0;">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th style="width: 44px;">#</th>
-                    <th>Student Name</th>
-                    <th>Course & Batch</th>
-                    <th style="min-width: 250px;">Marks Entry (Max: {{ exam.total_marks }})</th>
-                    <th>Grade</th>
-                    <th>Status</th>
-                    <th style="text-align: right;">Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for record in marks_records %}
-                <tr>
-                    <td style="color: var(--text-muted); font-size: 0.8rem;">{{ forloop.counter }}</td>
-                    <td>
-                        <a href="{% url 'admin_student_detail' record.student.id %}" style="color: var(--primary); font-weight: 600; text-decoration: none;">
-                            {{ record.student.name }}
-                        </a>
-                    </td>
-                    <td>
-                        <small style="color: var(--text-muted); display: block;">{{ record.student.course }}</small>
-                        {% if record.student.class_time %}
-                        <small style="color: var(--text-secondary); font-size: 0.75rem; display: flex; align-items: center; gap: 0.35rem; margin-top: 2px;">
-                            <i class="fa-solid fa-clock" style="font-size: 0.7rem; color: var(--primary);"></i> {{ record.student.class_time }}
-                        </small>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <form method="POST" action="{% url 'admin_exam_marks_save' exam.id %}" style="display: flex; align-items: center; gap: 0.4rem; margin: 0; flex-wrap: nowrap;">
-                            {% csrf_token %}
-                            <input type="hidden" name="student_id" value="{{ record.student.id }}">
+    <!-- Bulk Form Wrapper for Save All -->
+    <form id="bulkMarksForm" method="POST" action="{% url 'admin_exam_marks_save' exam.id %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="save_all">
+
+        <div class="table-responsive" style="border: none; border-radius: 0;">
+            <table class="data-table" id="examMarksTable">
+                <thead>
+                    <tr>
+                        <th style="width: 44px;">#</th>
+                        <th>Student Name</th>
+                        <th>Assigned Batch & Course</th>
+                        <th style="min-width: 260px;">Marks Entry (Max: {{ exam.total_marks }})</th>
+                        <th>Grade</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in marks_records %}
+                    <tr class="marks-table-row" data-batch-id="{% if record.student.assigned_batch %}{{ record.student.assigned_batch.id }}{% elif record.student.assigned_batches.first %}{{ record.student.assigned_batches.first.id }}{% else %}unassigned{% endif %}">
+                        <td style="color: var(--text-muted); font-size: 0.8rem;">{{ forloop.counter }}</td>
+                        <td>
+                            <a href="{% url 'admin_student_detail' record.student.id %}" style="color: var(--primary); font-weight: 600; text-decoration: none;">
+                                {{ record.student.name }}
+                            </a>
+                        </td>
+                        <td>
+                            <div style="display: flex; flex-direction: column; gap: 2px;">
+                                {% if record.student.batch_display %}
+                                <div>
+                                    <span class="badge badge-primary" style="font-size: 0.72rem; padding: 0.15rem 0.5rem;">
+                                        <i class="fa-solid fa-layer-group"></i> {{ record.student.batch_display }}
+                                    </span>
+                                </div>
+                                {% endif %}
+                                <small style="color: var(--text-muted); font-size: 0.75rem;">{{ record.student.course }}</small>
+                            </div>
+                        </td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: nowrap;">
+                                {% if record.is_absent %}
+                                <input type="text" value="Absent" class="form-input" disabled style="width: 85px; height: 34px; padding: 0.35rem 0.5rem; text-align: center; font-weight: 700; color: var(--danger); background: var(--danger-light); border: 1px solid var(--danger-border);">
+                                <button type="button" onclick="singleActionSubmit('{{ record.student.id }}', 'clear_absent')" class="btn-secondary" style="height: 34px; padding: 0 0.75rem; font-size: 0.75rem; white-space: nowrap;" title="Mark present to enter marks">
+                                    <i class="fa-solid fa-rotate-left"></i> Mark Present
+                                </button>
+                                {% else %}
+                                <input type="number" step="0.01" min="0" max="{{ exam.total_marks }}" name="marks_{{ record.student.id }}" id="input_marks_{{ record.student.id }}" value="{{ record.marks_obtained|default:'' }}" class="form-input bulk-marks-input" placeholder="0.00" style="width: 85px; height: 34px; padding: 0.35rem 0.5rem; text-align: right; font-weight: 600;">
+                                <button type="button" onclick="singleSaveSubmit('{{ record.student.id }}')" class="btn-primary" style="height: 34px; padding: 0 0.75rem; font-size: 0.75rem; white-space: nowrap;" title="Save Marks">
+                                    <i class="fa-solid fa-floppy-disk"></i> Save
+                                </button>
+                                <button type="button" onclick="singleActionSubmit('{{ record.student.id }}', 'mark_absent')" class="btn-danger" style="height: 34px; padding: 0 0.65rem; font-size: 0.75rem; white-space: nowrap;" title="Mark Student as Absent">
+                                    <i class="fa-solid fa-user-xmark"></i> Absent
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
                             {% if record.is_absent %}
-                            <input type="text" value="Absent" class="form-input" disabled style="width: 85px; height: 34px; padding: 0.35rem 0.5rem; text-align: center; font-weight: 700; color: var(--danger); background: var(--danger-light); border: 1px solid var(--danger-border);">
-                            <button type="submit" name="action" value="clear_absent" class="btn-secondary" style="height: 34px; padding: 0 0.75rem; font-size: 0.75rem; white-space: nowrap;" title="Mark present to enter marks">
-                                <i class="fa-solid fa-rotate-left"></i> Mark Present
-                            </button>
+                            <span style="color: var(--text-muted); font-weight: 600;">-</span>
+                            {% elif record.grade %}
+                            <span class="dossier-btn-dark {% if record.grade == 'F' %}danger{% else %}success{% endif %}" style="display: inline-block; padding: 0.15rem 0.55rem; font-weight: 700; font-size: 0.8rem;">
+                                {{ record.grade }}
+                            </span>
                             {% else %}
-                            <input type="number" step="0.01" min="0" max="{{ exam.total_marks }}" name="marks_obtained" value="{{ record.marks_obtained|default:'' }}" class="form-input" placeholder="0.00" style="width: 85px; height: 34px; padding: 0.35rem 0.5rem; text-align: right; font-weight: 600;">
-                            <button type="submit" name="action" value="save" class="btn-primary" style="height: 34px; padding: 0 0.75rem; font-size: 0.75rem; white-space: nowrap;" title="Save Marks">
-                                <i class="fa-solid fa-floppy-disk"></i> Save
-                            </button>
-                            <button type="submit" name="action" value="mark_absent" class="btn-danger" style="height: 34px; padding: 0 0.65rem; font-size: 0.75rem; white-space: nowrap;" title="Mark Student as Absent">
-                                <i class="fa-solid fa-user-xmark"></i> Absent
-                            </button>
+                            <span style="color: var(--text-muted);">-</span>
                             {% endif %}
-                        </form>
-                    </td>
-                    <td>
-                        {% if record.is_absent %}
-                        <span style="color: var(--text-muted); font-weight: 600;">-</span>
-                        {% elif record.grade %}
-                        <span class="dossier-btn-dark {% if record.grade == 'F' %}danger{% else %}success{% endif %}" style="display: inline-block; padding: 0.15rem 0.55rem; font-weight: 700; font-size: 0.8rem;">
-                            {{ record.grade }}
-                        </span>
-                        {% else %}
-                        <span style="color: var(--text-muted);">-</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if record.is_absent %}
-                        <span class="dossier-btn-dark danger" style="padding: 0.2rem 0.55rem; font-size: 0.72rem; white-space: nowrap;">
-                            <i class="fa-solid fa-user-xmark"></i> Absent
-                        </span>
-                        {% elif record.marks_obtained is not None %}
-                        <span class="dossier-btn-dark success" style="padding: 0.2rem 0.55rem; font-size: 0.72rem; white-space: nowrap;">
-                            <i class="fa-solid fa-circle-check"></i> Graded
-                        </span>
-                        {% else %}
-                        <span class="dossier-btn-dark" style="padding: 0.2rem 0.55rem; font-size: 0.72rem; background: var(--warning-light); color: var(--warning-text); border-color: var(--warning-border); white-space: nowrap;">
-                            <i class="fa-solid fa-clock"></i> Pending
-                        </span>
-                        {% endif %}
-                    </td>
-                    <td style="text-align: right;">
-                        <a href="{% url 'admin_exam_remove_student' exam.id record.student.id %}" class="btn-icon btn-delete" onclick="return confirm('Remove {{ record.student.name }} from this exam roster?');" title="Remove Student from Exam">
-                            <i class="fa-solid fa-user-minus"></i>
-                        </a>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 3rem 1.5rem;">
-                        <i class="fa-solid fa-user-slash" style="font-size: 2rem; color: var(--border-color); display: block; margin-bottom: 0.5rem;"></i>
-                        No students enrolled in this exam yet. Use the enrollment form above or <a href="{% url 'admin_exam_edit' exam.id %}" style="color: var(--primary); font-weight: 600; text-decoration: underline;">Edit Exam</a> to select student cohorts.
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        </td>
+                        <td>
+                            {% if record.is_absent %}
+                            <span class="dossier-btn-dark danger" style="padding: 0.2rem 0.55rem; font-size: 0.72rem; white-space: nowrap;">
+                                <i class="fa-solid fa-user-xmark"></i> Absent
+                            </span>
+                            {% elif record.marks_obtained is not None %}
+                            <span class="dossier-btn-dark success" style="padding: 0.2rem 0.55rem; font-size: 0.72rem; white-space: nowrap;">
+                                <i class="fa-solid fa-circle-check"></i> Graded
+                            </span>
+                            {% else %}
+                            <span class="dossier-btn-dark" style="padding: 0.2rem 0.55rem; font-size: 0.72rem; background: var(--warning-light); color: var(--warning-text); border-color: var(--warning-border); white-space: nowrap;">
+                                <i class="fa-solid fa-clock"></i> Pending
+                            </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 3rem 1.5rem;">
+                            <i class="fa-solid fa-user-slash" style="font-size: 2rem; color: var(--border-color); display: block; margin-bottom: 0.5rem;"></i>
+                            No students enrolled in this assessment yet. Use the Quick Enrollment widget above or <a href="{% url 'admin_exam_edit' exam.id %}" style="color: var(--primary); font-weight: 600; text-decoration: underline;">Edit Exam</a> to enroll batches.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </form>
+
+    <!-- Bottom Actions Toolbar -->
+    {% if marks_records %}
+    <div style="padding: 1rem 1.75rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-main);">
+        <small style="color: var(--text-muted); font-size: 0.8rem;">
+            Tip: You can update multiple scores and click <strong>Save All Marks</strong> to evaluate the entire batch in one step.
+        </small>
+        <button type="button" onclick="submitBulkMarks();" class="btn-primary" style="height: 36px; padding: 0 1rem; font-size: 0.82rem;">
+            <i class="fa-solid fa-floppy-disk"></i> Save All Marks
+        </button>
     </div>
+    {% endif %}
 </div>
 
-<!-- Dropdown Filtering Client Script -->
+<!-- Hidden Individual Action Form -->
+<form id="singleActionForm" method="POST" action="{% url 'admin_exam_marks_save' exam.id %}" style="display: none;">
+    {% csrf_token %}
+    <input type="hidden" name="student_id" id="single_student_id">
+    <input type="hidden" name="action" id="single_action">
+    <input type="hidden" name="marks_obtained" id="single_marks_obtained">
+</form>
+
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    const searchInput = document.getElementById("enroll-student-search");
-    const list = document.getElementById("enroll-student-list");
-    const hiddenInput = document.getElementById("hidden-enroll-student");
+function filterMarksByBatch(batchId, btnEl) {
+    document.querySelectorAll('.batch-tab-btn').forEach(btn => btn.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
 
-    if (searchInput && list && hiddenInput) {
-        const listItems = list.querySelectorAll("li");
-
-        function showList() {
-            list.style.display = "block";
+    const rows = document.querySelectorAll('.marks-table-row');
+    rows.forEach(row => {
+        const rowBatchId = row.getAttribute('data-batch-id');
+        if (batchId === 'all' || rowBatchId === batchId) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
         }
+    });
+}
 
-        searchInput.addEventListener("focus", showList);
-        searchInput.addEventListener("click", function(e) {
-            e.stopPropagation();
-            showList();
-        });
+function singleSaveSubmit(studentId) {
+    const input = document.getElementById('input_marks_' + studentId);
+    const form = document.getElementById('singleActionForm');
+    document.getElementById('single_student_id').value = studentId;
+    document.getElementById('single_action').value = 'save';
+    document.getElementById('single_marks_obtained').value = input ? input.value : '';
+    form.submit();
+}
 
-        searchInput.addEventListener("input", function() {
-            const filter = searchInput.value.toLowerCase().trim();
-            list.style.display = "block";
-            listItems.forEach(item => {
-                const text = item.textContent.toLowerCase();
-                if (text.includes(filter)) {
-                    item.style.display = "flex";
-                } else {
-                    item.style.display = "none";
-                }
-            });
-        });
+function singleActionSubmit(studentId, action) {
+    const form = document.getElementById('singleActionForm');
+    document.getElementById('single_student_id').value = studentId;
+    document.getElementById('single_action').value = action;
+    document.getElementById('single_marks_obtained').value = '';
+    form.submit();
+}
 
-        listItems.forEach(item => {
-            item.addEventListener("click", function(e) {
-                e.stopPropagation();
-                const val = item.getAttribute("data-value");
-                hiddenInput.value = val;
-                const nameEl = item.querySelector("strong");
-                searchInput.value = nameEl ? nameEl.textContent.trim() : item.textContent.trim();
-                list.style.display = "none";
-            });
-        });
+function submitBulkMarks() {
+    const form = document.getElementById('bulkMarksForm');
+    if (form) form.submit();
+}
 
-        document.addEventListener("click", function(e) {
-            if (!searchInput.contains(e.target) && !list.contains(e.target)) {
-                list.style.display = "none";
-            }
-        });
-    }
-});
+
 </script>
 {% endblock %}
