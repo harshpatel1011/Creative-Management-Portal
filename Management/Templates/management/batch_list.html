@@ -181,7 +181,7 @@
             </div>
             {% else %}
             <span style="color: var(--text-muted); font-size: 0.8rem; font-style: italic;">
-                {% if not user.is_superuser %}No students enrolled in your courses for this batch.{% else %}No students assigned to this batch yet.{% endif %}
+                {% if user.is_faculty_only %}No students enrolled in your courses for this batch.{% else %}No students assigned to this batch yet.{% endif %}
             </span>
             {% endif %}
         </div>
@@ -483,15 +483,12 @@
 
                     <div class="form-group">
                         <label class="form-label" style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                            <i class="fa-solid fa-chalkboard-user" style="color: var(--primary);"></i> Assigned Faculty
+                            <i class="fa-solid fa-chalkboard-user" style="color: var(--primary);"></i> Assigned Faculty *
                         </label>
                         <div class="searchable-select-container">
                             <input type="text" id="edit_faculty_input" class="searchable-select-input" placeholder="Search or Select Faculty..." autocomplete="off">
                             <i class="fa-solid fa-chevron-down search-icon-indicator"></i>
                             <ul id="edit_faculty_list" class="searchable-list custom-scrollbar" style="max-height: 220px;">
-                                <li data-value="" data-text="-- Unassigned Faculty --" class="edit-faculty-item all-option" style="padding: 9px 14px; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border-color);">
-                                    <span>-- Unassigned Faculty --</span>
-                                </li>
                                 {% for f in faculties %}
                                 <li data-value="{{ f.id }}" data-text="{{ f.name }}" class="edit-faculty-item" style="padding: 9px 14px; font-size: 0.85rem;">
                                     <strong>{{ f.name }}</strong>
@@ -501,7 +498,7 @@
                                 </li>
                                 {% endfor %}
                             </ul>
-                            <input type="hidden" id="edit_batch_faculty" name="faculty_id">
+                            <input type="hidden" id="edit_batch_faculty" name="faculty_id" required>
                         </div>
                     </div>
                 </div>
@@ -961,6 +958,35 @@ document.addEventListener('DOMContentLoaded', function() {
         itemSelector: '.edit-faculty-item',
         searchable: true
     });
+
+    // Form submit validation to enforce mandatory faculty selection
+    const editBatchForm = document.getElementById('editBatchForm');
+    if (editBatchForm) {
+        editBatchForm.addEventListener('submit', function(e) {
+            const fac = document.getElementById('edit_batch_faculty');
+            if (!fac || !fac.value.trim()) {
+                e.preventDefault();
+                alert('Assigned Faculty is mandatory! Please select a faculty member.');
+                const facInput = document.getElementById('edit_faculty_input');
+                if (facInput) facInput.focus();
+                return false;
+            }
+        });
+    }
+
+    const createBatchForm = document.getElementById('createBatchForm');
+    if (createBatchForm) {
+        createBatchForm.addEventListener('submit', function(e) {
+            const fac = document.getElementById('batch_faculty');
+            if (!fac || !fac.value.trim()) {
+                e.preventDefault();
+                alert('Assigned Faculty is mandatory! Please select a faculty member.');
+                const facInput = document.getElementById('create_faculty_input');
+                if (facInput) facInput.focus();
+                return false;
+            }
+        });
+    }
 
     // 4. Assign Student Modal
     setupCustomSelect({

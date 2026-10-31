@@ -183,12 +183,35 @@ class Student(models.Model):
 
     @property
     def batches_list(self):
+        # 1. If assigned to a batch, the assigned batch's actual time slot takes absolute priority
+        assigned_slots = []
+        if self.assigned_batch and self.assigned_batch.time_slot:
+            assigned_slots.append(self.assigned_batch.time_slot)
+        for b in self.assigned_batches.all():
+            if b.time_slot and b.time_slot not in assigned_slots:
+                assigned_slots.append(b.time_slot)
+        if assigned_slots:
+            return assigned_slots
+
+        # 2. Registered StudentBatch records
         enrolled = list(self.enrolled_batches.values_list('batch_time', flat=True))
+        enrolled = [e.strip() for e in enrolled if e and e.strip()]
         if enrolled:
             return enrolled
+
+        # 3. Fallback to student.class_time string
         if self.class_time:
             return [b.strip() for b in self.class_time.split(',') if b.strip()]
         return []
+
+    @property
+    def display_time_slot(self):
+        slots = self.batches_list
+        if slots:
+            return ", ".join(slots)
+        if self.class_time:
+            return self.class_time
+        return "Not Assigned" 
 
     @property
     def batch_display(self):
@@ -361,7 +384,7 @@ class Batch(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['time_slot', 'name']
+        ordering = ['id']
         verbose_name_plural = 'Batches'
 
     def __str__(self):

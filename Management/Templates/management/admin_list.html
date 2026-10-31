@@ -320,6 +320,7 @@
                 <span class="dossier-btn-dark" style="padding: 0.3rem 0.7rem; font-size: 0.74rem; opacity: 0.6; cursor: not-allowed;" title="You cannot delete your own logged-in account">
                     <i class="fa-solid fa-lock"></i> Protected
                 </span>
+
                 {% else %}
                 <a href="{% url 'admin_delete' admin_item.id %}" class="btn-icon btn-delete" style="width: 32px; height: 32px;"
                    onclick="return confirm('Are you sure you want to permanently delete administrator account {{ admin_item.username }}?');" title="Delete Administrator">

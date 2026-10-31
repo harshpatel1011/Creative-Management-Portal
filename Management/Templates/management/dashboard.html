@@ -56,49 +56,43 @@
         </div>
     </div>
 
-    <!-- Student Projects KPI -->
-    <div class="kpi-card" onclick="window.location.href='{% url 'admin_projects' %}';" style="cursor: pointer;">
+    <!-- Batches KPI (Card 2) -->
+    <div class="kpi-card" onclick="window.location.href='{% url 'admin_batch_list' %}';" style="cursor: pointer;">
         <div>
             <div class="kpi-header">
                 <div class="kpi-icon" style="background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan);">
-                    <i class="fa-solid fa-diagram-project"></i>
+                    <i class="fa-solid fa-layer-group"></i>
                 </div>
-                {% if pending_projects_count > 0 %}
-                <span class="dossier-btn-dark" style="background: var(--warning-light); color: var(--warning-text); border-color: var(--warning-border);">
-                    <i class="fa-solid fa-clock"></i> {{ pending_projects_count }} Pending
+                <span class="dossier-btn-dark" style="background: rgba(6, 182, 212, 0.15); color: #0891b2; border-color: rgba(6, 182, 212, 0.3);">
+                    Schedule
                 </span>
-                {% else %}
-                <span class="dossier-btn-dark success">
-                    <i class="fa-solid fa-check"></i> All Reviewed
-                </span>
-                {% endif %}
             </div>
-            <div class="kpi-value">{{ total_projects }}</div>
-            <div class="kpi-label">Student Submissions</div>
+            <div class="kpi-value">{{ total_batches }}</div>
+            <div class="kpi-label">Batches</div>
         </div>
         <div class="kpi-footer">
-            <span><strong>{{ approved_projects_count }}</strong> approved</span>
-            <span class="kpi-link">Review <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i></span>
+            <span><strong>{{ total_assigned_students }}</strong> students assigned</span>
+            <span class="kpi-link">Manage <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i></span>
         </div>
     </div>
 
-    <!-- Assessments & Exams KPI -->
-    <div class="kpi-card" onclick="window.location.href='{% url 'admin_exam_list' %}';" style="cursor: pointer;">
+    <!-- Attendance KPI (Card 3) -->
+    <div class="kpi-card" onclick="window.location.href='{% url 'admin_attendance_hub' %}';" style="cursor: pointer;">
         <div>
             <div class="kpi-header">
                 <div class="kpi-icon" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-violet);">
-                    <i class="fa-solid fa-file-signature"></i>
+                    <i class="fa-solid fa-calendar-check"></i>
                 </div>
-                <span class="dossier-btn-dark primary">
-                    Evaluations
+                <span class="dossier-btn-dark" style="background: rgba(139, 92, 246, 0.15); color: #7c3aed; border-color: rgba(139, 92, 246, 0.3);">
+                    Today
                 </span>
             </div>
-            <div class="kpi-value">{{ total_exams }}</div>
-            <div class="kpi-label">Scheduled Exams</div>
+            <div class="kpi-value">{{ today_attendance_pct }}%</div>
+            <div class="kpi-label">Attendance</div>
         </div>
         <div class="kpi-footer">
-            <span>Performance & marks</span>
-            <span class="kpi-link">Manage <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i></span>
+            <span><strong>{{ today_present }}</strong> present today</span>
+            <span class="kpi-link">View Hub <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i></span>
         </div>
     </div>
 
@@ -119,28 +113,6 @@
         <div class="kpi-footer">
             <span>Superusers & staff</span>
             <span class="kpi-link">Directory <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i></span>
-        </div>
-    </div>
-
-    <!-- Today Attendance KPI -->
-    <div class="kpi-card" onclick="window.location.href='{% url 'admin_attendance_hub' %}';" style="cursor: pointer;">
-        <div>
-            <div class="kpi-header">
-                <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
-                    <i class="fa-solid fa-clipboard-user"></i>
-                </div>
-                <span class="dossier-btn-dark {% if today_marked > 0 %}success{% endif %}">
-                    {% if today_marked > 0 %}{{ today_present }} Present{% else %}Attendance{% endif %}
-                </span>
-            </div>
-            <div class="kpi-value" style="color: #10b981;">
-                {% if today_marked > 0 %}{{ today_attendance_pct }}%{% else %}Hub{% endif %}
-            </div>
-            <div class="kpi-label">Today's Attendance</div>
-        </div>
-        <div class="kpi-footer">
-            <span>{% if today_marked > 0 %}{{ today_marked }} marked today{% else %}Attendance tracking{% endif %}</span>
-            <span class="kpi-link">Manage <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i></span>
         </div>
     </div>
 </div>

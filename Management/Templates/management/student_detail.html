@@ -25,7 +25,7 @@
             <i class="fa-solid fa-sliders"></i>
             <span>Update Status</span>
         </button>
-        {% if user.is_superuser %}
+        {% if user.is_superuser or user.has_full_access %}
         <a href="{% url 'admin_student_edit' student.id %}?next=detail" class="btn-primary">
             <i class="fa-solid fa-pen-to-square"></i>
             <span>Edit Profile</span>
@@ -97,7 +97,7 @@
                         {% for b in student.batches_list %}
                             <span class="badge badge-secondary" style="font-size: 0.75rem; padding: 0.15rem 0.5rem;">{{ b }}</span>
                         {% empty %}
-                            <span>{{ student.class_time|default:"Flexible Batch" }}</span>
+                            <span>{{ student.display_time_slot|default:"Flexible Batch" }}</span>
                         {% endfor %}
                     </span>
                     <span>&bull;</span>
@@ -384,10 +384,10 @@
                 Attendance History ({{ attendance_stats.total }} Sessions)
             </h3>
             <small style="color: var(--text-muted); font-size: 0.8rem;">
-                Batch Time: <strong>{{ student.class_time|default:"Not Assigned" }}</strong> &bull; {{ attendance_stats.present }} Present, {{ attendance_stats.absent }} Absent, {{ attendance_stats.late }} Late
+                Batch Time: <strong>{{ student.display_time_slot|default:"Not Assigned" }}</strong> &bull; {{ attendance_stats.present }} Present, {{ attendance_stats.absent }} Absent, {{ attendance_stats.late }} Late
             </small>
         </div>
-        <a href="{% url 'admin_attendance_batch' %}?batch={{ student.class_time|urlencode }}" class="btn-secondary" style="height: 32px; padding: 0 0.85rem; font-size: 0.78rem;">
+        <a href="{% url 'admin_attendance_batch' %}?batch={{ student.display_time_slot|urlencode }}" class="btn-secondary" style="height: 32px; padding: 0 0.85rem; font-size: 0.78rem;">
             <i class="fa-solid fa-clock" style="margin-right: 4px;"></i> Open Attendance
         </a>
     </div>
@@ -415,7 +415,7 @@
                         {{ a.date|date:"l" }}
                     </td>
                     <td style="color: var(--text-secondary); font-size: 0.82rem;">
-                        <i class="fa-solid fa-clock" style="color: var(--primary); font-size: 0.75rem;"></i> {{ a.time_slot|default:student.class_time }}
+                        <i class="fa-solid fa-clock" style="color: var(--primary); font-size: 0.75rem;"></i> {{ a.time_slot|default:student.display_time_slot }}
                     </td>
                     <td>
                         {% if a.status == 'Present' %}
